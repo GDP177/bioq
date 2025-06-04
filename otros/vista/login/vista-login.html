@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sistema de Laboratorio Bioquímico | Login</title>
+
+    <!-- Google Font: Source Sans Pro -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- icheck bootstrap -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/icheck-bootstrap/3.0.1/icheck-bootstrap.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.8/dist/sweetalert2.min.css">
+</head>
+<body class="hold-transition login-page">
+<div class="login-box">
+    <!-- /.login-logo -->
+    <div class="card card-outline card-primary">
+        <div class="card-header text-center">
+            <a href="#" class="h2"><b>Sistema</b> Laboratorio</a>
+        </div>
+        <div class="card-body">
+            <p class="login-box-msg">Inicia sesión para acceder al sistema</p>
+
+            <form id="form_login">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="txt_usuario" placeholder="Usuario" autocomplete="username">
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-user"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="password" class="form-control" id="txt_clave" placeholder="Contraseña" autocomplete="current-password">
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-lock"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-8">
+                        <div class="icheck-primary">
+                            <input type="checkbox" id="remember">
+                            <label for="remember">
+                                Recordarme
+                            </label>
+                        </div>
+                    </div>
+                    <!-- /.col -->
+                    <div class="col-4">
+                        <button type="button" class="btn btn-primary btn-block" onclick="iniciarSesion()">Ingresar</button>
+                    </div>
+                    <!-- /.col -->
+                </div>
+            </form>
+
+            <p class="mb-1 mt-3">
+                <a href="#" onclick="mostrarRecuperacion()">Olvidé mi contraseña</a>
+            </p>
+        </div>
+        <!-- /.card-body -->
+    </div>
+    <!-- /.card -->
+</div>
+<!-- /.login-box -->
+
+<!-- jQuery -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE App -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.8/dist/sweetalert2.all.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Permitir enviar formulario con Enter
+        $("#form_login").keypress(function(e) {
+            if (e.which == 13) {
+                iniciarSesion();
+                return false;
+            }
+        });
+    });
+    
+    /**
+     * Inicia sesión en el sistema
+     */
+    function iniciarSesion() {
+        // Obtener valores
+        let usuario = $("#txt_usuario").val();
+        let clave = $("#txt_clave").val();
+        
+        // Validar campos
+        if (usuario.trim() === "" || clave.trim() === "") {
+            Swal.fire({
+                title: 'Advertencia',
+                text: 'Ingrese usuario y contraseña',
+                icon: 'warning'
+            });
+            return;
+        }
+        
+        // Enviar solicitud AJAX
+        $.ajax({
+            url: '../../controller/login/controller_login.php',
+            type: 'POST',
+            data: {
+                usuario: usuario,
+                clave: clave
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Redireccionar al sistema
+                    window.location.href = '../index.php';
+                } else {
+                    // Mostrar mensaje de error
+                    Swal.fire({
+                        title: 'Error',
+                        text: response.message,
+                        icon: 'error'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error al intentar iniciar sesión',
+                    icon: 'error'
+                });
+            }
+        });
+    }
+    
+    /**
+     * Muestra formulario de recuperación de contraseña
+     */
+    function mostrarRecuperacion() {
+        Swal.fire({
+            title: 'Recuperar contraseña',
+            input: 'text',
+            inputLabel: 'Ingrese su nombre de usuario',
+            inputPlaceholder: 'Usuario',
+            showCancelButton: true,
+            confirmButtonText: 'Recuperar',
+            cancelButtonText: 'Cancelar',
+            showLoaderOnConfirm: true,
+            preConfirm: (usuario) => {
+                if (!usuario) {
+                    Swal.showValidationMessage('Debe ingresar un usuario');
+                    return false;
+                }
+                return usuario;
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Aquí se implementaría la lógica para recuperar contraseña
+                Swal.fire({
+                    title: 'Información',
+                    text: 'Se ha enviado un correo con instrucciones para recuperar su contraseña',
+                    icon: 'info'
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>

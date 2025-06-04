@@ -1,0 +1,623 @@
+<!-- Vista principal para la gestión de análisis -->
+<div class="col-md-12">
+    <div class="card card-primary">
+        <div class="card-header">
+            <h3 class="card-title">Gestión de Análisis</h3>
+            <button type="button" class="btn btn-success float-right" onclick="abrirModalRegistro()">
+                <i class="fas fa-plus"></i> Nuevo Análisis
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <table id="tabla_analisis" class="display responsive nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Código Práctica</th>
+                                <th>Descripción Práctica</th>
+                                <th>Código Módulo</th>
+                                <th>Descripción Módulo</th>
+                                <th>Tipo</th>
+                                <th>Inicio Vigencia</th>
+                                <th>Honorarios</th>
+                                <th>Gastos</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para registrar/editar análisis -->
+<div class="modal fade" id="modal_registro" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary">
+                <h5 class="modal-title" id="titulo_modal">Registrar Análisis</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="form_analisis">
+                    <input type="hidden" id="id_analisis" name="id_analisis">
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="txt_descripcion">Descripción de la Práctica</label>
+                                <input type="text" class="form-control" id="txt_descripcion" name="txt_descripcion" placeholder="Ingrese descripción" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="txt_codigo_modulo">Código de Módulo</label>
+                                <input type="number" class="form-control" id="txt_codigo_modulo" name="txt_codigo_modulo" placeholder="Código del módulo">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="txt_descripcion_modulo">Descripción del Módulo</label>
+                                <input type="text" class="form-control" id="txt_descripcion_modulo" name="txt_descripcion_modulo" placeholder="Descripción del módulo">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="cmb_tipo">Tipo</label>
+                                <select class="form-control" id="cmb_tipo" name="cmb_tipo">
+                                    <option value="">Seleccione tipo</option>
+                                    <option value="Clínico">Clínico</option>
+                                    <option value="Imagen">Imagen</option>
+                                    <option value="Bioquímico">Bioquímico</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="txt_inicio_vigencia">Inicio de Vigencia</label>
+                                <input type="date" class="form-control" id="txt_inicio_vigencia" name="txt_inicio_vigencia">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="cmb_estado">Estado</label>
+                                <select class="form-control" id="cmb_estado" name="cmb_estado">
+                                    <option value="activo">Activo</option>
+                                    <option value="inactivo">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="txt_honorarios">Honorarios</label>
+                                <input type="number" step="0.01" class="form-control" id="txt_honorarios" name="txt_honorarios" placeholder="Honorarios">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="txt_gastos">Gastos</label>
+                                <input type="number" step="0.01" class="form-control" id="txt_gastos" name="txt_gastos" placeholder="Gastos">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="registrarAnalisis()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para gestionar análisis incluidos -->
+<div class="modal fade" id="modal_incluidos" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title">Análisis Incluidos</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="id_analisis_padre">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <h5>Análisis Padre: <span id="txt_analisis_padre" class="font-weight-bold"></span></h5>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <h6 class="text-primary">Agregar Análisis Incluido</h6>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="cmb_analisis_hijo">Seleccionar Análisis</label>
+                            <select class="form-control select2" id="cmb_analisis_hijo" style="width: 100%;">
+                                <option value="">Seleccione un análisis</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-success btn-block" onclick="agregarAnalisisIncluido()">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="txt_descripcion_inclusion">Descripción de la Inclusión</label>
+                            <textarea class="form-control" id="txt_descripcion_inclusion" rows="2" placeholder="Describa la relación o inclusión"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6 class="text-primary">Análisis Incluidos Actualmente</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="tabla_incluidos">
+                                <thead class="bg-info">
+                                    <tr>
+                                        <th width="10%">Código</th>
+                                        <th width="65%">Descripción</th>
+                                        <th width="15%">Detalle</th>
+                                        <th width="10%">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_incluidos">
+                                    <tr>
+                                        <td colspan="4" class="text-center">No hay análisis incluidos</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar DataTable
+        let tabla = $('#tabla_analisis').DataTable({
+            "processing": true,
+            "responsive": true,
+            "ajax": {
+                "url": "../controller/analisis/controller-analisis-nuevo.php",
+                "type": "POST",
+                "data": { accion: "listar" }
+            },
+            "columns": [
+                { "data": "analisis_id" },
+                { "data": "analisis_nombre" },
+                { "data": "CODIGO_DE_MODULO" },
+                { "data": "DESCRIPCION_DE_MODULO" },
+                { "data": "TIPO" },
+                { "data": "INICIO_DE_VIGENCIA" },
+                { "data": "HONORARIOS", render: function(data) {
+                    return `$${parseFloat(data).toFixed(2)}`;
+                }},
+                { "data": "GASTOS", render: function(data) {
+                    return `$${parseFloat(data).toFixed(2)}`;
+                }},
+                { "data": "analisis_estatus", render: function(data) {
+                    return data === 'activo' ? 
+                        '<span class="badge badge-success">Activo</span>' : 
+                        '<span class="badge badge-danger">Inactivo</span>';
+                }},
+                { "defaultContent": `
+                    <button class="btn btn-primary btn-sm editar" title="Editar">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="btn btn-info btn-sm incluidos" title="Análisis Incluidos">
+                        <i class="fas fa-list"></i>
+                    </button>` 
+                }
+            ],
+            "order": [[1, 'asc']],
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/Spanish.json"
+            }
+        });
+        
+        // Evento para editar
+        $('#tabla_analisis tbody').on('click', '.editar', function() {
+            let data = tabla.row($(this).parents('tr')).data();
+            abrirModalEdicion(data);
+        });
+        
+        // Evento para gestionar incluidos
+        $('#tabla_analisis tbody').on('click', '.incluidos', function() {
+            let data = tabla.row($(this).parents('tr')).data();
+            abrirModalIncluidos(data);
+        });
+        
+        // Inicializar Select2
+        $('.select2').select2({
+            dropdownParent: $('#modal_incluidos')
+        });
+        
+        // Cargar select de análisis para incluir
+        cargarSelectAnalisis();
+    });
+    
+    /**
+     * Abre el modal de registro de análisis
+     */
+    function abrirModalRegistro() {
+        // Limpiar formulario
+        $('#form_analisis')[0].reset();
+        $('#id_analisis').val('');
+        
+        // Cambiar título
+        $('#titulo_modal').text('Registrar Análisis');
+        
+        // Mostrar modal
+        $('#modal_registro').modal('show');
+    }
+    
+    /**
+     * Abre el modal de edición con los datos del análisis
+     * @param {object} data Datos del análisis
+     */
+    function abrirModalEdicion(data) {
+        // Llenar formulario
+        $('#id_analisis').val(data.analisis_id);
+        $('#txt_descripcion').val(data.analisis_nombre);
+        $('#txt_codigo_modulo').val(data.CODIGO_DE_MODULO);
+        $('#txt_descripcion_modulo').val(data.DESCRIPCION_DE_MODULO);
+        $('#cmb_tipo').val(data.TIPO);
+        $('#txt_inicio_vigencia').val(data.INICIO_DE_VIGENCIA);
+        $('#txt_honorarios').val(data.HONORARIOS);
+        $('#txt_gastos').val(data.GASTOS);
+        $('#cmb_estado').val(data.analisis_estatus);
+        
+        // Cambiar título
+        $('#titulo_modal').text('Editar Análisis');
+        
+        // Mostrar modal
+        $('#modal_registro').modal('show');
+    }
+    
+    /**
+     * Registra o actualiza un análisis
+     */
+    function registrarAnalisis() {
+        // Validar formulario
+        if (!$('#form_analisis')[0].checkValidity()) {
+            $('#form_analisis')[0].reportValidity();
+            return;
+        }
+        
+        // Obtener datos
+        let id = $('#id_analisis').val();
+        let descripcion = $('#txt_descripcion').val();
+        let codigo_modulo = $('#txt_codigo_modulo').val();
+        let descripcion_modulo = $('#txt_descripcion_modulo').val();
+        let tipo = $('#cmb_tipo').val();
+        let inicio_vigencia = $('#txt_inicio_vigencia').val();
+        let honorarios = $('#txt_honorarios').val();
+        let gastos = $('#txt_gastos').val();
+        let estado = $('#cmb_estado').val();
+        
+        // Determinar acción (registrar o modificar)
+        let accion = id ? 'modificar' : 'registrar';
+        
+        // Si es edición y el estado es inactivo, establecer inicio_vigencia como vacío
+        if (accion === 'modificar' && estado === 'inactivo') {
+            inicio_vigencia = '';
+        }
+        
+        // Preparar datos para enviar
+        let datos = {
+            accion: accion,
+            id: id,
+            descripcion: descripcion,
+            codigo_modulo: codigo_modulo,
+            descripcion_modulo: descripcion_modulo,
+            tipo: tipo,
+            inicio_vigencia: inicio_vigencia,
+            honorarios: honorarios,
+            gastos: gastos
+        };
+        
+        // Realizar petición AJAX
+        $.ajax({
+            url: '../controller/analisis/controller-analisis-nuevo.php',
+            type: 'POST',
+            data: datos,
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Mostrar mensaje de éxito
+                    Swal.fire({
+                        title: 'Éxito',
+                        text: response.message,
+                        icon: 'success'
+                    });
+                    
+                    // Cerrar modal
+                    $('#modal_registro').modal('hide');
+                    
+                    // Recargar tabla
+                    $('#tabla_analisis').DataTable().ajax.reload();
+                } else {
+                    // Mostrar mensaje de error
+                    Swal.fire({
+                        title: 'Error',
+                        text: response.message,
+                        icon: 'error'
+                    });
+                }
+            },
+            error: function() {
+                // Mostrar mensaje de error
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error en la comunicación con el servidor',
+                    icon: 'error'
+                });
+            }
+        });
+    }
+    
+    /**
+     * Abre el modal de análisis incluidos
+     * @param {object} data Datos del análisis padre
+     */
+    function abrirModalIncluidos(data) {
+        // Guardar ID del análisis padre
+        $('#id_analisis_padre').val(data.analisis_id);
+        $('#txt_analisis_padre').text(`${data.analisis_id} - ${data.analisis_nombre}`);
+        
+        // Limpiar tabla de incluidos
+        $('#tbody_incluidos').html('<tr><td colspan="4" class="text-center">Cargando...</td></tr>');
+        
+        // Cargar análisis incluidos
+        $.ajax({
+            url: '../controller/analisis/controller-analisis-nuevo.php',
+            type: 'POST',
+            data: {
+                accion: 'incluidos',
+                codigo_padre: data.analisis_id
+            },
+            dataType: 'json',
+            success: function(response) {
+                // Limpiar tabla
+                $('#tbody_incluidos').empty();
+                
+                // Si hay análisis incluidos
+                if (response && response.length > 0) {
+                    response.forEach(function(item) {
+                        let fila = `
+                            <tr>
+                                <td>${item.cod_hijo}</td>
+                                <td>${item.DESCRIPCION_DE_PRACTICA}</td>
+                                <td>${item.descripcion || ''}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="eliminarAnalisisIncluido(${data.analisis_id}, ${item.cod_hijo})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        $('#tbody_incluidos').append(fila);
+                    });
+                } else {
+                    $('#tbody_incluidos').html('<tr><td colspan="4" class="text-center">No hay análisis incluidos</td></tr>');
+                }
+            },
+            error: function() {
+                $('#tbody_incluidos').html('<tr><td colspan="4" class="text-center">Error al cargar análisis incluidos</td></tr>');
+            }
+        });
+        
+        // Limpiar campos
+        $('#cmb_analisis_hijo').val('').trigger('change');
+        $('#txt_descripcion_inclusion').val('');
+        
+        // Mostrar modal
+        $('#modal_incluidos').modal('show');
+    }
+    
+    /**
+     * Carga el select de análisis disponibles
+     */
+    function cargarSelectAnalisis() {
+        $.ajax({
+            url: '../controller/analisis/controller-analisis-nuevo.php',
+            type: 'POST',
+            data: {
+                accion: 'select'
+            },
+            dataType: 'json',
+            success: function(response) {
+                // Limpiar select
+                $('#cmb_analisis_hijo').empty().append('<option value="">Seleccione un análisis</option>');
+                
+                // Agregar opciones
+                if (response && response.length > 0) {
+                    response.forEach(function(item) {
+                        $('#cmb_analisis_hijo').append(`<option value="${item[0]}">${item[1]}</option>`);
+                    });
+                }
+            }
+        });
+    }
+    
+    /**
+     * Agrega un análisis incluido
+     */
+    function agregarAnalisisIncluido() {
+        // Obtener datos
+        let codigo_padre = $('#id_analisis_padre').val();
+        let codigo_hijo = $('#cmb_analisis_hijo').val();
+        let descripcion = $('#txt_descripcion_inclusion').val();
+        
+        // Validar
+        if (!codigo_hijo) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'Debe seleccionar un análisis para incluir',
+                icon: 'warning'
+            });
+            return;
+        }
+        
+        // Verificar que no sea el mismo análisis
+        if (codigo_padre === codigo_hijo) {
+            Swal.fire({
+                title: 'Error',
+                text: 'No puede incluir el mismo análisis',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // Realizar petición AJAX
+        $.ajax({
+            url: '../controller/analisis/controller-analisis-nuevo.php',
+            type: 'POST',
+            data: {
+                accion: 'agregar_incluido',
+                codigo_padre: codigo_padre,
+                codigo_hijo: codigo_hijo,
+                descripcion: descripcion
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Mostrar mensaje de éxito
+                    Swal.fire({
+                        title: 'Éxito',
+                        text: response.message,
+                        icon: 'success'
+                    });
+                    
+                    // Limpiar campos
+                    $('#cmb_analisis_hijo').val('').trigger('change');
+                    $('#txt_descripcion_inclusion').val('');
+                    
+                    // Recargar análisis incluidos
+                    let data = {
+                        analisis_id: codigo_padre,
+                        analisis_nombre: $('#txt_analisis_padre').text().split(' - ')[1]
+                    };
+                    abrirModalIncluidos(data);
+                } else {
+                    // Mostrar mensaje de error
+                    Swal.fire({
+                        title: 'Error',
+                        text: response.message,
+                        icon: 'error'
+                    });
+                }
+            },
+            error: function() {
+                // Mostrar mensaje de error
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error en la comunicación con el servidor',
+                    icon: 'error'
+                });
+            }
+        });
+    }
+    
+    /**
+     * Elimina un análisis incluido
+     * @param {int} codigo_padre Código del análisis padre
+     * @param {int} codigo_hijo Código del análisis hijo
+     */
+    function eliminarAnalisisIncluido(codigo_padre, codigo_hijo) {
+        // Confirmar eliminación
+        Swal.fire({
+            title: '¿Está seguro?',
+            text: "Esta acción eliminará la relación entre los análisis",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Realizar petición AJAX
+                $.ajax({
+                    url: '../controller/analisis/controller-analisis-nuevo.php',
+                    type: 'POST',
+                    data: {
+                        accion: 'eliminar_incluido',
+                        codigo_padre: codigo_padre,
+                        codigo_hijo: codigo_hijo
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Mostrar mensaje de éxito
+                            Swal.fire({
+                                title: 'Eliminado',
+                                text: response.message,
+                                icon: 'success'
+                            });
+                            
+                            // Recargar análisis incluidos
+                            let data = {
+                                analisis_id: codigo_padre,
+                                analisis_nombre: $('#txt_analisis_padre').text().split(' - ')[1]
+                            };
+                            abrirModalIncluidos(data);
+                        } else {
+                            // Mostrar mensaje de error
+                            Swal.fire({
+                                title: 'Error',
+                                text: response.message,
+                                icon: 'error'
+                            });
+                        }
+                    },
+                    error: function() {
+                        // Mostrar mensaje de error
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Ocurrió un error en la comunicación con el servidor',
+                            icon: 'error'
+                        });
+                    }
+                });
+            }
+        });
+    }
+</script>

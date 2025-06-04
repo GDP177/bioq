@@ -1,0 +1,5 @@
+/* eslint-disable @tailwindcss/unknownAtRules */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

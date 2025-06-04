@@ -1,0 +1,238 @@
+/**
+ * Archivo JavaScript con funciones comunes para todo el sistema
+ */
+
+/**
+ * Formatea una fecha en formato ISO (YYYY-MM-DD) a formato DD/MM/YYYY
+ * @param {string} fecha Fecha en formato ISO
+ * @return {string} Fecha formateada
+ */
+function formatearFecha(fecha) {
+    if (!fecha) return '';
+    
+    const partes = fecha.split('-');
+    if (partes.length !== 3) return fecha;
+    
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+/**
+ * Formatea un valor monetario
+ * @param {number} valor Valor a formatear
+ * @param {string} simbolo Símbolo de moneda ($ por defecto)
+ * @return {string} Valor formateado
+ */
+function formatearMoneda(valor, simbolo = '$') {
+    return `${simbolo}${parseFloat(valor).toFixed(2)}`;
+}
+
+/**
+ * Muestra un mensaje de confirmación con SweetAlert2
+ * @param {string} titulo Título del mensaje
+ * @param {string} texto Texto del mensaje
+ * @param {string} icono Icono a mostrar (warning, error, success, info)
+ * @param {function} callback Función a ejecutar si se confirma
+ */
+function mostrarConfirmacion(titulo, texto, icono, callback) {
+    Swal.fire({
+        title: titulo,
+        text: texto,
+        icon: icono,
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed && typeof callback === 'function') {
+            callback();
+        }
+    });
+}
+
+/**
+ * Muestra un mensaje de éxito
+ * @param {string} mensaje Mensaje a mostrar
+ */
+function mostrarExito(mensaje) {
+    Swal.fire({
+        title: 'Éxito',
+        text: mensaje,
+        icon: 'success'
+    });
+}
+
+/**
+ * Muestra un mensaje de error
+ * @param {string} mensaje Mensaje a mostrar
+ */
+function mostrarError(mensaje) {
+    Swal.fire({
+        title: 'Error',
+        text: mensaje,
+        icon: 'error'
+    });
+}
+
+/**
+ * Muestra un mensaje de advertencia
+ * @param {string} mensaje Mensaje a mostrar
+ */
+function mostrarAdvertencia(mensaje) {
+    Swal.fire({
+        title: 'Advertencia',
+        text: mensaje,
+        icon: 'warning'
+    });
+}
+
+/**
+ * Valida que un formulario tenga todos los campos requeridos
+ * @param {string} idFormulario ID del formulario a validar
+ * @return {boolean} true si todos los campos requeridos están completos, false en caso contrario
+ */
+function validarFormulario(idFormulario) {
+    let formulario = document.getElementById(idFormulario);
+    return formulario.checkValidity();
+}
+
+/**
+ * Obtiene la fecha actual en formato YYYY-MM-DD
+ * @return {string} Fecha actual
+ */
+function obtenerFechaActual() {
+    const fecha = new Date();
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+}
+
+/**
+ * Calcula la edad a partir de una fecha de nacimiento
+ * @param {string} fechaNacimiento Fecha de nacimiento en formato YYYY-MM-DD
+ * @return {number} Edad calculada
+ */
+function calcularEdad(fechaNacimiento) {
+    const hoy = new Date();
+    const nacimiento = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const m = hoy.getMonth() - nacimiento.getMonth();
+    
+    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+    }
+    
+    return edad;
+}
+
+/**
+ * Inicializa DataTables con configuración estándar
+ * @param {string} idTabla ID de la tabla a inicializar
+ * @param {object} opciones Opciones adicionales para DataTables
+ * @return {object} Instancia de DataTable
+ */
+function inicializarDataTable(idTabla, opciones = {}) {
+    // Opciones por defecto
+    const opcionesDefault = {
+        "responsive": true,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/Spanish.json"
+        }
+    };
+    
+    // Combinar opciones
+    const opcionesFinal = Object.assign({}, opcionesDefault, opciones);
+    
+    // Inicializar y devolver
+    return $(`#${idTabla}`).DataTable(opcionesFinal);
+}
+
+/**
+ * Inicializa Select2 con configuración estándar
+ * @param {string} selector Selector CSS para los elementos a inicializar
+ * @param {object} opciones Opciones adicionales para Select2
+ */
+function inicializarSelect2(selector = '.select2', opciones = {}) {
+    // Opciones por defecto
+    const opcionesDefault = {
+        width: '100%',
+        language: 'es'
+    };
+    
+    // Combinar opciones
+    const opcionesFinal = Object.assign({}, opcionesDefault, opciones);
+    
+    // Inicializar
+    $(selector).select2(opcionesFinal);
+}
+
+/**
+ * Verifica si un valor es un número válido
+ * @param {*} valor Valor a verificar
+ * @return {boolean} true si es un número válido, false en caso contrario
+ */
+function esNumero(valor) {
+    return !isNaN(parseFloat(valor)) && isFinite(valor);
+}
+
+/**
+ * Genera un código aleatorio
+ * @param {number} longitud Longitud del código
+ * @return {string} Código generado
+ */
+function generarCodigo(longitud = 6) {
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let codigo = '';
+    
+    for (let i = 0; i < longitud; i++) {
+        codigo += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    
+    return codigo;
+}
+
+/**
+ * Exporta una tabla HTML a CSV
+ * @param {string} idTabla ID de la tabla a exportar
+ * @param {string} nombreArchivo Nombre del archivo CSV
+ */
+function exportarTablaCSV(idTabla, nombreArchivo = 'datos') {
+    const tabla = document.getElementById(idTabla);
+    let csv = [];
+    const filas = tabla.querySelectorAll('tr');
+    
+    for (let i = 0; i < filas.length; i++) {
+        const fila = [];
+        const columnas = filas[i].querySelectorAll('td, th');
+        
+        for (let j = 0; j < columnas.length; j++) {
+            // Eliminar HTML y espacios extras
+            let texto = columnas[j].innerText.replace(/(\r\n|\n|\r)/gm, '').trim();
+            // Escapar comillas
+            texto = texto.replace(/"/g, '""');
+            // Envolver en comillas si contiene comas o comillas
+            fila.push(texto.includes(',') || texto.includes('"') ? `"${texto}"` : texto);
+        }
+        
+        csv.push(fila.join(','));
+    }
+    
+    // Crear archivo CSV
+    const csvString = csv.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Crear enlace de descarga
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, nombreArchivo + '.csv');
+    } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = nombreArchivo + '.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}

@@ -1,0 +1,16 @@
+# Proteger directorio, negar acceso directo a los archivos
+Options -Indexes
+Order Allow,Deny
+Deny from all
+
+# Permitir acceso solo a los PDF
+<Files ~ "\.pdf$">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# Prevenir el acceso directo a archivos sensibles
+<FilesMatch "^(\.htaccess|\.htpasswd)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

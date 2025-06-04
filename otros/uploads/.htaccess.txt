@@ -1,0 +1,20 @@
+# Proteger directorio, negar listado
+Options -Indexes
+
+# Permitir acceso a archivos de imágenes y documentos comunes
+<Files ~ "\.(jpg|jpeg|png|gif|pdf|doc|docx|xls|xlsx|txt)$">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# Negar acceso a archivos con extensiones potencialmente peligrosas
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|aspx|cgi|exe|bat|sh)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Prevenir el acceso directo a archivos sensibles
+<FilesMatch "^(\.htaccess|\.htpasswd)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

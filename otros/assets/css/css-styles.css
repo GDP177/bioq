@@ -1,0 +1,191 @@
+/**
+ * Estilos personalizados para el sistema BQ
+ */
+
+/* Ajustes generales */
+body {
+    font-family: 'Source Sans Pro', sans-serif;
+}
+
+/* Ajustes de tablas */
+.table th {
+    background-color: #f4f6f9;
+}
+
+/* Ajustes para DataTables responsivas */
+table.dataTable tbody th,
+table.dataTable tbody td {
+    padding: 8px 10px;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_processing,
+.dataTables_wrapper .dataTables_paginate {
+    margin-bottom: 10px;
+}
+
+/* Estilos para estados */
+.estado-activo {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.estado-inactivo {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Estilos para prioridades */
+.prioridad-urgente {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 3px 5px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+.prioridad-normal {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 3px 5px;
+    border-radius: 3px;
+}
+
+/* Estilos para valores fuera de rango */
+.valor-normal {
+    color: #28a745;
+}
+
+.valor-anormal {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Animaciones para notificaciones */
+@keyframes parpadeo {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.parpadeo {
+    animation: parpadeo 1.5s infinite ease-in-out;
+}
+
+/* Estilos para el dashboard */
+.small-box .icon {
+    color: rgba(0, 0, 0, 0.15);
+    z-index: 0;
+}
+
+.small-box:hover .icon {
+    color: rgba(0, 0, 0, 0.3);
+}
+
+/* Ajustes para modales grandes */
+.modal-xl {
+    max-width: 1200px;
+}
+
+.modal-lg {
+    max-width: 900px;
+}
+
+/* Ajustes para el login */
+.login-page {
+    background: #f4f6f9;
+    background-image: linear-gradient(120deg, #e0f7fa 0%, #bbdefb 100%);
+}
+
+.login-box {
+    width: 360px;
+}
+
+/* Estilos para secciones plegables */
+.section-collapsible {
+    margin-bottom: 15px;
+}
+
+.section-collapsible .card-header {
+    cursor: pointer;
+}
+
+.section-collapsible .card-header:hover {
+    background-color: #f8f9fa;
+}
+
+/* Estilos para tooltips personalizados */
+.tooltip-custom {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-custom .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip-custom:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Ajustes para tablas de resultados */
+.tabla-resultados th {
+    background-color: #e9ecef;
+    font-weight: bold;
+}
+
+.tabla-resultados td {
+    vertical-align: middle;
+}
+
+/* Estilos para impresión */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .print-only {
+        display: block !important;
+    }
+    
+    body {
+        font-size: 12pt;
+    }
+    
+    .table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    
+    .table th, .table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+}
+
+/* Responsive */
+@media (max-width: 767.98px) {
+    .login-box {
+        width: 90%;
+    }
+    
+    .hide-mobile {
+        display: none;
+    }
+}

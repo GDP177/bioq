@@ -1,0 +1,16 @@
+{
+  "name": "BQ",
+  "private": true,
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  },
+  "scripts": {
+    "start:backend": "npm run dev --prefix laboratorio-backend",
+    "start:frontend": "npm run dev --prefix laboratorio-frontend",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "class-variance-authority": "^0.7.1"
+  }
+}

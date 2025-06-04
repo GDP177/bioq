@@ -1,0 +1,497 @@
+<div class="col-md-12">
+    <div class="card card-primary">
+        <div class="card-header">
+            <h3 class="card-title">Registro de Exámenes</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Sección de selección de paciente -->
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Buscar Paciente:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="txt_buscar_paciente" placeholder="Ingrese DNI, nombre o apellido">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" id="btn_buscar_paciente">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Busque al paciente por DNI, nombre o apellido</small>
+                    </div>
+                </div>
+                <!-- Sección de selección de médico -->
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Médico que indica:</label>
+                        <select id="select_medico" class="form-control select2" style="width: 100%;">
+                            <option value="">Seleccione un médico</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos del paciente seleccionado -->
+            <div class="row mt-3" id="div_datos_paciente" style="display:none;">
+                <div class="col-md-12">
+                    <div class="card card-info">
+                        <div class="card-header">
+                            <h3 class="card-title">Datos del Paciente</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="hidden" id="txt_id_paciente">
+                                    <div class="form-group">
+                                        <label>DNI:</label>
+                                        <input type="text" class="form-control" id="txt_dni_paciente" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Nombre Completo:</label>
+                                        <input type="text" class="form-control" id="txt_nombre_paciente" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selección de análisis y exámenes -->
+            <div class="row mt-3" id="div_seleccion_examenes" style="display:none;">
+                <div class="col-md-12">
+                    <div class="card card-success">
+                        <div class="card-header">
+                            <h3 class="card-title">Selección de Exámenes</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <label>Análisis:</label>
+                                        <select id="select_analisis" class="form-control select2" style="width: 100%;">
+                                            <option value="">Seleccione un análisis</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <label>Examen:</label>
+                                        <select id="select_examen" class="form-control select2" disabled style="width: 100%;">
+                                            <option value="">Seleccione un examen</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-success btn-block" id="btn_agregar_examen" disabled>
+                                        <i class="fas fa-plus"></i> Agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de exámenes seleccionados -->
+            <div class="row mt-3" id="div_tabla_examenes" style="display:none;">
+                <div class="col-md-12">
+                    <div class="card card-danger">
+                        <div class="card-header">
+                            <h3 class="card-title">Exámenes Seleccionados</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="tabla_examen" class="table table-bordered table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th width="10%" hidden>ID Examen</th>
+                                            <th width="40%">Examen</th>
+                                            <th width="10%" hidden>ID Análisis</th>
+                                            <th width="40%">Análisis</th>
+                                            <th width="20%">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody_tabla_examen">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary btn-lg" onclick="registrarRealizarExamen()">
+                                <i class="fas fa-save"></i> Registrar Exámenes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensaje de error -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="alert alert-danger" id="div_mensaje_error" style="display:none;">
+                        <h5><i class="icon fas fa-ban"></i> Error!</h5>
+                        <span id="mensaje_error"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar select2
+        $('.select2').select2();
+        
+        // Cargar médicos
+        cargarSelectMedico();
+        
+        // Cargar análisis
+        cargarSelectAnalisis();
+        
+        // Configurar autocomplete para búsqueda de pacientes
+        $("#txt_buscar_paciente").autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: '../controller/examen/buscar_pacientes.php',
+                    type: 'POST',
+                    dataType: "json",
+                    data: {
+                        valor: request.term
+                    },
+                    success: function(data) {
+                        response($.map(data, function(item) {
+                            return {
+                                label: item.paciente + " - DNI: " + item.paciente_dni,
+                                value: item.paciente,
+                                id: item.paciente_id,
+                                dni: item.paciente_dni
+                            };
+                        }));
+                    }
+                });
+            },
+            minLength: 2,
+            select: function(event, ui) {
+                // Mostrar datos del paciente seleccionado
+                $("#txt_id_paciente").val(ui.item.id);
+                $("#txt_dni_paciente").val(ui.item.dni);
+                $("#txt_nombre_paciente").val(ui.item.value);
+                
+                // Mostrar secciones ocultas
+                $("#div_datos_paciente").show();
+                $("#div_seleccion_examenes").show();
+                $("#div_tabla_examenes").show();
+                
+                return false;
+            }
+        });
+        
+        // Al buscar paciente por botón
+        $("#btn_buscar_paciente").click(function() {
+            if($("#txt_buscar_paciente").val().trim() === "") {
+                Swal.fire({
+                    title: 'Advertencia',
+                    text: 'Ingrese DNI, nombre o apellido del paciente',
+                    icon: 'warning'
+                });
+                return;
+            }
+            
+            // Si hay texto, forzar búsqueda en autocomplete
+            $("#txt_buscar_paciente").autocomplete("search", $("#txt_buscar_paciente").val());
+        });
+        
+        // Al cambiar el análisis, cargar exámenes
+        $("#select_analisis").change(function() {
+            let analisis_id = $(this).val();
+            
+            if(analisis_id === "") {
+                $("#select_examen").prop("disabled", true);
+                $("#select_examen").html('<option value="">Seleccione un examen</option>');
+                $("#btn_agregar_examen").prop("disabled", true);
+                return;
+            }
+            
+            cargarExamenes(analisis_id);
+        });
+        
+        // Al cambiar el examen, habilitar botón agregar
+        $("#select_examen").change(function() {
+            let examen_id = $(this).val();
+            
+            if(examen_id === "") {
+                $("#btn_agregar_examen").prop("disabled", true);
+                return;
+            }
+            
+            $("#btn_agregar_examen").prop("disabled", false);
+        });
+        
+        // Al hacer clic en agregar examen
+        $("#btn_agregar_examen").click(function() {
+            let examen_id = $("#select_examen").val();
+            let examen_nombre = $("#select_examen option:selected").text();
+            let analisis_id = $("#select_analisis").val();
+            let analisis_nombre = $("#select_analisis option:selected").text();
+            
+            // Validar que no haya sido agregado antes
+            if(verificarId(examen_id)) {
+                Swal.fire({
+                    title: 'Advertencia',
+                    text: 'El examen ya fue agregado a la lista',
+                    icon: 'warning'
+                });
+                return;
+            }
+            
+            // Agregar a la tabla
+            agregarExamen(examen_id, examen_nombre, analisis_id, analisis_nombre);
+            
+            // Resetear selecciones
+            $("#select_examen").val("").trigger('change');
+            $("#btn_agregar_examen").prop("disabled", true);
+        });
+    });
+    
+    /**
+     * Carga la lista de médicos en el select
+     */
+    function cargarSelectMedico() {
+        $.ajax({
+            url: '../controller/medico/cargar_select_medico.php',
+            type: 'POST',
+            success: function(resp) {
+                try {
+                    let data = JSON.parse(resp);
+                    let llenarData = '<option value="">Seleccione un médico</option>';
+                    
+                    if(data.length > 0) {
+                        data.forEach(row => {
+                            llenarData += `<option value='${row[0]}'>${row[1]}</option>`;
+                        });
+                    } else {
+                        llenarData = '<option value="">No se encontraron médicos activos</option>';
+                    }
+                    
+                    $("#select_medico").html(llenarData);
+                } catch(error) {
+                    console.error(error);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Carga la lista de análisis en el select
+     */
+    function cargarSelectAnalisis() {
+        $.ajax({
+            url: '../controller/analisis/cargar_select_analisis.php',
+            type: 'POST',
+            success: function(resp) {
+                try {
+                    let data = JSON.parse(resp);
+                    let llenarData = '<option value="">Seleccione un análisis</option>';
+                    
+                    if(data.length > 0) {
+                        data.forEach(row => {
+                            llenarData += `<option value='${row[0]}'>${row[1]}</option>`;
+                        });
+                    } else {
+                        llenarData = '<option value="">No se encontraron análisis activos</option>';
+                    }
+                    
+                    $("#select_analisis").html(llenarData);
+                } catch(error) {
+                    console.error(error);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Carga los exámenes por análisis seleccionado
+     * @param {int} analisis_id ID del análisis
+     */
+    function cargarExamenes(analisis_id) {
+        $.ajax({
+            url: '../controller/examen/cargar_examenes_por_analisis.php',
+            type: 'POST',
+            data: {
+                id: analisis_id
+            },
+            success: function(resp) {
+                try {
+                    let data = JSON.parse(resp);
+                    let llenarData = '<option value="">Seleccione un examen</option>';
+                    
+                    if(data.length > 0) {
+                        data.forEach(row => {
+                            llenarData += `<option value='${row[0]}'>${row[1]}</option>`;
+                        });
+                        
+                        $("#select_examen").prop("disabled", false);
+                    } else {
+                        llenarData = '<option value="">No hay exámenes para este análisis</option>';
+                        $("#select_examen").prop("disabled", true);
+                    }
+                    
+                    $("#select_examen").html(llenarData);
+                } catch(error) {
+                    console.error(error);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Verifica si un examen ya existe en la tabla
+     * @param {int} id ID del examen a verificar
+     * @return {boolean} true si existe, false si no
+     */
+    function verificarId(id) {
+        let existe = false;
+        
+        $("#tbody_tabla_examen tr").each(function() {
+            let examen_id = $(this).find("td:eq(0)").text();
+            
+            if(examen_id === id) {
+                existe = true;
+                return false; // Romper el ciclo
+            }
+        });
+        
+        return existe;
+    }
+    
+    /**
+     * Agrega un examen a la tabla
+     * @param {int} examen_id ID del examen
+     * @param {string} examen_nombre Nombre del examen
+     * @param {int} analisis_id ID del análisis
+     * @param {string} analisis_nombre Nombre del análisis
+     */
+    function agregarExamen(examen_id, examen_nombre, analisis_id, analisis_nombre) {
+        let html = `
+            <tr>
+                <td hidden>${examen_id}</td>
+                <td>${examen_nombre}</td>
+                <td hidden>${analisis_id}</td>
+                <td>${analisis_nombre}</td>
+                <td class="text-center">
+                    <button class="btn btn-danger btn-sm" onclick="removerExamen(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        $("#tbody_tabla_examen").append(html);
+    }
+    
+    /**
+     * Remueve un examen de la tabla
+     * @param {object} boton Botón que fue pulsado
+     */
+    function removerExamen(boton) {
+        $(boton).closest("tr").remove();
+    }
+    
+    /**
+     * Registra la realización de exámenes
+     */
+    function registrarRealizarExamen() {
+        // Validar paciente
+        let paciente_id = $("#txt_id_paciente").val();
+        if(paciente_id === "") {
+            mostrarError("Debe seleccionar un paciente");
+            return;
+        }
+        
+        // Validar médico
+        let medico_id = $("#select_medico").val();
+        if(medico_id === "") {
+            mostrarError("Debe seleccionar un médico");
+            return;
+        }
+        
+        // Validar que haya exámenes seleccionados
+        let contador = 0;
+        $("#tbody_tabla_examen tr").each(function() {
+            contador++;
+        });
+        
+        if(contador === 0) {
+            mostrarError("El detalle de la tabla debe tener como mínimo un examen");
+            return;
+        }
+        
+        // Recopilar exámenes y análisis
+        let arrayExamen = [];
+        let arrayAnalisis = [];
+        
+        $("#tbody_tabla_examen tr").each(function() {
+            arrayExamen.push($(this).find("td:eq(0)").text());
+            arrayAnalisis.push($(this).find("td:eq(2)").text());
+        });
+        
+        // Registrar exámenes
+        $.ajax({
+            url: '../controller/examen/registrar_realizar_examen.php',
+            type: 'POST',
+            data: {
+                paciente_id: paciente_id,
+                medico_id: medico_id,
+                examen: arrayExamen.join(','),
+                analisis: arrayAnalisis.join(',')
+            },
+            success: function(resp) {
+                if(resp > 0) {
+                    // Registrar detalle
+                    $.ajax({
+                        url: '../controller/examen/registrar_realizar_examen_detalle.php',
+                        type: 'POST',
+                        data: {
+                            id: resp,
+                            examen: arrayExamen.join(','),
+                            analisis: arrayAnalisis.join(',')
+                        },
+                        success: function(res) {
+                            if(res === "1") {
+                                Swal.fire({
+                                    title: 'Confirmación',
+                                    text: 'Exámenes registrados correctamente',
+                                    icon: 'success'
+                                }).then((result) => {
+                                    location.href = 'examen/mantenimiento_realizar_examen.php';
+                                });
+                            } else {
+                                mostrarError("Error al registrar los detalles del examen");
+                            }
+                        }
+                    });
+                } else {
+                    mostrarError("No se pudo completar el registro");
+                }
+            }
+        });
+    }
+    
+    /**
+     * Muestra un mensaje de error
+     * @param {string} mensaje Mensaje de error
+     */
+    function mostrarError(mensaje) {
+        $("#mensaje_error").text(mensaje);
+        $("#div_mensaje_error").show();
+        
+        // Ocultar después de 3 segundos
+        setTimeout(function() {
+            $("#div_mensaje_error").hide();
+        }, 3000);
+    }
+</script>

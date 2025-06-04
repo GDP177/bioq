@@ -1,0 +1,217 @@
+<div class="col-md-12">
+    <div class="card card-primary">
+        <div class="card-header">
+            <h3 class="card-title">Listado de Resultados</h3>
+            <button class="btn btn-danger btn-sm float-right" onclick="window.location.href='resultado/registro_resultado.php'">
+                <i class="fas fa-plus"></i> Nuevo Resultado
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12 table-responsive">
+                    <table id="tabla_resultados" class="display responsive nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Paciente</th>
+                                <th>DNI</th>
+                                <th>Médico</th>
+                                <th>Fecha Registro</th>
+                                <th>Responsable</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver detalles del resultado -->
+<div class="modal fade" id="modal_detalle_resultado" data-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Detalle de Resultados</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Paciente:</label>
+                            <input type="text" class="form-control" id="txt_paciente_detalle" disabled>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>DNI:</label>
+                            <input type="text" class="form-control" id="txt_dni_detalle" disabled>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Médico:</label>
+                            <input type="text" class="form-control" id="txt_medico_detalle" disabled>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Fecha Registro:</label>
+                            <input type="text" class="form-control" id="txt_fecha_detalle" disabled>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <table class="table table-bordered table-striped" id="tabla_detalle_resultado">
+                            <thead>
+                                <tr>
+                                    <th>Examen</th>
+                                    <th>Análisis</th>
+                                    <th>Archivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_detalle_resultado">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar datatable
+        let tabla = $("#tabla_resultados").DataTable({
+            "responsive": true,
+            "lengthChange": true,
+            "autoWidth": false,
+            "ajax": {
+                "url": "../controller/resultado/listar_resultados.php",
+                "type": "POST"
+            },
+            "columns": [
+                {"data": null, "render": function(data, type, row, meta) {
+                    return meta.row + 1;
+                }},
+                {"data": "paciente"},
+                {"data": "paciente_dni"},
+                {"data": "medico"},
+                {"data": "fecha_registro"},
+                {"data": "usuario"},
+                {"defaultContent": 
+                    `<button class="btn btn-primary btn-sm ver_detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-success btn-sm imprimir_resultado">
+                        <i class="fas fa-print"></i>
+                    </button>`
+                }
+            ],
+            "language": {
+                "lengthMenu": "Mostrar _MENU_ registros por página",
+                "zeroRecords": "No se encontraron resultados",
+                "info": "Mostrando página _PAGE_ de _PAGES_",
+                "infoEmpty": "No hay registros disponibles",
+                "infoFiltered": "(filtrado de _MAX_ registros totales)",
+                "search": "Buscar:",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Último",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }
+            }
+        });
+        
+        // Evento para ver detalle
+        $('#tabla_resultados tbody').on('click', '.ver_detalle', function() {
+            let data = tabla.row($(this).parents('tr')).data();
+            mostrarDetalleResultado(data);
+        });
+        
+        // Evento para imprimir resultado
+        $('#tabla_resultados tbody').on('click', '.imprimir_resultado', function() {
+            let data = tabla.row($(this).parents('tr')).data();
+            generarReporteResultado(data.resultado_id);
+        });
+    });
+    
+    /**
+     * Muestra el detalle de un resultado
+     * @param {object} data Datos del resultado
+     */
+    function mostrarDetalleResultado(data) {
+        // Cargar datos del encabezado
+        $("#txt_paciente_detalle").val(data.paciente);
+        $("#txt_dni_detalle").val(data.paciente_dni);
+        $("#txt_medico_detalle").val(data.medico);
+        $("#txt_fecha_detalle").val(data.fecha_registro);
+        
+        // Limpiar tabla de detalles
+        $("#tbody_detalle_resultado").empty();
+        
+        // Cargar detalles
+        $.ajax({
+            url: '../controller/resultado/obtener_detalle_resultado.php',
+            type: 'POST',
+            data: {
+                id: data.resultado_id
+            },
+            success: function(resp) {
+                try {
+                    let detalles = JSON.parse(resp);
+                    
+                    detalles.forEach(item => {
+                        let html = `
+                            <tr>
+                                                <td>
+                                    <a href="../${item.archivo}" target="_blank" class="btn btn-info btn-sm">
+                                        <i class="fas fa-file-download"></i> Ver Archivo
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                        
+                        $("#tbody_detalle_resultado").append(html);
+                    });
+                    
+                    // Mostrar modal
+                    $("#modal_detalle_resultado").modal("show");
+                } catch(error) {
+                    console.error(error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error al cargar detalles del resultado',
+                        icon: 'error'
+                    });
+                }
+            }
+        });
+    }
+    
+    /**
+     * Genera e imprime un reporte de resultados
+     * @param {int} resultado_id ID del resultado
+     */
+    function generarReporteResultado(resultado_id) {
+        // Redireccionar a la página de reporte con el ID
+        window.open(`../controller/resultado/generar_reporte.php?id=${resultado_id}`, '_blank');
+    }
+</script>
+${item.examen_nombre}</td>
+                                <td>${item.analisis_nombre}</td>
+                                <td>

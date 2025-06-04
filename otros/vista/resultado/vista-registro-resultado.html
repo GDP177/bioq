@@ -1,0 +1,315 @@
+<div class="col-md-12">
+    <div class="card card-primary">
+        <div class="card-header">
+            <h3 class="card-title">Registro de Resultados</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Sección de selección de examen pendiente -->
+                <div class="col-12">
+                    <div class="form-group">
+                        <label>Seleccione un examen pendiente:</label>
+                        <select id="select_examen_pendiente" class="form-control select2" style="width: 100%;">
+                            <option value="">Seleccione un examen pendiente</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos del examen seleccionado -->
+            <div class="row mt-3" id="div_datos_examen" style="display:none;">
+                <div class="col-md-12">
+                    <div class="card card-info">
+                        <div class="card-header">
+                            <h3 class="card-title">Datos del Examen</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="hidden" id="txt_id_realizar_examen">
+                                    <div class="form-group">
+                                        <label>DNI del Paciente:</label>
+                                        <input type="text" class="form-control" id="txt_dni_paciente" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Nombre del Paciente:</label>
+                                        <input type="text" class="form-control" id="txt_nombre_paciente" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Médico que indica:</label>
+                                        <input type="text" class="form-control" id="txt_medico" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Fecha de registro:</label>
+                                        <input type="text" class="form-control" id="txt_fecha_registro" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de exámenes a registrar resultados -->
+            <div class="row mt-3" id="div_tabla_resultados" style="display:none;">
+                <div class="col-md-12">
+                    <div class="card card-danger">
+                        <div class="card-header">
+                            <h3 class="card-title">Exámenes para Resultados</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="tabla_resultados" class="table table-bordered table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th width="5%" hidden>ID Detalle</th>
+                                            <th width="40%">Examen</th>
+                                            <th width="40%">Análisis</th>
+                                            <th width="20%">Archivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody_tabla_resultados">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary btn-lg" onclick="registrarResultados()">
+                                <i class="fas fa-save"></i> Registrar Resultados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensaje de error -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="alert alert-danger" id="div_mensaje_error" style="display:none;">
+                        <h5><i class="icon fas fa-ban"></i> Error!</h5>
+                        <span id="mensaje_error"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar select2
+        $('.select2').select2();
+        
+        // Cargar exámenes pendientes
+        cargarExamenesPendientes();
+        
+        // Al cambiar el examen pendiente
+        $("#select_examen_pendiente").change(function() {
+            let realizar_examen_id = $(this).val();
+            
+            if(realizar_examen_id === "") {
+                $("#div_datos_examen").hide();
+                $("#div_tabla_resultados").hide();
+                return;
+            }
+            
+            cargarDatosExamen(realizar_examen_id);
+        });
+    });
+    
+    /**
+     * Carga la lista de exámenes pendientes
+     */
+    function cargarExamenesPendientes() {
+        $.ajax({
+            url: '../controller/resultado/listar_examenes_pendientes.php',
+            type: 'POST',
+            success: function(resp) {
+                try {
+                    let data = JSON.parse(resp);
+                    let llenarData = '<option value="">Seleccione un examen pendiente</option>';
+                    
+                    if(data.length > 0) {
+                        data.forEach(row => {
+                            llenarData += `<option value='${row.realizar_examen_id}'>Paciente: ${row.paciente} - DNI: ${row.paciente_dni}</option>`;
+                        });
+                    } else {
+                        llenarData = '<option value="">No hay exámenes pendientes</option>';
+                    }
+                    
+                    $("#select_examen_pendiente").html(llenarData);
+                } catch(error) {
+                    console.error(error);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Carga los datos del examen y sus detalles
+     * @param {int} realizar_examen_id ID del examen a cargar
+     */
+    function cargarDatosExamen(realizar_examen_id) {
+        $.ajax({
+            url: '../controller/resultado/obtener_detalle_examen.php',
+            type: 'POST',
+            data: {
+                id: realizar_examen_id
+            },
+            success: function(resp) {
+                try {
+                    let data = JSON.parse(resp);
+                    
+                    if(data.length > 0) {
+                        // Cargar datos generales del examen
+                        $("#txt_id_realizar_examen").val(realizar_examen_id);
+                        $("#txt_dni_paciente").val(data[0].paciente_dni);
+                        $("#txt_nombre_paciente").val(data[0].paciente);
+                        $("#txt_medico").val(data[0].medico);
+                        $("#txt_fecha_registro").val(data[0].fecha_registro);
+                        
+                        // Mostrar div de datos
+                        $("#div_datos_examen").show();
+                        
+                        // Limpiar tabla de resultados
+                        $("#tbody_tabla_resultados").empty();
+                        
+                        // Cargar detalles en la tabla
+                        data.forEach(row => {
+                            let html = `
+                                <tr>
+                                    <td hidden>${row.realizar_examen_detalle_id}</td>
+                                    <td>${row.examen_nombre}</td>
+                                    <td>${row.analisis_nombre}</td>
+                                    <td>
+                                        <input type="file" class="form-control archivo_resultado" accept=".pdf,.jpg,.jpeg,.png">
+                                    </td>
+                                </tr>
+                            `;
+                            
+                            $("#tbody_tabla_resultados").append(html);
+                        });
+                        
+                        // Mostrar tabla
+                        $("#div_tabla_resultados").show();
+                    } else {
+                        mostrarError("No se encontraron detalles para este examen");
+                    }
+                } catch(error) {
+                    console.error(error);
+                    mostrarError("Error al cargar datos del examen");
+                }
+            }
+        });
+    }
+    
+    /**
+     * Registra los resultados para cada examen
+     */
+    function registrarResultados() {
+        // Validar que se haya seleccionado un examen
+        let realizar_examen_id = $("#txt_id_realizar_examen").val();
+        if(realizar_examen_id === "") {
+            mostrarError("Debe seleccionar un examen pendiente");
+            return;
+        }
+        
+        // Validar que todos los exámenes tengan archivo
+        let archivos_completos = true;
+        $(".archivo_resultado").each(function() {
+            if($(this).val() === "") {
+                archivos_completos = false;
+                return false; // Break del ciclo
+            }
+        });
+        
+        if(!archivos_completos) {
+            mostrarError("Debe subir un archivo para cada examen");
+            return;
+        }
+        
+        // Registrar cabecera del resultado
+        $.ajax({
+            url: '../controller/resultado/registrar_resultado.php',
+            type: 'POST',
+            data: {
+                realizar_examen_id: realizar_examen_id
+            },
+            success: function(resp) {
+                if(resp > 0) {
+                    // Registrar detalles uno por uno
+                    let resultado_id = resp;
+                    let contador_exitosos = 0;
+                    let total_detalles = $("#tbody_tabla_resultados tr").length;
+                    
+                    $("#tbody_tabla_resultados tr").each(function(index) {
+                        let detalle_id = $(this).find("td:eq(0)").text();
+                        let archivo = $(this).find(".archivo_resultado")[0].files[0];
+                        
+                        // Generar nombre único para el archivo
+                        let fecha = new Date();
+                        let nombre_archivo = `RES${fecha.getDate()}${fecha.getMonth()}${fecha.getFullYear()}${fecha.getHours()}${fecha.getMinutes()}${fecha.getSeconds()}_${detalle_id}.${archivo.name.split('.').pop()}`;
+                        
+                        // Preparar formData
+                        let formData = new FormData();
+                        formData.append('resultado_id', resultado_id);
+                        formData.append('detalle_id', detalle_id);
+                        formData.append('nombre_archivo', nombre_archivo);
+                        formData.append('archivo', archivo);
+                        
+                        // Registrar detalle
+                        $.ajax({
+                            url: '../controller/resultado/registrar_resultado_detalle.php',
+                            type: 'POST',
+                            data: formData,
+                            contentType: false,
+                            processData: false,
+                            success: function(res) {
+                                if(res === "1") {
+                                    contador_exitosos++;
+                                    
+                                    // Si todos se registraron exitosamente
+                                    if(contador_exitosos === total_detalles) {
+                                        Swal.fire({
+                                            title: 'Confirmación',
+                                            text: 'Resultados registrados correctamente',
+                                            icon: 'success'
+                                        }).then((result) => {
+                                            location.href = 'resultado/listar_resultados.php';
+                                        });
+                                    }
+                                } else {
+                                    mostrarError("Error al registrar uno de los resultados");
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    mostrarError("No se pudo completar el registro de resultados");
+                }
+            }
+        });
+    }
+    
+    /**
+     * Muestra un mensaje de error
+     * @param {string} mensaje Mensaje de error
+     */
+    function mostrarError(mensaje) {
+        $("#mensaje_error").text(mensaje);
+        $("#div_mensaje_error").show();
+        
+        // Ocultar después de 3 segundos
+        setTimeout(function() {
+            $("#div_mensaje_error").hide();
+        }, 3000);
+    }
+</script>

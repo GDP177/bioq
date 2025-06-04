@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="description" content="Sistema integral de gestión para laboratorio bioquímico - Registro y seguimiento de análisis clínicos" />
+    <meta name="keywords" content="laboratorio, bioquímico, análisis clínicos, gestión hospitalaria, resultados médicos" />
+    <meta name="author" content="Sistema Lab BQ" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Sistema de Laboratorio Bioquímico" />
+    <meta property="og:description" content="Sistema integral de gestión para laboratorio bioquímico" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <title>Sistema de Laboratorio Bioquímico</title>
+  </head>
+  <body>
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif; background-color: #f8fafc; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px;">
+          <h2 style="color: #dc2626; margin-bottom: 16px;">⚠️ JavaScript Requerido</h2>
+          <p style="color: #374151; margin-bottom: 12px;">Este sistema médico requiere JavaScript para funcionar correctamente.</p>
+          <p style="color: #6b7280; font-size: 14px;">Por favor, habilita JavaScript en tu navegador e intenta nuevamente.</p>
+        </div>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    
+    <!-- Loading styles -->
+    <style>
+      #root:empty {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f8fafc;
+      }
+      
+      #root:empty::before {
+        content: '';
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <!-- Vite script injection point -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
