@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
@@ -17,17 +18,23 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/api/medico/login", {
+      const response = await axios.post("http://localhost:5000/api/login", {
         email,
         password,
       });
 
       if (response.status === 200) {
-        // Si querés guardar el usuario en el localStorage
-        localStorage.setItem("medico", JSON.stringify(response.data.medico));
+        const { usuario } = response.data;
 
-        // Redirige al dashboard del médico
-        navigate("/medico-dashboard");
+        localStorage.setItem("usuario", JSON.stringify(usuario));
+
+        if (usuario.rol === "medico") {
+          navigate("/medico-dashboard");
+        } else if (usuario.rol === "bioquimico") {
+          navigate("/bioquimico-dashboard");
+        } else {
+          setError("Rol no reconocido");
+        }
       }
     } catch (err: any) {
       if (err.response?.data?.message) {

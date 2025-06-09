@@ -37,7 +37,7 @@ const Layout = () => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <header style={{ backgroundColor: '#005bb5', color: 'white', padding: '1rem' }}>
-          <h1>Mi Aplicación Médica</h1>
+          <h1>Laboratorio Bioquímico</h1>
         </header>
 
         {/* Content */}
@@ -47,7 +47,7 @@ const Layout = () => {
 
         {/* Footer */}
         <footer style={{ backgroundColor: '#222', color: 'white', padding: '1rem', textAlign: 'center' }}>
-          © 2025 Mi Aplicación Médica
+          © 2025 Laboratorio bioquímico
         </footer>
       </div>
     </div>

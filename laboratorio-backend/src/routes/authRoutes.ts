@@ -5,7 +5,6 @@ import bcrypt from "bcrypt";
 import dotenv from 'dotenv';
 dotenv.config();
 
-
 const router = express.Router();
 
 const dbConfig = {
@@ -18,7 +17,7 @@ const dbConfig = {
 
 // Registro
 router.post("/register", async (req, res) => {
-  const { email, password, username, rol  } = req.body;
+  const { email, password, username, rol } = req.body;
 
   if (!email || !password || !username) {
     return res.status(400).json({ message: "Faltan datos" });
@@ -29,22 +28,22 @@ router.post("/register", async (req, res) => {
     const connection = await mysql.createConnection(dbConfig);
 
     const query = `
-        INSERT INTO usuarios (
-            email, password_hash, username, rol, activo, intentos_fallidos, ultimo_acceso, bloqueado_hasta
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO usuarios (
+        email, password_hash, username, rol, activo, intentos_fallidos, ultimo_acceso, bloqueado_hasta
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-        await connection.execute(query, [
-        email,
-        hashedPassword,
-        username,
-        rol || "admin",
-        1,              // activo
-        0,              // intentos_fallidos
-        null,           // ultimo_acceso
-        null            // bloqueado_hasta
-        ]);
+    await connection.execute(query, [
+      email,
+      hashedPassword,
+      username,
+      rol || "admin",
+      1,
+      0,
+      null,
+      null
+    ]);
     await connection.end();
 
     res.json({ message: "Usuario registrado correctamente" });
@@ -57,8 +56,8 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login médico
-router.post("/medico/login", async (req, res) => {
+// Login general
+router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -71,7 +70,6 @@ router.post("/medico/login", async (req, res) => {
       "SELECT * FROM usuarios WHERE email = ? LIMIT 1",
       [email]
     );
-
     await connection.end();
 
     const userRows = rows as any[];
@@ -87,16 +85,13 @@ router.post("/medico/login", async (req, res) => {
       return res.status(401).json({ message: "Contraseña incorrecta" });
     }
 
-    if (user.rol !== "medico") {
-      return res.status(403).json({ message: "Acceso no autorizado: no es un médico" });
-    }
-
     res.status(200).json({
       message: "Login exitoso",
-      medico: {
+      usuario: {
         id: user.id,
         username: user.username,
         email: user.email,
+        rol: user.rol,
       },
     });
   } catch (error) {

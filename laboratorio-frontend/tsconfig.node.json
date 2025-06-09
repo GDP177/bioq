@@ -25,6 +25,7 @@
     "baseUrl": ".", // Important: This makes paths relative to the project root
     "paths": {
       "@/*": ["./src/*"] // This tells TypeScript that @/ refers to the src folder
+      
     }
   },
   "include": ["src"],
