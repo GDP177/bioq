@@ -1,4 +1,4 @@
-// src/pages/dashboard/MedicoDashboard.tsx - CON DATOS REALES DE LA BD
+// src/pages/dashboard/MedicoDashboard.tsx - CON NAVEGACIÓN
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -133,6 +133,31 @@ export default function MedicoDashboard() {
     navigate("/login");
   };
 
+  // FUNCIONES DE NAVEGACIÓN
+  const navigateToOrdenes = (filtro?: string) => {
+    const params = new URLSearchParams();
+    if (filtro) params.set('estado', filtro);
+    navigate(`/medico/ordenes?${params.toString()}`);
+  };
+
+  const navigateToAnalisis = (filtro?: string) => {
+    const params = new URLSearchParams();
+    if (filtro) params.set('estado', filtro);
+    navigate(`/medico/analisis?${params.toString()}`);
+  };
+
+  const navigateToPacientes = () => {
+    navigate('/medico/pacientes');
+  };
+
+  const navigateToOrdenDetalle = (ordenId: number) => {
+    navigate(`/medico/orden/${ordenId}`);
+  };
+
+  const navigateToNuevaSolicitud = () => {
+    navigate('/medico/nueva-solicitud');
+  };
+
   const formatFecha = (fecha: string) => {
     return new Date(fecha).toLocaleDateString('es-AR', {
       day: '2-digit',
@@ -215,12 +240,20 @@ export default function MedicoDashboard() {
                 </p>
               )}
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Cerrar Sesión
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={navigateToNuevaSolicitud}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                + Nueva Solicitud
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -228,9 +261,12 @@ export default function MedicoDashboard() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Stats Cards - Órdenes */}
+        {/* Stats Cards - Órdenes CLICKEABLES */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToOrdenes()}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">📋</div>
@@ -240,11 +276,15 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboardData.estadisticas.total_ordenes}
                 </p>
+                <p className="text-xs text-blue-600">Click para ver todas</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToOrdenes('pendiente')}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">⏳</div>
@@ -254,11 +294,15 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-yellow-600">
                   {dashboardData.estadisticas.ordenes_pendientes}
                 </p>
+                <p className="text-xs text-blue-600">Click para ver detalles</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToOrdenes('completado')}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">✅</div>
@@ -268,11 +312,15 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-green-600">
                   {dashboardData.estadisticas.ordenes_completadas}
                 </p>
+                <p className="text-xs text-blue-600">Click para ver detalles</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToOrdenes('urgente')}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">🚨</div>
@@ -282,14 +330,18 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-red-600">
                   {dashboardData.estadisticas.ordenes_urgentes}
                 </p>
+                <p className="text-xs text-blue-600">Click para ver urgentes</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards - Análisis */}
+        {/* Stats Cards - Análisis CLICKEABLES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToAnalisis()}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">🧪</div>
@@ -299,11 +351,15 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboardData.estadisticas.total_analisis}
                 </p>
+                <p className="text-xs text-blue-600">Click para gestionar</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={() => navigateToAnalisis('finalizado')}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">🔬</div>
@@ -313,11 +369,15 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-green-600">
                   {dashboardData.estadisticas.analisis_listos}
                 </p>
+                <p className="text-xs text-blue-600">Click para revisar</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div 
+            onClick={navigateToPacientes}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="text-3xl">👥</div>
@@ -327,6 +387,7 @@ export default function MedicoDashboard() {
                 <p className="text-2xl font-bold text-blue-600">
                   {dashboardData.estadisticas.total_pacientes}
                 </p>
+                <p className="text-xs text-blue-600">Click para gestionar</p>
               </div>
             </div>
           </div>
@@ -335,15 +396,27 @@ export default function MedicoDashboard() {
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
-          {/* Órdenes Recientes */}
+          {/* Órdenes Recientes - CLICKEABLES */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📋 Órdenes Recientes
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                📋 Órdenes Recientes
+              </h3>
+              <button 
+                onClick={() => navigateToOrdenes()}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Ver todas →
+              </button>
+            </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {dashboardData.ordenes_recientes.length > 0 ? (
                 dashboardData.ordenes_recientes.map((orden) => (
-                  <div key={orden.id} className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400">
+                  <div 
+                    key={orden.id} 
+                    onClick={() => navigateToOrdenDetalle(orden.id)}
+                    className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-medium text-gray-900">
@@ -376,6 +449,7 @@ export default function MedicoDashboard() {
                         ></div>
                       </div>
                     </div>
+                    <p className="text-xs text-blue-600 mt-1">Click para ver detalles</p>
                   </div>
                 ))
               ) : (
@@ -399,99 +473,10 @@ export default function MedicoDashboard() {
           </div>
         </div>
 
-        {/* Pacientes y Análisis Frecuentes */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Pacientes Recientes */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              👥 Pacientes Recientes
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {dashboardData.pacientes_recientes.length > 0 ? (
-                dashboardData.pacientes_recientes.map((paciente) => (
-                  <div key={paciente.nro_ficha} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {paciente.nombre} {paciente.apellido}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {paciente.edad} años • {paciente.sexo === 'M' ? 'Masculino' : 'Femenino'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {paciente.mutual} • DNI: {paciente.dni}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-blue-600">
-                        {paciente.total_ordenes} órdenes
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Última: {formatFecha(paciente.ultima_orden)}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No hay pacientes recientes</p>
-              )}
-            </div>
-          </div>
-
-          {/* Análisis Más Solicitados */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📈 Análisis Más Solicitados
-            </h3>
-            <div className="space-y-3">
-              {dashboardData.analisis_frecuentes.length > 0 ? (
-                dashboardData.analisis_frecuentes.map((analisis) => (
-                  <div key={analisis.codigo} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 text-sm">
-                          {analisis.descripcion}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {analisis.tipo} • Código: {analisis.codigo}
-                        </p>
-                      </div>
-                      <div className="text-right ml-2">
-                        <p className="font-bold text-blue-600">
-                          {analisis.veces_solicitado}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {analisis.porcentaje_completado}% completo
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No hay datos de análisis</p>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Timestamp */}
         <div className="mt-8 text-center text-xs text-gray-500">
           Última actualización: {formatFecha(dashboardData.timestamp)}
         </div>
-
-        {/* Debug info en desarrollo */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h3 className="font-bold mb-2">🐛 Debug Info:</h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p>• Total órdenes: {dashboardData.estadisticas.total_ordenes}</p>
-              <p>• Total análisis: {dashboardData.estadisticas.total_analisis}</p>
-              <p>• Pacientes únicos: {dashboardData.estadisticas.total_pacientes}</p>
-              <p>• Órdenes mostradas: {dashboardData.ordenes_recientes.length}</p>
-              <p>• Timestamp: {dashboardData.timestamp}</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
