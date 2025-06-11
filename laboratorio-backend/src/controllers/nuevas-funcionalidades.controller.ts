@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 
 // Registrar nuevo paciente
+// Actualización del controlador registrarNuevoPaciente para manejar obras sociales personalizadas
 export const registrarNuevoPaciente = async (req: Request, res: Response) => {
   const {
     dni,
@@ -53,6 +54,26 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
     );
     const nroFicha = (ultimaFicha[0]?.ultima_ficha || 0) + 1;
 
+    // Procesar obra social - limpiar y capitalizar si es personalizada
+    let obraSocialFinal = mutual;
+    if (mutual && mutual.trim()) {
+      const obrasSocialesComunes = [
+        "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", 
+        "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"
+      ];
+      
+      // Si no está en la lista de comunes, capitalizar correctamente
+      if (!obrasSocialesComunes.includes(mutual)) {
+        obraSocialFinal = mutual.trim()
+            .split(' ')
+            .map((word: string) => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            )
+            .join(' ');
+
+      }
+    }
+
     // Insertar nuevo paciente
     const [resultado]: any = await pool.query(
       `INSERT INTO paciente (
@@ -86,7 +107,7 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
         telefono || null,
         direccion || null,
         email || null,
-        mutual || null,
+        obraSocialFinal || null,
         nro_afiliado || null,
         grupo_sanguineo || null,
         contacto_emergencia || null,
@@ -97,6 +118,11 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
 
     console.log('✅ Paciente registrado exitosamente:', nombre, apellido);
 
+    // Log de obra social personalizada si es nueva
+    if (obraSocialFinal && !["OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"].includes(obraSocialFinal)) {
+      console.log('🏥 Obra social personalizada registrada:', obraSocialFinal);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Paciente registrado exitosamente',
@@ -106,7 +132,8 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
         nombre: nombre,
         apellido: apellido,
         edad: edad,
-        sexo: sexo
+        sexo: sexo,
+        mutual: obraSocialFinal
       }
     });
 
@@ -119,6 +146,58 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
   }
 };
 
+
+// Buscar obras sociales personalizadas (para autocompletado)
+export const buscarObrasSociales = async (req: Request, res: Response) => {
+  const textoBusqueda = req.params.texto;
+
+  try {
+    console.log('🏥 Buscando obras sociales con texto:', textoBusqueda);
+
+    if (!textoBusqueda || textoBusqueda.length < 2) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Texto de búsqueda debe tener al menos 2 caracteres' 
+      });
+    }
+
+    // Lista de obras sociales predefinidas para filtrar
+    const obrasSocialesComunes = [
+      "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", 
+      "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"
+    ];
+
+    // Buscar obras sociales personalizadas en la base de datos
+    const [obrasSocialesRows]: any = await pool.query(
+      `SELECT DISTINCT mutual as obra_social
+       FROM paciente 
+       WHERE mutual IS NOT NULL 
+       AND mutual != '' 
+       AND mutual LIKE ?
+       AND mutual NOT IN (${obrasSocialesComunes.map(() => '?').join(',')})
+       ORDER BY mutual ASC
+       LIMIT 10`,
+      [`%${textoBusqueda}%`, ...obrasSocialesComunes]
+    );
+
+    const obrasSociales = obrasSocialesRows.map((row: any) => row.obra_social);
+
+    console.log('✅ Obras sociales encontradas:', obrasSociales.length);
+
+    return res.status(200).json({
+      success: true,
+      obras_sociales: obrasSociales,
+      total: obrasSociales.length
+    });
+
+  } catch (error) {
+    console.error('💥 ERROR al buscar obras sociales:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error al buscar obras sociales'
+    });
+  }
+};
 
 // ============================================
 // CONTROLADORES PARA NUEVA SOLICITUD

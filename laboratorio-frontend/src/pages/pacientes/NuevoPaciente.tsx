@@ -1,6 +1,6 @@
-// src/pages/medico/NuevoPaciente.tsx
+// src/pages/pacientes/NuevoPaciente.tsx
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { CustomCard } from "@/components/ui/CustomCard";
+import { Toast, useToast } from "@/components/ui/Toast";
 
+// Interfaces
 interface NuevoPacienteData {
   dni: number;
   nombre: string;
@@ -20,6 +22,7 @@ interface NuevoPacienteData {
   direccion?: string;
   email?: string;
   mutual?: string;
+  mutual_personalizada?: string;
   nro_afiliado?: string;
   grupo_sanguineo?: string;
   contacto_emergencia?: string;
@@ -35,22 +38,93 @@ interface ErroresValidacion {
   sexo?: string;
   telefono?: string;
   email?: string;
+  mutual_personalizada?: string;
 }
+
+interface ToastState {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  isVisible: boolean;
+}
+
+// Componente de sugerencias para obras sociales
+const SugerenciasObraSocial = ({ 
+  sugerencias, 
+  onSeleccionar, 
+  loading 
+}: {
+  sugerencias: string[];
+  onSeleccionar: (obraSocial: string) => void;
+  loading: boolean;
+}) => {
+  if (loading) {
+    return (
+      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1">
+        <div className="p-3 text-center text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          Buscando...
+        </div>
+      </div>
+    );
+  }
+
+  if (sugerencias.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-40 overflow-y-auto">
+      {sugerencias.map((sugerencia, index) => (
+        <div
+          key={index}
+          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+          onClick={() => onSeleccionar(sugerencia)}
+        >
+          <div className="flex items-center">
+            <span className="text-blue-600 mr-2">🏥</span>
+            <span className="text-gray-900">{sugerencia}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 // Componente Loading
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-4">
-    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
-    <span>Registrando paciente...</span>
+  <div className="flex items-center justify-center">
+    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+    <span>Registrando...</span>
   </div>
 );
 
-export default function NuevoPaciente() {
+// Hook personalizado para el toast
+const useToastCustom = () => {
+  const [toast, setToast] = useState<ToastState>({
+    message: '',
+    type: 'info',
+    isVisible: false
+  });
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type, isVisible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, isVisible: false }));
+    }, 4000);
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  }, []);
+
+  return { toast, showToast, hideToast };
+};
+
+export default function NuevoPaciente(): JSX.Element {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  
+  const { toast, showToast, hideToast } = useToastCustom();
+
   // Estado del formulario
   const [formData, setFormData] = useState<NuevoPacienteData>({
     dni: 0,
@@ -62,6 +136,7 @@ export default function NuevoPaciente() {
     direccion: "",
     email: "",
     mutual: "",
+    mutual_personalizada: "",
     nro_afiliado: "",
     grupo_sanguineo: "",
     contacto_emergencia: "",
@@ -71,6 +146,12 @@ export default function NuevoPaciente() {
 
   // Estado de errores de validación
   const [errores, setErrores] = useState<ErroresValidacion>({});
+
+  // Estados para obras sociales personalizadas
+  const [mostrarCampoPersonalizado, setMostrarCampoPersonalizado] = useState(false);
+  const [sugerenciasObraSocial, setSugerenciasObraSocial] = useState<string[]>([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [buscandoSugerencias, setBuscandoSugerencias] = useState(false);
 
   // Lista de obras sociales comunes
   const obrasSociales = [
@@ -91,6 +172,45 @@ export default function NuevoPaciente() {
   // Lista de grupos sanguíneos
   const gruposSanguineos = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
+  // Efecto para buscar sugerencias de obras sociales personalizadas
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.mutual_personalizada && formData.mutual_personalizada.trim().length >= 2) {
+        buscarSugerenciasObraSocial(formData.mutual_personalizada);
+      } else {
+        setSugerenciasObraSocial([]);
+        setMostrarSugerencias(false);
+      }
+    }, 300); // 300ms de delay
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.mutual_personalizada]);
+
+  const buscarSugerenciasObraSocial = async (texto: string) => {
+    if (!texto.trim()) return;
+
+    setBuscandoSugerencias(true);
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.get(`${apiUrl}/obras-sociales/buscar/${encodeURIComponent(texto)}`);
+      
+      if (response.data.success && response.data.obras_sociales) {
+        setSugerenciasObraSocial(response.data.obras_sociales);
+        setMostrarSugerencias(true);
+      } else {
+        setSugerenciasObraSocial([]);
+        setMostrarSugerencias(false);
+      }
+    } catch (error: any) {
+      console.error("Error al buscar sugerencias de obras sociales:", error);
+      setSugerenciasObraSocial([]);
+      setMostrarSugerencias(false);
+    } finally {
+      setBuscandoSugerencias(false);
+    }
+  };
+
   const handleInputChange = (field: keyof NuevoPacienteData, value: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -104,9 +224,50 @@ export default function NuevoPaciente() {
         [field]: undefined
       }));
     }
+  };
 
-    setError("");
-    setSuccess("");
+  const handleObraSocialChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mutual: value,
+      mutual_personalizada: "" // Limpiar campo personalizado
+    }));
+
+    // Mostrar/ocultar campo personalizado
+    setMostrarCampoPersonalizado(value === "Otra");
+    setMostrarSugerencias(false);
+    setSugerenciasObraSocial([]);
+
+    // Limpiar errores
+    if (errores.mutual_personalizada) {
+      setErrores(prev => ({
+        ...prev,
+        mutual_personalizada: undefined
+      }));
+    }
+  };
+
+  const handleObraSocialPersonalizadaChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mutual_personalizada: value
+    }));
+
+    if (errores.mutual_personalizada) {
+      setErrores(prev => ({
+        ...prev,
+        mutual_personalizada: undefined
+      }));
+    }
+  };
+
+  const seleccionarSugerenciaObraSocial = (obraSocial: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mutual_personalizada: obraSocial
+    }));
+    setMostrarSugerencias(false);
+    setSugerenciasObraSocial([]);
   };
 
   const calcularEdad = (fechaNacimiento: string): number => {
@@ -163,6 +324,13 @@ export default function NuevoPaciente() {
       nuevosErrores.sexo = "El sexo es obligatorio";
     }
 
+    // Validar obra social personalizada
+    if (formData.mutual === "Otra" && !formData.mutual_personalizada?.trim()) {
+      nuevosErrores.mutual_personalizada = "Debe especificar el nombre de la obra social";
+    } else if (formData.mutual_personalizada && formData.mutual_personalizada.trim().length < 2) {
+      nuevosErrores.mutual_personalizada = "El nombre de la obra social debe tener al menos 2 caracteres";
+    }
+
     // Validar teléfono (opcional pero con formato)
     if (formData.telefono && formData.telefono.trim()) {
       const telefonoLimpio = formData.telefono.replace(/\D/g, '');
@@ -175,7 +343,7 @@ export default function NuevoPaciente() {
     if (formData.email && formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        nuevosErrores.email = "Email inválido";
+        nuevosErrores.email = "El formato del email no es válido";
       }
     }
 
@@ -183,78 +351,61 @@ export default function NuevoPaciente() {
     return Object.keys(nuevosErrores).length === 0;
   };
 
-  const verificarDNIExistente = async (dni: number): Promise<boolean> => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${apiUrl}/paciente/buscar/${dni}`);
-      return response.data.success; // Si encuentra el paciente, retorna true
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return false; // DNI no existe, está disponible
-      }
-      throw error; // Otro tipo de error
-    }
-  };
-
   const registrarPaciente = async () => {
     if (!validarFormulario()) {
-      setError("Por favor corrija los errores en el formulario");
+      showToast("Por favor, corrija los errores en el formulario", 'error');
       return;
     }
 
     setLoading(true);
-    setError("");
-    setSuccess("");
 
     try {
-      // Verificar si el DNI ya existe
-      const dniExiste = await verificarDNIExistente(formData.dni);
-      if (dniExiste) {
-        setError("Ya existe un paciente registrado con este DNI");
-        setErrores(prev => ({ ...prev, dni: "DNI ya registrado" }));
-        setLoading(false);
-        return;
-      }
-
-      // Preparar datos para envío
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      // Preparar datos para enviar
       const datosEnvio = {
         ...formData,
-        edad: calcularEdad(formData.fecha_nacimiento),
-        nombre: formData.nombre.trim(),
-        apellido: formData.apellido.trim(),
-        telefono: formData.telefono?.trim() || null,
-        direccion: formData.direccion?.trim() || null,
-        email: formData.email?.trim() || null,
-        mutual: formData.mutual?.trim() || null,
-        nro_afiliado: formData.nro_afiliado?.trim() || null,
+        mutual: formData.mutual === "Otra" ? formData.mutual_personalizada : formData.mutual,
+        telefono: formData.telefono || null,
+        direccion: formData.direccion || null,
+        email: formData.email || null,
+        nro_afiliado: formData.nro_afiliado || null,
         grupo_sanguineo: formData.grupo_sanguineo || null,
-        contacto_emergencia: formData.contacto_emergencia?.trim() || null,
-        telefono_emergencia: formData.telefono_emergencia?.trim() || null,
-        observaciones: formData.observaciones?.trim() || null
+        contacto_emergencia: formData.contacto_emergencia || null,
+        telefono_emergencia: formData.telefono_emergencia || null,
+        observaciones: formData.observaciones || null,
       };
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.post(`${apiUrl}/paciente/registrar`, datosEnvio);
+      // Eliminar mutual_personalizada del objeto a enviar
+      delete (datosEnvio as any).mutual_personalizada;
+
+      const response = await axios.post(`${apiUrl}/pacientes`, datosEnvio);
 
       if (response.data.success) {
-        setSuccess("Paciente registrado exitosamente");
+        showToast(`Paciente registrado exitosamente. Nro. de ficha: ${response.data.nro_ficha}`, 'success');
         
-        // Mostrar mensaje de éxito por 2 segundos y luego redirigir
+        // Redireccionar después de un breve delay
         setTimeout(() => {
-          navigate('/medico/pacientes');
+          navigate('/pacientes', { 
+            state: { 
+              mensaje: `Paciente ${formData.nombre} ${formData.apellido} registrado exitosamente`,
+              tipo: 'success'
+            }
+          });
         }, 2000);
       } else {
-        setError(response.data.message || "Error al registrar paciente");
+        throw new Error(response.data.message || 'Error al registrar el paciente');
       }
+
     } catch (error: any) {
       console.error("Error al registrar paciente:", error);
-      if (error.response?.status === 400) {
-        setError(error.response.data.message || "Datos inválidos");
+      
+      if (error.response?.data?.message) {
+        showToast(error.response.data.message, 'error');
       } else if (error.response?.status === 409) {
-        setError("Ya existe un paciente con este DNI");
-        setErrores(prev => ({ ...prev, dni: "DNI ya registrado" }));
+        showToast("Ya existe un paciente registrado con este DNI", 'error');
       } else {
-        setError("Error al registrar paciente. Intente nuevamente.");
+        showToast("Error al registrar el paciente. Intente nuevamente.", 'error');
       }
     } finally {
       setLoading(false);
@@ -272,6 +423,7 @@ export default function NuevoPaciente() {
       direccion: "",
       email: "",
       mutual: "",
+      mutual_personalizada: "",
       nro_afiliado: "",
       grupo_sanguineo: "",
       contacto_emergencia: "",
@@ -279,45 +431,35 @@ export default function NuevoPaciente() {
       observaciones: ""
     });
     setErrores({});
-    setError("");
-    setSuccess("");
+    setMostrarCampoPersonalizado(false);
+    setSugerenciasObraSocial([]);
+    setMostrarSugerencias(false);
+    showToast("Formulario limpiado", 'info');
   };
 
   const navigateBack = () => {
-    navigate('/medico/pacientes');
+    navigate('/pacientes');
   };
 
   return (
     <div className="min-h-screen bg-blue-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                onClick={navigateBack}
-                className="mr-4"
-                aria-label="Volver a pacientes"
-              >
-                ← Volver
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  👥 Registrar Nuevo Paciente
-                </h1>
-                <p className="text-gray-600">
-                  Agregar un nuevo paciente al sistema
-                </p>
-              </div>
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Nuevo Paciente</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Registre un nuevo paciente en el sistema
+              </p>
             </div>
             <div className="flex space-x-3">
               <Button
                 variant="secondary"
-                onClick={limpiarFormulario}
+                onClick={navigateBack}
                 disabled={loading}
               >
-                Limpiar
+                ← Volver a Pacientes
               </Button>
               <Button
                 onClick={registrarPaciente}
@@ -333,22 +475,6 @@ export default function NuevoPaciente() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Mensajes */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6" role="alert">
-            <div className="flex items-center">
-              <span className="mr-2">✅</span>
-              <strong>Éxito:</strong> {success}
-            </div>
-          </div>
-        )}
 
         {/* Formulario Principal */}
         <CustomCard title="Información Personal" className="mb-6">
@@ -433,7 +559,7 @@ export default function NuevoPaciente() {
                 id="telefono"
                 type="tel"
                 placeholder="(011) 1234-5678"
-                value={formData.telefono}
+                value={formData.telefono || ''}
                 onChange={(e) => handleInputChange('telefono', e.target.value)}
                 isInvalid={!!errores.telefono}
               />
@@ -444,7 +570,7 @@ export default function NuevoPaciente() {
                 id="email"
                 type="email"
                 placeholder="juan.perez@email.com"
-                value={formData.email}
+                value={formData.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 isInvalid={!!errores.email}
               />
@@ -456,7 +582,7 @@ export default function NuevoPaciente() {
                   id="direccion"
                   type="text"
                   placeholder="Av. Corrientes 1234, CABA"
-                  value={formData.direccion}
+                  value={formData.direccion || ''}
                   onChange={(e) => handleInputChange('direccion', e.target.value)}
                 />
               </FormField>
@@ -472,8 +598,8 @@ export default function NuevoPaciente() {
             <FormField htmlFor="mutual" label="Obra Social">
               <select
                 id="mutual"
-                value={formData.mutual}
-                onChange={(e) => handleInputChange('mutual', e.target.value)}
+                value={formData.mutual || ''}
+                onChange={(e) => handleObraSocialChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Seleccionar...</option>
@@ -483,12 +609,37 @@ export default function NuevoPaciente() {
               </select>
             </FormField>
 
+            {/* Campo personalizado para "Otra" obra social */}
+            {mostrarCampoPersonalizado && (
+              <div className="relative">
+                <FormField htmlFor="mutual_personalizada" label="Especificar Obra Social" errorMessage={errores.mutual_personalizada}>
+                  <Input
+                    id="mutual_personalizada"
+                    type="text"
+                    placeholder="Nombre de la obra social..."
+                    value={formData.mutual_personalizada || ''}
+                    onChange={(e) => handleObraSocialPersonalizadaChange(e.target.value)}
+                    isInvalid={!!errores.mutual_personalizada}
+                  />
+                </FormField>
+                
+                {/* Sugerencias */}
+                {mostrarSugerencias && (
+                  <SugerenciasObraSocial
+                    sugerencias={sugerenciasObraSocial}
+                    onSeleccionar={seleccionarSugerenciaObraSocial}
+                    loading={buscandoSugerencias}
+                  />
+                )}
+              </div>
+            )}
+
             <FormField htmlFor="nro_afiliado" label="Número de Afiliado">
               <Input
                 id="nro_afiliado"
                 type="text"
                 placeholder="123456789"
-                value={formData.nro_afiliado}
+                value={formData.nro_afiliado || ''}
                 onChange={(e) => handleInputChange('nro_afiliado', e.target.value)}
               />
             </FormField>
@@ -496,7 +647,7 @@ export default function NuevoPaciente() {
             <FormField htmlFor="grupo_sanguineo" label="Grupo Sanguíneo">
               <select
                 id="grupo_sanguineo"
-                value={formData.grupo_sanguineo}
+                value={formData.grupo_sanguineo || ''}
                 onChange={(e) => handleInputChange('grupo_sanguineo', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
@@ -510,7 +661,7 @@ export default function NuevoPaciente() {
           </div>
         </CustomCard>
 
-        {/* Contacto de Emergencia */}
+        {/* Contactos de Emergencia */}
         <CustomCard title="Contacto de Emergencia" className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
@@ -519,7 +670,7 @@ export default function NuevoPaciente() {
                 id="contacto_emergencia"
                 type="text"
                 placeholder="María Pérez"
-                value={formData.contacto_emergencia}
+                value={formData.contacto_emergencia || ''}
                 onChange={(e) => handleInputChange('contacto_emergencia', e.target.value)}
               />
             </FormField>
@@ -529,7 +680,7 @@ export default function NuevoPaciente() {
                 id="telefono_emergencia"
                 type="tel"
                 placeholder="(011) 9876-5432"
-                value={formData.telefono_emergencia}
+                value={formData.telefono_emergencia || ''}
                 onChange={(e) => handleInputChange('telefono_emergencia', e.target.value)}
               />
             </FormField>
@@ -544,7 +695,7 @@ export default function NuevoPaciente() {
               id="observaciones"
               rows={4}
               placeholder="Información adicional sobre el paciente, alergias, condiciones especiales, etc."
-              value={formData.observaciones}
+              value={formData.observaciones || ''}
               onChange={(e) => handleInputChange('observaciones', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -578,6 +729,14 @@ export default function NuevoPaciente() {
           </div>
         </div>
       </main>
+
+      {/* Toast Component */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </div>
   );
 }
