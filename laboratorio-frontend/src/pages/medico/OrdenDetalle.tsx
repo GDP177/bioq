@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
+// Componentes UI reutilizables
+import { Button } from "@/components/ui/button";
+import { CustomCard } from "@/components/ui/CustomCard";
+
+// Interfaces
 interface Paciente {
   nro_ficha: number;
   nombre: string;
@@ -74,6 +79,71 @@ interface OrdenDetalleResponse {
   orden: OrdenDetalle;
 }
 
+// Componente Badge
+const Badge = ({ 
+  children, 
+  variant = 'default' 
+}: { 
+  children: React.ReactNode; 
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' 
+}) => {
+  const baseClasses = "px-3 py-1 rounded-full text-xs font-medium";
+  const variants = {
+    default: "bg-gray-100 text-gray-800",
+    success: "bg-green-100 text-green-800",
+    warning: "bg-yellow-100 text-yellow-800",
+    danger: "bg-red-100 text-red-800",
+    info: "bg-blue-100 text-blue-800"
+  };
+  
+  return (
+    <span className={`${baseClasses} ${variants[variant]}`}>
+      {children}
+    </span>
+  );
+};
+
+// Componente Loading
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Cargando detalle de orden...</p>
+    </div>
+  </div>
+);
+
+// Componente StatsCard
+const StatsCard = ({ 
+  title, 
+  value, 
+  icon, 
+  color = 'blue' 
+}: { 
+  title: string; 
+  value: number | string; 
+  icon: string; 
+  color?: 'blue' | 'green' | 'orange' | 'purple' | 'red' 
+}) => {
+  const colorClasses = {
+    blue: 'text-blue-600',
+    green: 'text-green-600',
+    orange: 'text-orange-600',
+    purple: 'text-purple-600',
+    red: 'text-red-600',
+  };
+
+  return (
+    <div className="text-center">
+      <div className="text-2xl mb-1">{icon}</div>
+      <p className={`text-2xl font-bold ${colorClasses[color]}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
+      <p className="text-sm text-gray-500">{title}</p>
+    </div>
+  );
+};
+
 export default function OrdenDetalle() {
   const navigate = useNavigate();
   const { id_orden } = useParams<{ id_orden: string }>();
@@ -88,80 +158,121 @@ export default function OrdenDetalle() {
       return;
     }
 
-    if (!id_orden) {
-      navigate("/medico/ordenes");
-      return;
+    try {
+      const parsedUsuario = JSON.parse(usuario);
+      if (parsedUsuario?.id && id_orden) {
+        cargarOrdenDetalle(parsedUsuario.id, parseInt(id_orden));
+      } else {
+        setError("Datos de usuario o orden inválidos");
+        navigate("/medico/ordenes");
+      }
+    } catch (err) {
+      console.error("Error al parsear usuario:", err);
+      setError("Error de autenticación");
+      navigate("/login");
     }
-
-    const parsedUsuario = JSON.parse(usuario);
-    cargarOrdenDetalle(parsedUsuario.id, parseInt(id_orden));
   }, [navigate, id_orden]);
 
   const cargarOrdenDetalle = async (medicoId: number, ordenId: number) => {
     try {
       setLoading(true);
+      setError("");
       
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await axios.get<OrdenDetalleResponse>(
-        `http://localhost:5000/api/medico/${medicoId}/orden/${ordenId}`
+        `${apiUrl}/medico/${medicoId}/orden/${ordenId}`,
+        {
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
 
       if (response.data.success) {
         setOrden(response.data.orden);
       } else {
-        setError("Orden no encontrada");
+        setError("Error al cargar el detalle de la orden");
       }
     } catch (error: any) {
       console.error("Error al cargar orden:", error);
-      if (error.response?.status === 404) {
-        setError("Orden no encontrada");
+      if (error.code === 'ECONNABORTED') {
+        setError("Tiempo de espera agotado. Verifique la conexión.");
+      } else if (error.response?.status === 401) {
+        setError("Sesión expirada. Inicie sesión nuevamente.");
+        navigate("/login");
+      } else if (error.response?.status === 404) {
+        setError("Orden no encontrada.");
+      } else if (error.response?.status >= 500) {
+        setError("Error del servidor. Intente más tarde.");
       } else {
-        setError("Error al cargar la orden");
+        setError("Error al cargar el detalle de la orden");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const formatFecha = (fecha: string | null) => {
+  // Helper functions
+  const formatFecha = (fecha: string | null | undefined): string => {
     if (!fecha) return 'No disponible';
-    return new Date(fecha).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getEstadoBadge = (estado: string) => {
-    const baseClasses = "px-3 py-1 rounded-full text-sm font-medium";
-    
-    switch (estado) {
-      case 'pendiente':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'procesando':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
-      case 'finalizado':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'cancelado':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+    try {
+      return new Date(fecha).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return 'Fecha inválida';
     }
   };
 
-  const getEstadoOrden = (estado: string) => {
-    const baseClasses = "px-4 py-2 rounded-full text-sm font-medium";
-    
-    switch (estado) {
+  const formatFechaHora = (fecha: string | null | undefined): string => {
+    if (!fecha) return 'No disponible';
+    try {
+      return new Date(fecha).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Fecha inválida';
+    }
+  };
+
+  const getEstadoBadge = (estado: string) => {
+    switch (estado.toLowerCase()) {
       case 'pendiente':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+        return 'warning';
+      case 'procesando':
       case 'en_proceso':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
+        return 'info';
+      case 'finalizado':
       case 'completado':
-        return `${baseClasses} bg-green-100 text-green-800`;
+        return 'success';
+      case 'cancelado':
+        return 'danger';
       default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+        return 'default';
+    }
+  };
+
+  const getInterpretacionBadge = (interpretacion: string | null) => {
+    if (!interpretacion) return 'default';
+    
+    switch (interpretacion.toLowerCase()) {
+      case 'normal':
+        return 'success';
+      case 'alto':
+      case 'bajo':
+        return 'warning';
+      case 'critico':
+      case 'crítico':
+        return 'danger';
+      default:
+        return 'default';
     }
   };
 
@@ -169,57 +280,51 @@ export default function OrdenDetalle() {
     navigate('/medico/ordenes');
   };
 
-  const generarPDF = () => {
-    // TODO: Implementar generación de PDF
-    alert('Funcionalidad de PDF en desarrollo');
+  const generarPDF = async () => {
+    try {
+      // Implementar generación de PDF
+      console.log("Generando PDF para orden:", orden?.id);
+      alert('Funcionalidad de PDF en desarrollo');
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      alert('Error al generar PDF');
+    }
   };
 
   if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error || !orden) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando detalle de orden...</p>
+          <div className="text-red-400 text-6xl mb-4">❌</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error</h2>
+          <p className="text-gray-600 mb-4">{error || "Orden no encontrada"}</p>
+          <Button onClick={navigateBack}>
+            Volver a Órdenes
+          </Button>
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={navigateBack}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Volver a órdenes
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!orden) {
-    return <div>No hay datos disponibles</div>;
   }
 
   return (
     <div className="min-h-screen bg-blue-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <button
+              <Button
+                variant="ghost"
                 onClick={navigateBack}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900"
+                className="mr-4"
+                aria-label="Volver a órdenes"
               >
                 ← Volver
-              </button>
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   📋 {orden.nro_orden}
@@ -231,37 +336,34 @@ export default function OrdenDetalle() {
             </div>
             <div className="flex items-center space-x-3">
               {orden.urgente && (
-                <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                <Badge variant="danger">
                   🚨 URGENTE
-                </span>
+                </Badge>
               )}
-              <span className={getEstadoOrden(orden.estado)}>
+              <Badge variant={getEstadoBadge(orden.estado)}>
                 {orden.estado.toUpperCase()}
-              </span>
-              {orden.estado === 'completado' && (
-                <button
+              </Badge>
+              {(orden.estado === 'completado' || orden.estado === 'finalizado') && (
+                <Button
                   onClick={generarPDF}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   📄 Descargar PDF
-                </button>
+                </Button>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Información General */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           
           {/* Datos de la Orden */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📋 Información de la Orden
-            </h3>
+          <CustomCard title="📋 Información de la Orden">
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Número de Orden</p>
@@ -283,20 +385,17 @@ export default function OrdenDetalle() {
                   <p className="font-medium text-gray-900">{formatFecha(orden.fecha_finalizacion)}</p>
                 </div>
               )}
-              {orden.costo_total && (
+              {orden.costo_total && Number(orden.costo_total) > 0 && (
                 <div>
                   <p className="text-sm text-gray-500">Costo Total</p>
-                  <p className="font-medium text-gray-900">${orden.costo_total.toFixed(2)}</p>
+                  <p className="font-medium text-gray-900">${Number(orden.costo_total).toFixed(2)}</p>
                 </div>
               )}
             </div>
-          </div>
+          </CustomCard>
 
           {/* Datos del Paciente */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              👤 Información del Paciente
-            </h3>
+          <CustomCard title="👤 Información del Paciente">
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Nombre Completo</p>
@@ -314,13 +413,12 @@ export default function OrdenDetalle() {
                   {orden.paciente.edad} años ({orden.paciente.sexo === 'M' ? 'Masculino' : 'Femenino'})
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Obra Social</p>
-                <p className="font-medium text-gray-900">{orden.paciente.mutual}</p>
-                {orden.paciente.nro_afiliado && (
-                  <p className="text-sm text-gray-500">N° Afiliado: {orden.paciente.nro_afiliado}</p>
-                )}
-              </div>
+              {orden.paciente.mutual && (
+                <div>
+                  <p className="text-sm text-gray-500">Obra Social</p>
+                  <p className="font-medium text-gray-900">{orden.paciente.mutual}</p>
+                </div>
+              )}
               {orden.paciente.grupo_sanguineo && (
                 <div>
                   <p className="text-sm text-gray-500">Grupo Sanguíneo</p>
@@ -328,112 +426,107 @@ export default function OrdenDetalle() {
                 </div>
               )}
             </div>
-          </div>
+          </CustomCard>
 
-          {/* Resumen de Progreso */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📊 Progreso de Análisis
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Progreso General</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {orden.resumen.porcentaje_completado}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
-                    className="bg-blue-600 h-3 rounded-full" 
-                    style={{ width: `${orden.resumen.porcentaje_completado}%` }}
-                  ></div>
-                </div>
+          {/* Resumen de Análisis */}
+          <CustomCard title="📊 Resumen de Análisis">
+            <div className="grid grid-cols-2 gap-4">
+              <StatsCard
+                title="Total"
+                value={orden.resumen.total_analisis}
+                icon="🧪"
+                color="blue"
+              />
+              <StatsCard
+                title="Finalizados"
+                value={orden.resumen.analisis_finalizados}
+                icon="✅"
+                color="green"
+              />
+              <StatsCard
+                title="En Proceso"
+                value={orden.resumen.analisis_procesando}
+                icon="🔄"
+                color="orange"
+              />
+              <StatsCard
+                title="Pendientes"
+                value={orden.resumen.analisis_pendientes}
+                icon="⏳"
+                color="red"
+              />
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Progreso General</span>
+                <span className="text-sm text-gray-600">{orden.resumen.porcentaje_completado}%</span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">{orden.resumen.total_analisis}</p>
-                  <p className="text-sm text-gray-500">Total</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{orden.resumen.analisis_finalizados}</p>
-                  <p className="text-sm text-gray-500">Finalizados</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{orden.resumen.analisis_procesando}</p>
-                  <p className="text-sm text-gray-500">En Proceso</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-yellow-600">{orden.resumen.analisis_pendientes}</p>
-                  <p className="text-sm text-gray-500">Pendientes</p>
-                </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${orden.resumen.porcentaje_completado}%` }}
+                ></div>
               </div>
             </div>
-          </div>
+          </CustomCard>
         </div>
 
         {/* Instrucciones y Observaciones */}
         {(orden.instrucciones_paciente || orden.observaciones || orden.requiere_ayuno) && (
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📝 Instrucciones y Observaciones
-            </h3>
+          <CustomCard title="📝 Instrucciones y Observaciones" className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {orden.requiere_ayuno && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">⏰</span>
-                    <div>
-                      <p className="font-medium text-yellow-800">Requiere Ayuno</p>
-                      <p className="text-sm text-yellow-700">El paciente debe presentarse en ayunas</p>
-                    </div>
+                  <div className="flex items-center mb-2">
+                    <span className="text-yellow-600 text-lg mr-2">⚠️</span>
+                    <h4 className="font-medium text-yellow-800">Requiere Ayuno</h4>
                   </div>
+                  <p className="text-sm text-yellow-700">
+                    El paciente debe presentarse en ayunas para realizar los análisis.
+                  </p>
                 </div>
               )}
               
               {orden.instrucciones_paciente && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Instrucciones para el Paciente:</p>
-                  <p className="text-gray-900 bg-blue-50 p-3 rounded-lg">{orden.instrucciones_paciente}</p>
+                  <h4 className="font-medium text-gray-900 mb-2">Instrucciones para el Paciente</h4>
+                  <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
+                    {orden.instrucciones_paciente}
+                  </p>
                 </div>
               )}
               
               {orden.observaciones && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Observaciones Médicas:</p>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{orden.observaciones}</p>
+                  <h4 className="font-medium text-gray-900 mb-2">Observaciones Médicas</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                    {orden.observaciones}
+                  </p>
                 </div>
               )}
             </div>
-          </div>
+          </CustomCard>
         )}
 
         {/* Lista de Análisis */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              🧪 Análisis Solicitados ({orden.analisis.length})
-            </h3>
-          </div>
-          
+        <CustomCard title={`🧪 Análisis Solicitados (${orden.analisis.length})`}>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Análisis
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Resultado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Técnico
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fecha
                   </th>
                 </tr>
@@ -452,15 +545,15 @@ export default function OrdenDetalle() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getEstadoBadge(analisis.estado)}>
+                      <Badge variant={getEstadoBadge(analisis.estado)}>
                         {analisis.estado.toUpperCase()}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-6 py-4">
                       {analisis.valor_hallado ? (
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {analisis.valor_hallado} {analisis.unidad_hallada}
+                            {analisis.valor_hallado} {analisis.unidad_hallada || ''}
                           </div>
                           {analisis.valor_referencia && (
                             <div className="text-sm text-gray-500">
@@ -468,27 +561,23 @@ export default function OrdenDetalle() {
                             </div>
                           )}
                           {analisis.interpretacion && (
-                            <div className={`text-sm font-medium ${
-                              analisis.interpretacion === 'normal' ? 'text-green-600' :
-                              analisis.interpretacion === 'alto' || analisis.interpretacion === 'bajo' ? 'text-orange-600' :
-                              analisis.interpretacion === 'critico' ? 'text-red-600' : 'text-gray-600'
-                            }`}>
+                            <Badge variant={getInterpretacionBadge(analisis.interpretacion)}>
                               {analisis.interpretacion.toUpperCase()}
-                            </div>
+                            </Badge>
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-sm">Pendiente</span>
+                        <span className="text-gray-400 text-sm">Sin resultado</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {analisis.tecnico_responsable || '-'}
+                        {analisis.tecnico_responsable || 'No asignado'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {formatFecha(analisis.fecha_realizacion)}
+                        {formatFechaHora(analisis.fecha_realizacion)}
                       </div>
                     </td>
                   </tr>
@@ -496,41 +585,27 @@ export default function OrdenDetalle() {
               </tbody>
             </table>
           </div>
-        </div>
+        </CustomCard>
 
-        {/* Información Adicional */}
+        {/* Información del Médico y Bioquímico */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          
-          {/* Médico Solicitante */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              👨‍⚕️ Médico Solicitante
-            </h3>
+          <CustomCard title="👨‍⚕️ Médico Solicitante">
             <div className="space-y-2">
-              <p className="font-medium text-gray-900">
-                Dr. {orden.medico_solicitante.nombre} {orden.medico_solicitante.apellido}
-              </p>
-              <p className="text-sm text-gray-600">{orden.medico_solicitante.especialidad}</p>
-              <p className="text-sm text-gray-500">Mat: {orden.medico_solicitante.matricula}</p>
+              <p><span className="font-medium">Nombre:</span> {orden.medico_solicitante.nombre} {orden.medico_solicitante.apellido}</p>
+              <p><span className="font-medium">Especialidad:</span> {orden.medico_solicitante.especialidad}</p>
+              <p><span className="font-medium">Matrícula:</span> {orden.medico_solicitante.matricula}</p>
             </div>
-          </div>
+          </CustomCard>
 
-          {/* Bioquímico Responsable */}
           {orden.bioquimico_responsable && (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                🔬 Bioquímico Responsable
-              </h3>
+            <CustomCard title="🧬 Bioquímico Responsable">
               <div className="space-y-2">
-                <p className="font-medium text-gray-900">
-                  {orden.bioquimico_responsable.nombre} {orden.bioquimico_responsable.apellido}
-                </p>
-                <p className="text-sm text-gray-600">Bioquímico/a</p>
+                <p><span className="font-medium">Nombre:</span> {orden.bioquimico_responsable.nombre} {orden.bioquimico_responsable.apellido}</p>
               </div>
-            </div>
+            </CustomCard>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // src/components/ui/input.tsx
-import type { InputHTMLAttributes, forwardRef } from "react"
+import { type InputHTMLAttributes, forwardRef } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 const inputVariants = cva(
@@ -24,7 +24,7 @@ const inputVariants = cva(
 )
 
 export interface InputProps
-  extends InputHTMLAttributes<HTMLInputElement>,
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>,
     VariantProps<typeof inputVariants> {
   // Propiedad para indicar si hay un error de validación
   isInvalid?: boolean

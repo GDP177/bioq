@@ -1,6 +1,6 @@
 // src/components/ui/form-field.tsx
 import type { ReactNode } from "react";
-import { Label } from "./label" // Asegúrate de que la ruta sea correcta
+import { Label } from "./Label" // Asegúrate de que la ruta sea correcta
 
 interface FormFieldProps {
   htmlFor: string // ID del input/control asociado

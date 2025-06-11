@@ -1,16 +1,18 @@
-// src/components/ui/label.tsx
-import type { LabelHTMLAttributes } from "react"
+import React from "react";
 
-export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
-  // Puedes añadir variantes si en algún momento necesitas estilos diferentes para labels.
-  // Por ahora, el estilo base es suficiente para la mayoría de los casos.
+interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+  children: React.ReactNode;
 }
 
-export function Label({ className, ...props }: LabelProps) {
-  return (
+export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
+  ({ className, children, ...props }, ref) => (
     <label
-      className={`block text-sm font-medium text-gray-700 mb-1 ${className || ""}`}
+      ref={ref}
+      className={`block text-sm font-medium text-gray-700 mb-2 ${className || ""}`}
       {...props}
-    />
+    >
+      {children}
+    </label>
   )
-}
+);
+Label.displayName = "Label";
