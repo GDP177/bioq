@@ -1,4 +1,4 @@
-// src/App.tsx - CON TODAS LAS RUTAS COMPLETAS
+// src/App.tsx - CON RUTAS ACTUALIZADAS PARA PACIENTES
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/login/Login'
@@ -9,7 +9,12 @@ import NuevaSolicitud from './pages/medico/NuevaSolicitud'
 import GestionPacientes from './pages/medico/GestionPacientes'
 import GestionAnalisis from './pages/medico/GestionAnalisis'
 import RegisterForm from './pages/login/RegisterForm'
+
+// Páginas de pacientes
 import NuevoPaciente from './pages/pacientes/NuevoPaciente'
+import PacienteRegistroExitoso from './pages/pacientes/PacienteRegistroExitoso'
+import EditarPaciente from './pages/pacientes/EditarPaciente'
+import HistorialPaciente from './pages/pacientes/HistorialPaciente'
 
 import './App.css'
 
@@ -22,7 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterForm />} />
           
-          {/* Rutas del médico */}
+          {/* Rutas del médico - Dashboard */}
           <Route path="/MedicoDashboard" element={<MedicoDashboard />} />
           <Route path="/medico/dashboard" element={<MedicoDashboard />} />
           
@@ -35,30 +40,72 @@ function App() {
           
           {/* Gestión de pacientes */}
           <Route path="/medico/pacientes" element={<GestionPacientes />} />
-          <Route path="/medico/paciente/nuevo" element={<NuevoPaciente />} />  {/* <- Actualizada */}
+          <Route path="/medico/paciente/nuevo" element={<NuevoPaciente />} />
+          
+          {/* ⚠️ NUEVAS RUTAS DE PACIENTES */}
+          <Route path="/pacientes/registro-exitoso" element={<PacienteRegistroExitoso />} />
+          <Route path="/medico/paciente/:nro_ficha/editar" element={<EditarPaciente />} />
+          <Route path="/medico/paciente/:nro_ficha/historial" element={<HistorialPaciente />} />
+          
+          {/* Rutas alternativas para compatibilidad */}
+          <Route path="/pacientes" element={<Navigate to="/medico/pacientes" replace />} />
+          <Route path="/pacientes/nuevo" element={<Navigate to="/medico/paciente/nuevo" replace />} />
           
           {/* Gestión de análisis */}
           <Route path="/medico/analisis" element={<GestionAnalisis />} />
           
-          {/* Rutas futuras */}
-          <Route path="/medico/paciente/:id_paciente/historial" element={<div className="p-8"><h2>Historial del Paciente - En desarrollo</h2></div>} />
-          <Route path="/medico/reportes" element={<div className="p-8"><h2>Reportes - En desarrollo</h2></div>} />
-          
-          {/* Ruta por defecto */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* Ruta 404 */}
-          <Route path="*" element={
+          {/* Rutas futuras - En desarrollo */}
+          <Route path="/medico/reportes" element={
             <div className="min-h-screen bg-blue-50 flex items-center justify-center">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página no encontrada</h2>
-                <p className="text-gray-600 mb-6">La página que buscas no existe.</p>
+                <div className="text-6xl mb-4">📊</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Reportes</h2>
+                <p className="text-gray-600 mb-6">Módulo en desarrollo</p>
                 <button 
-                  onClick={() => window.location.href = '/MedicoDashboard'} 
+                  onClick={() => window.location.href = '/medico/dashboard'} 
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                 >
                   Volver al Dashboard
                 </button>
+              </div>
+            </div>
+          } />
+          
+          {/* Ruta por defecto */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Ruta 404 - Mejorada */}
+          <Route path="*" element={
+            <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto px-4">
+                <div className="text-6xl mb-4">🔍</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página no encontrada</h2>
+                <p className="text-gray-600 mb-6">
+                  La página que buscas no existe o ha sido movida.
+                </p>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => window.location.href = '/medico/dashboard'} 
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    🏠 Ir al Dashboard
+                  </button>
+                  <button 
+                    onClick={() => window.location.href = '/medico/pacientes'} 
+                    className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    👥 Ver Pacientes
+                  </button>
+                </div>
+                <div className="mt-6 text-sm text-gray-500">
+                  <p>Rutas disponibles:</p>
+                  <ul className="text-left mt-2 space-y-1">
+                    <li>• /medico/dashboard - Panel principal</li>
+                    <li>• /medico/pacientes - Gestión de pacientes</li>
+                    <li>• /medico/ordenes - Órdenes de análisis</li>
+                    <li>• /medico/analisis - Gestión de análisis</li>
+                  </ul>
+                </div>
               </div>
             </div>
           } />

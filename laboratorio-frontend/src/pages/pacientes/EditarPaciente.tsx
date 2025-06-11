@@ -1,18 +1,141 @@
-// src/pages/pacientes/NuevoPaciente.tsx - CON REDIRECCIÓN CORRECTA
+// src/pages/pacientes/EditarPaciente.tsx
 
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
 
-// Componentes UI reutilizables
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
-import { CustomCard } from "@/components/ui/CustomCard";
-import { Toast, useToast } from "@/components/ui/Toast";
+// Componentes UI básicos (los mismos que en NuevoPaciente)
+const Button = ({ 
+  onClick, 
+  children, 
+  variant = "primary", 
+  className = "",
+  disabled = false 
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  variant?: "primary" | "secondary";
+  className?: string;
+  disabled?: boolean;
+}) => {
+  const baseClasses = "px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700",
+    secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300"
+  };
+  
+  return (
+    <button 
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variants[variant]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Input = ({ 
+  id, 
+  type = "text", 
+  placeholder = "", 
+  value, 
+  onChange, 
+  isInvalid = false,
+  max,
+  disabled = false
+}: {
+  id: string;
+  type?: string;
+  placeholder?: string;
+  value: string | number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isInvalid?: boolean;
+  max?: string;
+  disabled?: boolean;
+}) => (
+  <input
+    id={id}
+    type={type}
+    placeholder={placeholder}
+    value={value}
+    onChange={onChange}
+    disabled={disabled}
+    max={max}
+    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 ${
+      isInvalid ? 'border-red-500' : 'border-gray-300'
+    }`}
+  />
+);
+
+const FormField = ({ 
+  htmlFor, 
+  label, 
+  children, 
+  errorMessage 
+}: {
+  htmlFor: string;
+  label: string;
+  children: React.ReactNode;
+  errorMessage?: string;
+}) => (
+  <div className="space-y-1">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
+      {label}
+    </label>
+    {children}
+    {errorMessage && (
+      <p className="text-sm text-red-600">{errorMessage}</p>
+    )}
+  </div>
+);
+
+const CustomCard = ({ 
+  title, 
+  children, 
+  className = "" 
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 ${className}`}>
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    {children}
+  </div>
+);
+
+const Toast = ({ 
+  message, 
+  type, 
+  isVisible, 
+  onClose 
+}: {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  isVisible: boolean;
+  onClose: () => void;
+}) => {
+  if (!isVisible) return null;
+
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    info: 'bg-blue-500'
+  };
+
+  return (
+    <div className="fixed top-4 right-4 z-50">
+      <div className={`${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3`}>
+        <span>{message}</span>
+        <button onClick={onClose} className="text-white hover:text-gray-200">
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // Interfaces
-interface NuevoPacienteData {
+interface PacienteData {
   dni: number;
   nombre: string;
   apellido: string;
@@ -94,7 +217,7 @@ const SugerenciasObraSocial = ({
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center">
     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-    <span>Registrando...</span>
+    <span>Guardando cambios...</span>
   </div>
 );
 
@@ -120,13 +243,14 @@ const useToastCustom = () => {
   return { toast, showToast, hideToast };
 };
 
-export default function NuevoPaciente(): JSX.Element {
-  const navigate = useNavigate();
+export default function EditarPaciente(): JSX.Element {
+  const [nroFicha, setNroFicha] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const { toast, showToast, hideToast } = useToastCustom();
 
   // Estado del formulario
-  const [formData, setFormData] = useState<NuevoPacienteData>({
+  const [formData, setFormData] = useState<PacienteData>({
     dni: 0,
     nombre: "",
     apellido: "",
@@ -172,6 +296,90 @@ export default function NuevoPaciente(): JSX.Element {
   // Lista de grupos sanguíneos
   const gruposSanguineos = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
+  // Obtener número de ficha de la URL y cargar datos
+  useEffect(() => {
+    const pathParts = window.location.pathname.split('/');
+    const fichaIndex = pathParts.indexOf('paciente') + 1;
+    
+    if (fichaIndex > 0 && pathParts[fichaIndex]) {
+      const ficha = pathParts[fichaIndex];
+      setNroFicha(ficha);
+      cargarDatosPaciente(ficha);
+    } else {
+      showToast("Número de ficha no válido", 'error');
+      setLoadingData(false);
+    }
+  }, []);
+
+  // Función para cargar datos del paciente
+  const cargarDatosPaciente = async (nroFicha: string) => {
+    try {
+      setLoadingData(true);
+      console.log('🔍 Cargando datos del paciente con ficha:', nroFicha);
+      
+      const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/paciente/buscar/ficha/${nroFicha}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📋 Respuesta del servidor:', data);
+
+      if (data.success && data.paciente) {
+        const paciente = data.paciente;
+        console.log('✅ Datos del paciente obtenidos:', paciente);
+        
+        // Formatear fecha para input type="date"
+        const fechaFormateada = paciente.fecha_nacimiento ? 
+          new Date(paciente.fecha_nacimiento).toISOString().split('T')[0] : '';
+
+        const datosFormateados = {
+          dni: paciente.dni || 0,
+          nombre: paciente.nombre || "",
+          apellido: paciente.apellido || "",
+          fecha_nacimiento: fechaFormateada,
+          sexo: paciente.sexo || "",
+          telefono: paciente.telefono ? paciente.telefono.toString() : "",
+          direccion: paciente.direccion || "",
+          email: paciente.email || "",
+          mutual: paciente.mutual || "",
+          mutual_personalizada: "",
+          nro_afiliado: paciente.nro_afiliado ? paciente.nro_afiliado.toString() : "",
+          grupo_sanguineo: paciente.grupo_sanguineo || "",
+          contacto_emergencia: paciente.contacto_emergencia || "",
+          telefono_emergencia: paciente.telefono_emergencia || "",
+          observaciones: paciente.observaciones || ""
+        };
+
+        console.log('📝 Datos formateados para el formulario:', datosFormateados);
+        setFormData(datosFormateados);
+
+        // Verificar si es obra social personalizada
+        if (paciente.mutual && !obrasSociales.includes(paciente.mutual)) {
+          console.log('🏥 Obra social personalizada detectada:', paciente.mutual);
+          setMostrarCampoPersonalizado(true);
+          setFormData(prev => ({
+            ...prev,
+            mutual: "Otra",
+            mutual_personalizada: paciente.mutual
+          }));
+        }
+
+        showToast("Datos del paciente cargados correctamente", 'success');
+      } else {
+        console.error('❌ Error en respuesta:', data);
+        showToast(data.message || "No se encontró el paciente", 'error');
+      }
+    } catch (error) {
+      console.error("💥 Error al cargar datos del paciente:", error);
+      showToast("Error al cargar los datos del paciente", 'error');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   // Efecto para buscar sugerencias de obras sociales personalizadas
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -181,7 +389,7 @@ export default function NuevoPaciente(): JSX.Element {
         setSugerenciasObraSocial([]);
         setMostrarSugerencias(false);
       }
-    }, 300); // 300ms de delay
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [formData.mutual_personalizada]);
@@ -192,11 +400,12 @@ export default function NuevoPaciente(): JSX.Element {
     setBuscandoSugerencias(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${apiUrl}/obras-sociales/buscar/${encodeURIComponent(texto)}`);
+      const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/obras-sociales/buscar/${encodeURIComponent(texto)}`);
+      const data = await response.json();
       
-      if (response.data.success && response.data.obras_sociales) {
-        setSugerenciasObraSocial(response.data.obras_sociales);
+      if (data.success && data.obras_sociales) {
+        setSugerenciasObraSocial(data.obras_sociales);
         setMostrarSugerencias(true);
       } else {
         setSugerenciasObraSocial([]);
@@ -211,7 +420,7 @@ export default function NuevoPaciente(): JSX.Element {
     }
   };
 
-  const handleInputChange = (field: keyof NuevoPacienteData, value: string | number) => {
+  const handleInputChange = (field: keyof PacienteData, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -351,7 +560,7 @@ export default function NuevoPaciente(): JSX.Element {
     return Object.keys(nuevosErrores).length === 0;
   };
 
-  const registrarPaciente = async () => {
+  const guardarCambios = async () => {
     if (!validarFormulario()) {
       showToast("Por favor, corrija los errores en el formulario", 'error');
       return;
@@ -360,8 +569,6 @@ export default function NuevoPaciente(): JSX.Element {
     setLoading(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      
       // Preparar datos para enviar
       const datosEnvio = {
         ...formData,
@@ -379,66 +586,55 @@ export default function NuevoPaciente(): JSX.Element {
       // Eliminar mutual_personalizada del objeto a enviar
       delete (datosEnvio as any).mutual_personalizada;
 
-      const response = await axios.post(`${apiUrl}/pacientes`, datosEnvio);
+      const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/paciente/actualizar/${nroFicha}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datosEnvio)
+      });
 
-      if (response.data.success) {
-        showToast(`Paciente registrado exitosamente. Nro. de ficha: ${response.data.nro_ficha}`, 'success');
+      const data = await response.json();
+
+      if (data.success) {
+        showToast("Datos del paciente actualizados exitosamente", 'success');
         
-        // ⚠️ REDIRECCIÓN CORRECTA CON DATOS DEL PACIENTE
+        // Redireccionar a página de éxito con datos actualizados
         setTimeout(() => {
-          // Usar URL params para pasar el número de ficha
-          window.location.href = `/pacientes/registro-exitoso?nro_ficha=${response.data.nro_ficha}&action=registro`;
-        }, 1500);
+          window.location.href = `/pacientes/registro-exitoso?nro_ficha=${nroFicha}&updated=true`;
+        }, 2000);
       } else {
-        throw new Error(response.data.message || 'Error al registrar el paciente');
+        throw new Error(data.message || 'Error al actualizar el paciente');
       }
 
     } catch (error: any) {
-      console.error("Error al registrar paciente:", error);
-      
-      if (error.response?.data?.message) {
-        showToast(error.response.data.message, 'error');
-      } else if (error.response?.status === 409) {
-        showToast("Ya existe un paciente registrado con este DNI", 'error');
-      } else {
-        showToast("Error al registrar el paciente. Intente nuevamente.", 'error');
-      }
+      console.error("Error al actualizar paciente:", error);
+      showToast("Error al actualizar el paciente. Intente nuevamente.", 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const limpiarFormulario = () => {
-    setFormData({
-      dni: 0,
-      nombre: "",
-      apellido: "",
-      fecha_nacimiento: "",
-      sexo: "",
-      telefono: "",
-      direccion: "",
-      email: "",
-      mutual: "",
-      mutual_personalizada: "",
-      nro_afiliado: "",
-      grupo_sanguineo: "",
-      contacto_emergencia: "",
-      telefono_emergencia: "",
-      observaciones: ""
-    });
-    setErrores({});
-    setMostrarCampoPersonalizado(false);
-    setSugerenciasObraSocial([]);
-    setMostrarSugerencias(false);
-    showToast("Formulario limpiado", 'info');
-  };
-
   const navigateBack = () => {
-    navigate('/medico/pacientes');
+    window.location.href = '/medico/pacientes';
   };
 
-  // ⚠️ RESTO DEL COMPONENTE IGUAL QUE EL ANTERIOR...
-  // [El resto del JSX permanece exactamente igual, solo cambié la función registrarPaciente]
+  const navigateToDashboard = () => {
+    window.location.href = '/medico/dashboard';
+  };
+
+  // Pantalla de carga inicial
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos del paciente...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-blue-50">
@@ -447,9 +643,9 @@ export default function NuevoPaciente(): JSX.Element {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Nuevo Paciente</h1>
+              <h1 className="text-3xl font-bold text-gray-900">✏️ Editar Paciente</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Registre un nuevo paciente en el sistema
+                Modificar datos del paciente - Ficha #{nroFicha}
               </p>
             </div>
             <div className="flex space-x-3">
@@ -461,11 +657,11 @@ export default function NuevoPaciente(): JSX.Element {
                 ← Volver a Pacientes
               </Button>
               <Button
-                onClick={registrarPaciente}
+                onClick={guardarCambios}
                 disabled={loading}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {loading ? <LoadingSpinner /> : 'Registrar Paciente'}
+                {loading ? <LoadingSpinner /> : '💾 Guardar Cambios'}
               </Button>
             </div>
           </div>
@@ -475,7 +671,24 @@ export default function NuevoPaciente(): JSX.Element {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Formulario Principal */}
+        {/* Información del paciente */}
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <div className="text-yellow-400 text-xl">⚠️</div>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                <strong>Editando paciente:</strong> {formData.nombre} {formData.apellido} (DNI: {formData.dni})
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Los cambios se guardarán permanentemente en la base de datos.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Formulario Principal - IGUAL QUE NUEVO PACIENTE PERO CON DATOS PRECARGADOS */}
         <CustomCard title="Información Personal" className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
@@ -521,7 +734,7 @@ export default function NuevoPaciente(): JSX.Element {
                 value={formData.fecha_nacimiento}
                 onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
                 isInvalid={!!errores.fecha_nacimiento}
-                max={new Date().toISOString().split('T')[0]} // No permitir fechas futuras
+                max={new Date().toISOString().split('T')[0]}
               />
               {formData.fecha_nacimiento && (
                 <p className="text-sm text-gray-500 mt-1">
@@ -703,29 +916,29 @@ export default function NuevoPaciente(): JSX.Element {
 
         {/* Botones de Acción */}
         <div className="flex justify-between">
-          <Button
-            variant="secondary"
-            onClick={navigateBack}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
           <div className="space-x-3">
             <Button
               variant="secondary"
-              onClick={limpiarFormulario}
+              onClick={navigateBack}
               disabled={loading}
             >
-              Limpiar Formulario
+              ← Cancelar
             </Button>
             <Button
-              onClick={registrarPaciente}
+              variant="secondary"
+              onClick={navigateToDashboard}
               disabled={loading}
-              className="bg-green-600 hover:bg-green-700"
             >
-              {loading ? <LoadingSpinner /> : 'Registrar Paciente'}
+              🏠 Dashboard
             </Button>
           </div>
+          <Button
+            onClick={guardarCambios}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {loading ? <LoadingSpinner /> : '💾 Guardar Cambios'}
+          </Button>
         </div>
       </main>
 

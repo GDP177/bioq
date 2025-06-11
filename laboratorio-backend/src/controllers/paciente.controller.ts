@@ -1,4 +1,4 @@
-// src/controllers/pacientes.controller.ts - CORREGIDO PARA LA BD ACTUAL
+// src/controllers/pacientes.controller.ts - CON FUNCIÓN DE ACTUALIZAR
 
 import { Request, Response } from 'express';
 import { pool } from '../routes/db';
@@ -29,8 +29,9 @@ const limpiarTelefono = (telefono: string): number | null => {
   return numeroLimpio.length >= 8 ? parseInt(numeroLimpio) : null;
 };
 
-// Registrar nuevo paciente - CORREGIDO PARA LA ESTRUCTURA ACTUAL
-export const registrarNuevoPaciente = async (req: Request, res: Response) => {
+// ⚠️ NUEVA FUNCIÓN: Actualizar paciente existente
+export const actualizarPaciente = async (req: Request, res: Response) => {
+  const nroFicha = parseInt(req.params.nro_ficha);
   const {
     dni,
     nombre,
@@ -49,11 +50,18 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    console.log('👥 Registrando nuevo paciente con DNI:', dni);
+    console.log('✏️ Actualizando paciente con ficha:', nroFicha);
 
     // ============================================
     // VALIDACIONES BÁSICAS
     // ============================================
+
+    if (!nroFicha || nroFicha <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Número de ficha inválido'
+      });
+    }
 
     if (!dni || !nombre || !apellido || !fecha_nacimiento || !sexo) {
       return res.status(400).json({
@@ -103,7 +111,7 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
     }
 
     // Validar sexo
-    if (!['M', 'F', 'X'].includes(sexo.upper || sexo)) {
+    if (!['M', 'F', 'X'].includes(sexo.toUpperCase())) {
       return res.status(400).json({
         success: false,
         message: 'Sexo debe ser M (Masculino), F (Femenino) o X (Otro)'
@@ -119,10 +127,197 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
     }
 
     // ============================================
-    // VERIFICAR DUPLICADOS
+    // VERIFICAR QUE EL PACIENTE EXISTE
     // ============================================
 
-    // Verificar que el DNI no exista (usar la columna correcta: DNI no dni)
+    const [pacienteExistente]: any = await pool.query(
+      'SELECT nro_ficha, DNI FROM paciente WHERE nro_ficha = ?',
+      [nroFicha]
+    );
+
+    if (pacienteExistente.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró paciente con ficha ${nroFicha}`
+      });
+    }
+
+    // Verificar que el DNI no esté siendo usado por otro paciente
+    if (pacienteExistente[0].DNI !== dni) {
+      const [dniDuplicado]: any = await pool.query(
+        'SELECT nro_ficha FROM paciente WHERE DNI = ? AND nro_ficha != ?',
+        [dni, nroFicha]
+      );
+
+      if (dniDuplicado.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `El DNI ${dni} ya está siendo usado por otro paciente (Ficha #${dniDuplicado[0].nro_ficha})`
+        });
+      }
+    }
+
+    // ============================================
+    // PROCESAR DATOS
+    // ============================================
+
+    // Procesar obra social
+    const mutualFinal = mutual && mutual.trim() ? mutual.trim() : 'Particular';
+
+    // Procesar teléfono (debe ser INT según la estructura)
+    const telefonoFinal = telefono && telefono.trim() ? limpiarTelefono(telefono) : null;
+
+    // Procesar nro_afiliado (debe ser INT según la estructura)
+    const nroAfiliadoFinal = nro_afiliado && nro_afiliado.trim() ? 
+      parseInt(nro_afiliado.replace(/\D/g, '')) || null : null;
+
+    // Procesar grupo sanguíneo
+    const grupoSanguineoFinal = grupo_sanguineo && grupo_sanguineo.trim() ? 
+      grupo_sanguineo.trim() : 'ND';
+
+    // Procesar dirección
+    const direccionFinal = direccion && direccion.trim() ? direccion.trim() : null;
+
+    // ============================================
+    // ACTUALIZAR EN BASE DE DATOS
+    // ============================================
+
+    const [resultado]: any = await pool.query(
+      `UPDATE paciente SET
+        Nombre_paciente = ?,
+        Apellido_paciente = ?,
+        fecha_nacimiento = ?,
+        edad = ?,
+        sexo = ?,
+        mutual = ?,
+        nro_afiliado = ?,
+        grupo_sanguineo = ?,
+        DNI = ?,
+        direccion = ?,
+        telefono = ?
+       WHERE nro_ficha = ?`,
+      [
+        nombre.trim(),
+        apellido.trim(),
+        fecha_nacimiento,
+        edad,
+        sexo.toUpperCase(),
+        mutualFinal,
+        nroAfiliadoFinal,
+        grupoSanguineoFinal,
+        dni,
+        direccionFinal,
+        telefonoFinal,
+        nroFicha
+      ]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se pudo actualizar el paciente'
+      });
+    }
+
+    console.log('✅ Paciente actualizado exitosamente:', nombre, apellido, 'Ficha:', nroFicha);
+
+    // Log de obra social personalizada si es nueva
+    const obrasSocialesComunes = [
+      "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", 
+      "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"
+    ];
+
+    if (mutualFinal && !obrasSocialesComunes.includes(mutualFinal)) {
+      console.log('🏥 Obra social personalizada actualizada:', mutualFinal);
+    }
+
+    // ============================================
+    // RESPUESTA EXITOSA
+    // ============================================
+
+    return res.status(200).json({
+      success: true,
+      message: 'Paciente actualizado exitosamente',
+      paciente: {
+        nro_ficha: nroFicha,
+        dni: dni,
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        edad: edad,
+        sexo: sexo.toUpperCase(),
+        telefono: telefonoFinal,
+        direccion: direccionFinal,
+        mutual: mutualFinal,
+        nro_afiliado: nroAfiliadoFinal,
+        grupo_sanguineo: grupoSanguineoFinal,
+        fecha_actualizacion: new Date().toISOString().split('T')[0]
+      }
+    });
+
+  } catch (error: any) {
+    console.error('💥 ERROR al actualizar paciente:', error);
+    
+    // Manejar errores específicos de MySQL
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        message: 'Ya existe un paciente con ese DNI'
+      });
+    }
+
+    if (error.code === 'ER_DATA_TOO_LONG') {
+      return res.status(400).json({
+        success: false,
+        message: 'Uno de los campos contiene demasiados caracteres'
+      });
+    }
+
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      return res.status(500).json({
+        success: false,
+        message: 'Error en la estructura de la base de datos'
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al actualizar el paciente',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Registrar nuevo paciente - FUNCIÓN EXISTENTE (no cambia)
+export const registrarNuevoPaciente = async (req: Request, res: Response) => {
+  const {
+    dni,
+    nombre,
+    apellido,
+    fecha_nacimiento,
+    sexo,
+    telefono,
+    direccion,
+    email,
+    mutual,
+    nro_afiliado,
+    grupo_sanguineo,
+    contacto_emergencia,
+    telefono_emergencia,
+    observaciones
+  } = req.body;
+
+  try {
+    console.log('👥 Registrando nuevo paciente con DNI:', dni);
+
+    // Validaciones básicas
+    if (!dni || !nombre || !apellido || !fecha_nacimiento || !sexo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan datos obligatorios: DNI, nombre, apellido, fecha de nacimiento y sexo son requeridos'
+      });
+    }
+
+    // Verificar que el DNI no exista
     const [pacienteExistente]: any = await pool.query(
       'SELECT nro_ficha FROM paciente WHERE DNI = ?',
       [dni]
@@ -136,37 +331,23 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
       });
     }
 
-    // ============================================
-    // PROCESAR DATOS
-    // ============================================
-
     // Generar número de ficha único
     const [ultimaFicha]: any = await pool.query(
       'SELECT MAX(nro_ficha) as ultima_ficha FROM paciente'
     );
     const nroFicha = (ultimaFicha[0]?.ultima_ficha || 0) + 1;
 
-    // Procesar obra social - obligatoria según la estructura
+    // Procesar datos
+    const edad = calcularEdad(fecha_nacimiento);
     const mutualFinal = mutual && mutual.trim() ? mutual.trim() : 'Particular';
-
-    // Procesar teléfono (debe ser INT según la estructura)
     const telefonoFinal = telefono && telefono.trim() ? limpiarTelefono(telefono) : null;
-
-    // Procesar nro_afiliado (debe ser INT según la estructura)
     const nroAfiliadoFinal = nro_afiliado && nro_afiliado.trim() ? 
       parseInt(nro_afiliado.replace(/\D/g, '')) || null : null;
-
-    // Procesar grupo sanguíneo - obligatorio según la estructura
     const grupoSanguineoFinal = grupo_sanguineo && grupo_sanguineo.trim() ? 
       grupo_sanguineo.trim() : 'ND';
-
-    // Procesar dirección
     const direccionFinal = direccion && direccion.trim() ? direccion.trim() : null;
 
-    // ============================================
-    // INSERTAR EN BASE DE DATOS - ESTRUCTURA CORRECTA
-    // ============================================
-
+    // Insertar en base de datos
     const [resultado]: any = await pool.query(
       `INSERT INTO paciente (
         nro_ficha,
@@ -203,20 +384,6 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
 
     console.log('✅ Paciente registrado exitosamente:', nombre, apellido, 'Ficha:', nroFicha);
 
-    // Log de obra social personalizada si es nueva
-    const obrasSocialesComunes = [
-      "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", 
-      "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"
-    ];
-
-    if (mutualFinal && !obrasSocialesComunes.includes(mutualFinal)) {
-      console.log('🏥 Obra social personalizada registrada:', mutualFinal);
-    }
-
-    // ============================================
-    // RESPUESTA EXITOSA
-    // ============================================
-
     return res.status(201).json({
       success: true,
       message: 'Paciente registrado exitosamente',
@@ -228,36 +395,17 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
         apellido: apellido.trim(),
         edad: edad,
         sexo: sexo.toUpperCase(),
+        telefono: telefonoFinal,
+        direccion: direccionFinal,
         mutual: mutualFinal,
+        nro_afiliado: nroAfiliadoFinal,
+        grupo_sanguineo: grupoSanguineoFinal,
         fecha_alta: new Date().toISOString().split('T')[0]
       }
     });
 
   } catch (error: any) {
     console.error('💥 ERROR al registrar paciente:', error);
-    
-    // Manejar errores específicos de MySQL
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({
-        success: false,
-        message: 'Ya existe un paciente con estos datos'
-      });
-    }
-
-    if (error.code === 'ER_DATA_TOO_LONG') {
-      return res.status(400).json({
-        success: false,
-        message: 'Uno de los campos contiene demasiados caracteres'
-      });
-    }
-
-    if (error.code === 'ER_BAD_FIELD_ERROR') {
-      return res.status(500).json({
-        success: false,
-        message: 'Error en la estructura de la base de datos'
-      });
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor al registrar el paciente',
@@ -266,7 +414,88 @@ export const registrarNuevoPaciente = async (req: Request, res: Response) => {
   }
 };
 
-// Buscar paciente por DNI - CORREGIDO
+// Buscar paciente por número de ficha
+export const buscarPacientePorFicha = async (req: Request, res: Response) => {
+  const nroFicha = parseInt(req.params.nro_ficha);
+
+  try {
+    console.log('🔍 Buscando paciente con ficha:', nroFicha);
+
+    if (!nroFicha || nroFicha <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Número de ficha inválido'
+      });
+    }
+
+    const [pacienteRows]: any = await pool.query(
+      `SELECT 
+        nro_ficha,
+        Nombre_paciente as nombre,
+        Apellido_paciente as apellido,
+        DNI as dni,
+        fecha_nacimiento,
+        edad,
+        sexo,
+        telefono,
+        direccion,
+        mutual,
+        nro_afiliado,
+        grupo_sanguineo,
+        estado,
+        fecha_alta
+       FROM paciente 
+       WHERE nro_ficha = ? AND (estado IS NULL OR estado != 'inactivo')
+       LIMIT 1`,
+      [nroFicha]
+    );
+
+    if (pacienteRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró paciente con ese número de ficha'
+      });
+    }
+
+    const paciente = pacienteRows[0];
+
+    console.log('✅ Paciente encontrado:', paciente.nombre, paciente.apellido);
+
+    return res.status(200).json({
+      success: true,
+      paciente: {
+        nro_ficha: paciente.nro_ficha,
+        nombre: paciente.nombre,
+        apellido: paciente.apellido,
+        dni: paciente.dni,
+        fecha_nacimiento: paciente.fecha_nacimiento,
+        edad: paciente.edad,
+        sexo: paciente.sexo,
+        telefono: paciente.telefono,
+        direccion: paciente.direccion,
+        mutual: paciente.mutual,
+        nro_afiliado: paciente.nro_afiliado,
+        grupo_sanguineo: paciente.grupo_sanguineo,
+        estado: paciente.estado,
+        fecha_alta: paciente.fecha_alta,
+        // Campos adicionales que podrían estar en la BD
+        email: null, // Agregar si existe en tu BD
+        contacto_emergencia: null, // Agregar si existe en tu BD
+        telefono_emergencia: null, // Agregar si existe en tu BD
+        observaciones: null // Agregar si existe en tu BD
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 ERROR al buscar paciente por ficha:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al buscar paciente'
+    });
+  }
+};
+
+// Resto de funciones existentes (no cambian)
 export const buscarPacientePorDNI = async (req: Request, res: Response) => {
   const dni = parseInt(req.params.dni);
 
@@ -327,7 +556,6 @@ export const buscarPacientePorDNI = async (req: Request, res: Response) => {
   }
 };
 
-// Buscar obras sociales personalizadas - CORREGIDO
 export const buscarObrasSociales = async (req: Request, res: Response) => {
   const textoBusqueda = req.params.texto;
 
@@ -341,13 +569,11 @@ export const buscarObrasSociales = async (req: Request, res: Response) => {
       });
     }
 
-    // Lista de obras sociales predefinidas para filtrar
     const obrasSocialesComunes = [
       "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", 
       "PAMI", "OSECAC", "OSPLAD", "Accord Salud", "Sancor Salud", "Particular"
     ];
 
-    // Buscar obras sociales personalizadas en la base de datos
     const [obrasSocialesRows]: any = await pool.query(
       `SELECT DISTINCT mutual as obra_social, COUNT(*) as uso_count
        FROM paciente 
@@ -380,7 +606,6 @@ export const buscarObrasSociales = async (req: Request, res: Response) => {
   }
 };
 
-// Buscar pacientes por DNI parcial - CORREGIDO  
 export const buscarPacientesPorDNIParcial = async (req: Request, res: Response) => {
   const dniParcial = req.params.dni_parcial;
 
@@ -394,7 +619,6 @@ export const buscarPacientesPorDNIParcial = async (req: Request, res: Response) 
       });
     }
 
-    // Validar que solo contenga números
     if (!/^\d+$/.test(dniParcial)) {
       return res.status(400).json({ 
         success: false,
@@ -443,7 +667,9 @@ export const buscarPacientesPorDNIParcial = async (req: Request, res: Response) 
 
 export default {
   registrarNuevoPaciente,
+  actualizarPaciente,        // ⚠️ Nueva función
   buscarPacientePorDNI,
+  buscarPacientePorFicha,
   buscarObrasSociales,
   buscarPacientesPorDNIParcial
 };

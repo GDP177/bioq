@@ -1,4 +1,4 @@
-// src/index.ts - SERVIDOR PRINCIPAL REORGANIZADO
+// src/index.ts - SERVIDOR PRINCIPAL CON TODAS LAS RUTAS
 
 import express from 'express';
 import cors from 'cors';
@@ -10,7 +10,9 @@ import medicoRoutes from './routes/medico.routes';
 // Importar controladores específicos
 import { 
   registrarNuevoPaciente,
+  actualizarPaciente,
   buscarPacientePorDNI,
+  buscarPacientePorFicha,
   buscarObrasSociales,
   buscarPacientesPorDNIParcial
 } from './controllers/paciente.controller';
@@ -18,6 +20,8 @@ import {
 import { 
   getAnalisisDisponibles
 } from './controllers/nuevas-funcionalidades.controller';
+
+import { pool } from './routes/db';
 
 // Configurar dotenv
 dotenv.config();
@@ -54,11 +58,17 @@ app.use('/api/medico', medicoRoutes);
 // RUTAS DE PACIENTES
 // ============================================
 
-// ⚠️ RUTAS PARA COMPATIBILIDAD CON EL FRONTEND
-app.post('/api/pacientes', registrarNuevoPaciente);                        // ← Principal para frontend
-app.post('/api/paciente/registrar', registrarNuevoPaciente);               // ← Compatibilidad
-app.get('/api/paciente/buscar/:dni', buscarPacientePorDNI);               // ← Buscar por DNI completo
-app.get('/api/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial); // ← Autocompletado
+// Registro de pacientes
+app.post('/api/pacientes', registrarNuevoPaciente);
+app.post('/api/paciente/registrar', registrarNuevoPaciente);
+
+// Actualización de pacientes
+app.put('/api/paciente/actualizar/:nro_ficha', actualizarPaciente);
+
+// Búsqueda de pacientes
+app.get('/api/paciente/buscar/:dni', buscarPacientePorDNI);
+app.get('/api/paciente/buscar/ficha/:nro_ficha', buscarPacientePorFicha);
+app.get('/api/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial);
 
 // ============================================
 // RUTAS DE ANÁLISIS
@@ -103,22 +113,24 @@ app.get('/api', (req, res) => {
         'POST /api/medico/:id_medico/nueva-solicitud'
       ],
       pacientes: [
-        'POST /api/pacientes',                                    // ← Registro de pacientes
-        'POST /api/paciente/registrar',                          // ← Alias para compatibilidad
-        'GET /api/paciente/buscar/:dni',                         // ← Buscar por DNI completo
-        'GET /api/pacientes/buscar-por-dni/:dni_parcial',        // ← Autocompletado por DNI
-        'GET /api/medico/:id_medico/pacientes'                   // ← Pacientes del médico
+        'POST /api/pacientes',
+        'POST /api/paciente/registrar',
+        'PUT /api/paciente/actualizar/:nro_ficha',
+        'GET /api/paciente/buscar/:dni',
+        'GET /api/paciente/buscar/ficha/:nro_ficha',
+        'GET /api/pacientes/buscar-por-dni/:dni_parcial',
+        'GET /api/medico/:id_medico/pacientes'
       ],
       analisis: [
-        'GET /api/analisis',                                     // ← Análisis disponibles
-        'GET /api/medico/:id_medico/analisis'                    // ← Análisis del médico
+        'GET /api/analisis',
+        'GET /api/medico/:id_medico/analisis'
       ],
       obras_sociales: [
-        'GET /api/obras-sociales/buscar/:texto'                  // ← Autocompletado obras sociales
+        'GET /api/obras-sociales/buscar/:texto'
       ],
       system: [
-        'GET /api/health',                                       // ← Estado del servidor
-        'GET /api'                                               // ← Esta documentación
+        'GET /api/health',
+        'GET /api'
       ]
     },
     database_structure: {
@@ -130,7 +142,15 @@ app.get('/api', (req, res) => {
           'CP', 'direccion', 'telefono'
         ]
       }
-    }
+    },
+    new_features: [
+      'Registro exitoso de pacientes con redirección',
+      'Edición completa de pacientes con validaciones',
+      'Búsqueda por número de ficha',
+      'Página de confirmación de registro',
+      'Formulario de edición con datos precargados',
+      'Navegación mejorada entre módulos'
+    ]
   });
 });
 
@@ -142,7 +162,16 @@ app.get('/', (req, res) => {
     status: 'Servidor activo',
     documentation: 'GET /api para ver endpoints disponibles',
     admin_panel: 'http://localhost:3000',
-    api_status: 'http://localhost:5000/api/health'
+    api_status: 'http://localhost:5000/api/health',
+    features: [
+      '✅ Registro de pacientes',
+      '✅ Edición completa de pacientes',
+      '✅ Gestión de obras sociales',
+      '✅ Búsqueda por DNI y ficha',
+      '✅ Sistema de confirmación',
+      '✅ Validaciones robustas',
+      '🚧 Historial médico (próximamente)'
+    ]
   });
 });
 
@@ -153,13 +182,22 @@ app.get('/', (req, res) => {
 // Middleware para rutas no encontradas
 app.use('*', (req, res) => {
   console.log(`❌ Ruta no encontrada: ${req.method} ${req.originalUrl}`);
+  
+  // Sugerencias inteligentes basadas en la URL
+  let sugerencia = 'Verifica la documentación en GET /api';
+  if (req.originalUrl.includes('/paciente')) {
+    sugerencia = 'Para pacientes usa: POST /api/pacientes o GET /api/paciente/buscar/:dni';
+  } else if (req.originalUrl.includes('/medico')) {
+    sugerencia = 'Para médicos usa: POST /api/medico/login o GET /api/medico/dashboard/:id';
+  } else if (req.originalUrl.includes('/analisis')) {
+    sugerencia = 'Para análisis usa: GET /api/analisis';
+  }
+  
   res.status(404).json({ 
     success: false,
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
-    available_endpoints: 'GET /api para ver rutas disponibles',
-    suggestion: req.originalUrl.includes('/paciente') ? 
-      'Para pacientes usa: POST /api/pacientes' : 
-      'Verifica la documentación en GET /api'
+    suggestion: sugerencia,
+    available_endpoints: 'GET /api para ver rutas disponibles'
   });
 });
 
@@ -183,12 +221,32 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
   }
 
+  if (err.code === 'ER_DUP_ENTRY') {
+    return res.status(409).json({
+      success: false,
+      message: 'Ya existe un registro con estos datos'
+    });
+  }
+
   res.status(500).json({ 
     success: false,
     message: 'Error interno del servidor',
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
 });
+
+// ============================================
+// FUNCIÓN PARA TEST DE BASE DE DATOS
+// ============================================
+
+const testDatabaseConnection = async () => {
+  try {
+    await pool.query('SELECT 1 as test');
+    console.log('✅ Conexión a MySQL exitosa');
+  } catch (error: any) {
+    console.error('❌ Error de conexión a MySQL:', error.message);
+  }
+};
 
 // ============================================
 // INICIAR SERVIDOR
@@ -204,15 +262,19 @@ app.listen(PORT, () => {
   console.log(`📚 API Docs: http://localhost:${PORT}/api`);
   console.log(`🖥️  Frontend: http://localhost:3000`);
   console.log('🚀 ========================================');
+  console.log('✅ Funcionalidades disponibles:');
+  console.log('   • Registro de pacientes');
+  console.log('   • Edición completa de pacientes');
+  console.log('   • Búsqueda por DNI y ficha');
+  console.log('   • Gestión de obras sociales');
+  console.log('   • Sistema de confirmación');
+  console.log('   • Validaciones robustas');
+  console.log('🚀 ========================================');
   console.log('✅ Sistema listo para recibir peticiones');
   console.log('');
   
   // Test de conexión a BD al iniciar
-  import('./routes/db').then(({ pool }) => {
-    pool.query('SELECT 1 as test')
-      .then(() => console.log('✅ Conexión a MySQL exitosa'))
-      .catch((err) => console.error('❌ Error de conexión a MySQL:', err.message));
-  });
+  testDatabaseConnection();
 });
 
 export default app;
