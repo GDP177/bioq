@@ -9,6 +9,8 @@ import NuevaSolicitud from './pages/medico/NuevaSolicitud'
 import GestionPacientes from './pages/medico/GestionPacientes'
 import GestionAnalisis from './pages/medico/GestionAnalisis'
 import RegisterForm from './pages/login/RegisterForm'
+import NuevoPaciente from './pages/pacientes/NuevoPaciente'
+
 import './App.css'
 
 function App() {
@@ -33,12 +35,12 @@ function App() {
           
           {/* Gestión de pacientes */}
           <Route path="/medico/pacientes" element={<GestionPacientes />} />
+          <Route path="/medico/paciente/nuevo" element={<NuevoPaciente />} />  {/* <- Actualizada */}
           
           {/* Gestión de análisis */}
           <Route path="/medico/analisis" element={<GestionAnalisis />} />
           
           {/* Rutas futuras */}
-          <Route path="/medico/paciente/nuevo" element={<div className="p-8"><h2>Registrar Nuevo Paciente - En desarrollo</h2></div>} />
           <Route path="/medico/paciente/:id_paciente/historial" element={<div className="p-8"><h2>Historial del Paciente - En desarrollo</h2></div>} />
           <Route path="/medico/reportes" element={<div className="p-8"><h2>Reportes - En desarrollo</h2></div>} />
           

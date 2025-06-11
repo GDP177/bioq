@@ -3,6 +3,123 @@
 import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 
+// Registrar nuevo paciente
+export const registrarNuevoPaciente = async (req: Request, res: Response) => {
+  const {
+    dni,
+    nombre,
+    apellido,
+    fecha_nacimiento,
+    edad,
+    sexo,
+    telefono,
+    direccion,
+    email,
+    mutual,
+    nro_afiliado,
+    grupo_sanguineo,
+    contacto_emergencia,
+    telefono_emergencia,
+    observaciones
+  } = req.body;
+
+  try {
+    console.log('👥 Registrando nuevo paciente con DNI:', dni);
+
+    // Validaciones básicas
+    if (!dni || !nombre || !apellido || !fecha_nacimiento || !sexo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan datos obligatorios (DNI, nombre, apellido, fecha de nacimiento, sexo)'
+      });
+    }
+
+    // Verificar que el DNI no exista
+    const [pacienteExistente]: any = await pool.query(
+      'SELECT nro_ficha FROM paciente WHERE dni = ?',
+      [dni]
+    );
+
+    if (pacienteExistente.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Ya existe un paciente registrado con este DNI'
+      });
+    }
+
+    // Generar número de ficha único
+    const [ultimaFicha]: any = await pool.query(
+      'SELECT MAX(nro_ficha) as ultima_ficha FROM paciente'
+    );
+    const nroFicha = (ultimaFicha[0]?.ultima_ficha || 0) + 1;
+
+    // Insertar nuevo paciente
+    const [resultado]: any = await pool.query(
+      `INSERT INTO paciente (
+        nro_ficha,
+        dni,
+        nombre_paciente,
+        apellido_paciente,
+        fecha_nacimiento,
+        edad,
+        sexo,
+        telefono,
+        direccion,
+        email,
+        mutual,
+        nro_afiliado,
+        grupo_sanguineo,
+        contacto_emergencia,
+        telefono_emergencia,
+        observaciones,
+        fecha_registro,
+        estado
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'activo')`,
+      [
+        nroFicha,
+        dni,
+        nombre,
+        apellido,
+        fecha_nacimiento,
+        edad,
+        sexo,
+        telefono || null,
+        direccion || null,
+        email || null,
+        mutual || null,
+        nro_afiliado || null,
+        grupo_sanguineo || null,
+        contacto_emergencia || null,
+        telefono_emergencia || null,
+        observaciones || null
+      ]
+    );
+
+    console.log('✅ Paciente registrado exitosamente:', nombre, apellido);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Paciente registrado exitosamente',
+      paciente: {
+        nro_ficha: nroFicha,
+        dni: dni,
+        nombre: nombre,
+        apellido: apellido,
+        edad: edad,
+        sexo: sexo
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 ERROR al registrar paciente:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al registrar el paciente'
+    });
+  }
+};
+
+
 // ============================================
 // CONTROLADORES PARA NUEVA SOLICITUD
 // ============================================

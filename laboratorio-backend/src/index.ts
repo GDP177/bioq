@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 
 // Importar rutas
 import medicoRoutes from './routes/medico.routes';
-import { getAnalisisDisponibles, buscarPacientePorDNI, buscarPacientesPorDNIParcial } from './controllers/nuevas-funcionalidades.controller';
+import { getAnalisisDisponibles, buscarPacientePorDNI, buscarPacientesPorDNIParcial, registrarNuevoPaciente  } from './controllers/nuevas-funcionalidades.controller';
 
 // Configurar dotenv
 dotenv.config();
@@ -34,6 +34,7 @@ app.use('/api/medico', medicoRoutes);
 app.get('/api/analisis', getAnalisisDisponibles);
 app.get('/api/paciente/buscar/:dni', buscarPacientePorDNI);
 app.get('/api/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial);
+app.post('/api/paciente/registrar', registrarNuevoPaciente);
 
 // Ruta de health check
 app.get('/api/health', (req, res) => {
