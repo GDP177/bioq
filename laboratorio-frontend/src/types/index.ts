@@ -1,160 +1,93 @@
-// Tipos principales para el sistema de laboratorio
+// Tipos principales del sistema
 
-export interface Paciente {
-  nro_ficha: number
-  nombre_paciente: string
-  apellido_paciente: string
-  fecha_alta?: string
-  fecha_nacimiento: string
-  edad?: number
-  sexo: 'M' | 'F'
-  estado?: string
-  mutual: string
-  nro_afiliado?: number
-  grupo_sanguineo: string
-  dni: number
-  cp?: number
-  direccion?: string
-  telefono?: number
+export interface Usuario {
+  id: number;
+  username: string;
+  email: string;
+  rol: 'medico' | 'bioquimico' | 'admin';
 }
 
 export interface Medico {
-  idMedico: number
-  nombre_medico?: string
-  apellido_medico?: string
-  dni_medico?: number
+  id: number;
+  nombre: string;
+  apellido: string;
+  dni: number;
+  email?: string;
+  telefono?: string;
+  especialidad?: string;
 }
 
-export interface Bioquimico {
-  matricula_profesional: number
-  nombre_bq?: string
-  apellido_bq?: string
+export interface Paciente {
+  nro_ficha: number;
+  Nombre_paciente: string;  // Coincide con tu BD
+  Apellido_paciente: string; // Coincide con tu BD
+  fecha_alta: string;
+  fecha_nacimiento: string;
+  edad: number;
+  sexo: 'M' | 'F';
+  estado: string;
+  mutual: string;
+  nro_afiliado?: number;
+  grupo_sanguineo: string;
+  DNI: number; // Coincide con tu BD
+  CP?: number;
+  direccion?: string;
+  telefono?: number;
 }
 
 export interface Analisis {
-  codigo_de_modulo?: number
-  descripcion_de_modulo?: string
-  codigo_de_practica: number
-  descripcion_de_practica?: string
-  inicio_de_vigencia?: string
-  honorarios?: number
-  gastos?: number
-  tipo?: string
+  'CODIGO DE PRACTICA': number; // Coincide con tu BD
+  DESCRIPCION_DE_PRACTICA: string; // Coincide con tu BD
+  CODIGO_DE_MODULO: number; // Coincide con tu BD
+  DESCRIPCION_DE_MODULO: string; // Coincide con tu BD
+  INICIO_DE_VIGENCIA: string; // Coincide con tu BD
+  HONORARIOS: number; // Coincide con tu BD
+  GASTOS: number; // Coincide con tu BD
+  TIPO: string; // Coincide con tu BD
 }
 
 export interface Orden {
-  id_orden: number
-  urgente?: boolean
-  id_medico_solicitante?: number
-  id_bq_efectua?: number
-  fecha_ingreso_orden?: string
-  nro_ficha_paciente?: number
-  // Relaciones
-  paciente?: Paciente
-  medico?: Medico
-  bioquimico?: Bioquimico
-  analisis?: Analisis[]
+  id_orden: number;
+  urgente: boolean;
+  id_medico_solicitante: number;
+  id_bq_efectua?: number;
+  fecha_ingreso_orden: string;
+  nro_ficha_paciente: number;
+  // Datos que vienen del JOIN con otras tablas
+  Nombre_paciente?: string;    // Del JOIN con paciente
+  Apellido_paciente?: string;  // Del JOIN con paciente
+  medico_nombre?: string;
+  total_analisis?: number;
+  analisis_completados?: number;
+  analisis_solicitados?: string;
 }
 
 export interface OrdenAnalisis {
-  codigo_de_practica: number
-  id_orden: number
-  fecha_realizacion_analisis?: string
-  // Relaciones
-  analisis?: Analisis
+  'Codigo_de_practica': number; // Coincide con tu BD
+  id_orden: number;
+  fecha_realizacion_analisis?: string;
 }
 
-export interface ValorReferencia {
-  id_valor_ref: number
-  valor_inicial_de_rango?: number
-  valor_final_de_rango?: number
-  unidad?: string
-  tipo_persona?: string
+export interface EstadisticasMedico {
+  solicitudes_pendientes: number;
+  resultados_listos: number;
+  total_ordenes: number;
+  total_pacientes: number;
 }
 
-export interface ResultadoAnalisis {
-  codigo_de_practica: number
-  id_valor_ref: number
-  valor_hallado: number
-  unidad_valor_hallado?: string
-  // Relaciones
-  analisis?: Analisis
-  valor_referencia?: ValorReferencia
+export interface AnalisisPopular {
+  DESCRIPCION_DE_PRACTICA: string; // Coincide con tu BD
+  cantidad: number;
 }
 
-// Tipos para formularios
-export interface PacienteFormData {
-  nombre_paciente: string
-  apellido_paciente: string
-  fecha_nacimiento: string
-  sexo: 'M' | 'F'
-  mutual: string
-  nro_afiliado?: number
-  grupo_sanguineo: string
-  dni: number
-  cp?: number
-  direccion?: string
-  telefono?: number
+export interface DashboardMedicoData {
+  medico: Medico;
+  estadisticas: EstadisticasMedico;
+  ordenes_recientes: Orden[];
+  analisis_populares: AnalisisPopular[];
+  notificaciones: string[];
 }
 
-export interface OrdenFormData {
-  urgente: boolean
-  id_medico_solicitante: number
-  nro_ficha_paciente: number
-  analisis_seleccionados: number[]
-}
-
-// Tipos para API responses
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  message?: string
-  error?: string
-}
-
-export interface PaginatedResponse<T> {
-  data: T[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
-// Tipos para filtros y búsquedas
-export interface FiltrosPacientes {
-  nombre?: string
-  apellido?: string
-  dni?: string
-  mutual?: string
-  fecha_desde?: string
-  fecha_hasta?: string
-}
-
-export interface FiltrosOrdenes {
-  fecha_desde?: string
-  fecha_hasta?: string
-  urgente?: boolean
-  estado?: string
-  paciente?: string
-  medico?: string
-}
-
-// Tipos para el estado de la aplicación
-export interface AppState {
-  user: {
-    id: number
-    nombre: string
-    rol: 'admin' | 'bioquimico' | 'tecnico'
-  } | null
-  isLoading: boolean
-  error: string | null
-}
-
-// Constantes
-export const GRUPOS_SANGUINEOS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
-export const SEXOS = ['M', 'F'] as const
-export const ESTADOS_ORDEN = ['pendiente', 'en_proceso', 'completado', 'cancelado'] as const
-
-export type GrupoSanguineo = typeof GRUPOS_SANGUINEOS[number]
-export type Sexo = typeof SEXOS[number]
-export type EstadoOrden = typeof ESTADOS_ORDEN[number]
+// Estados de la aplicación
+export type EstadoOrden = 'pendiente' | 'en_proceso' | 'completada' | 'cancelada';
+export type EstadoAnalisis = 'pendiente' | 'en_proceso' | 'finalizado';
