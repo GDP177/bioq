@@ -8,10 +8,13 @@ import {
   buscarPacientePorDNI, 
   crearNuevaSolicitud,
   getPacientesMedico,
-  getAnalisisMedico
+  getAnalisisMedico,
+  buscarPacientesPorDNIParcial 
 } from '../controllers/nuevas-funcionalidades.controller';
 
 const router = Router();
+
+router.get('/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial);
 
 // Rutas de autenticación
 router.post('/login', loginMedico);

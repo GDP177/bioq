@@ -6,6 +6,83 @@ import { pool } from '../routes/db';
 // ============================================
 // CONTROLADORES PARA NUEVA SOLICITUD
 // ============================================
+// Buscar pacientes por DNI parcial (para autocompletado)
+export const buscarPacientesPorDNIParcial = async (req: Request, res: Response) => {
+  const dniParcial = req.params.dni_parcial;
+
+  try {
+    console.log('🔍 Buscando pacientes con DNI parcial:', dniParcial);
+
+    if (!dniParcial || dniParcial.length < 2) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'DNI debe tener al menos 2 dígitos' 
+      });
+    }
+
+    // Validar que solo contenga números
+    if (!/^\d+$/.test(dniParcial)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'DNI debe contener solo números' 
+      });
+    }
+
+    const [pacientesRows]: any = await pool.query(
+      `SELECT 
+        nro_ficha,
+        nombre_paciente,
+        apellido_paciente,
+        dni,
+        fecha_nacimiento,
+        edad,
+        sexo,
+        telefono,
+        direccion,
+        email,
+        mutual,
+        nro_afiliado,
+        grupo_sanguineo
+       FROM paciente 
+       WHERE dni LIKE ? 
+       AND estado = 'activo'
+       ORDER BY dni ASC
+       LIMIT 10`, // Limitar a 10 resultados para mejor performance
+      [`${dniParcial}%`]
+    );
+
+    console.log('✅ Pacientes encontrados:', pacientesRows.length);
+
+    const pacientes = pacientesRows.map((paciente: any) => ({
+      nro_ficha: paciente.nro_ficha,
+      nombre: paciente.nombre_paciente,
+      apellido: paciente.apellido_paciente,
+      dni: paciente.dni,
+      edad: paciente.edad,
+      sexo: paciente.sexo,
+      mutual: paciente.mutual,
+      nro_afiliado: paciente.nro_afiliado,
+      telefono: paciente.telefono,
+      email: paciente.email
+    }));
+
+    return res.status(200).json({
+      success: true,
+      pacientes: pacientes,
+      total: pacientesRows.length
+    });
+
+  } catch (error) {
+    console.error('💥 ERROR al buscar pacientes por DNI parcial:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error al buscar pacientes'
+    });
+  }
+};
+
+// ---
+
 
 // Obtener análisis disponibles
 export const getAnalisisDisponibles = async (req: Request, res: Response) => {
@@ -485,4 +562,6 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
       message: 'Error al obtener análisis'
     });
   }
+
+  
 };

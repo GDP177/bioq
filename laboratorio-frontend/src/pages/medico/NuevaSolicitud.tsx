@@ -1,8 +1,14 @@
 // src/pages/medico/NuevaSolicitud.tsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+
+// Componentes UI reutilizables
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
+import { CustomCard } from "@/components/ui/CustomCard";
 
 interface Paciente {
   nro_ficha: number;
@@ -36,6 +42,61 @@ interface NuevaSolicitudData {
   instrucciones_paciente?: string;
 }
 
+// Componente de sugerencias de pacientes
+const SugerenciasPacientes = ({ 
+  pacientes, 
+  onSeleccionar, 
+  loading 
+}: {
+  pacientes: Paciente[];
+  onSeleccionar: (paciente: Paciente) => void;
+  loading: boolean;
+}) => {
+  if (loading) {
+    return (
+      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1">
+        <div className="p-3 text-center text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          Buscando...
+        </div>
+      </div>
+    );
+  }
+
+  if (pacientes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+      {pacientes.map((paciente) => (
+        <div
+          key={paciente.nro_ficha}
+          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+          onClick={() => onSeleccionar(paciente)}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="font-medium text-gray-900">
+                {paciente.nombre} {paciente.apellido}
+              </p>
+              <p className="text-sm text-gray-500">
+                DNI: {paciente.dni} • {paciente.edad} años
+              </p>
+              {paciente.mutual && (
+                <p className="text-xs text-gray-400">{paciente.mutual}</p>
+              )}
+            </div>
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+              Ficha #{paciente.nro_ficha}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export default function NuevaSolicitud() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -46,6 +107,8 @@ export default function NuevaSolicitud() {
   const [dniBusqueda, setDniBusqueda] = useState("");
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null);
   const [buscandoPaciente, setBuscandoPaciente] = useState(false);
+  const [sugerenciasPacientes, setSugerenciasPacientes] = useState<Paciente[]>([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   
   // Estado para análisis
   const [analisisDisponibles, setAnalisisDisponibles] = useState<Analisis[]>([]);
@@ -74,9 +137,24 @@ export default function NuevaSolicitud() {
     cargarAnalisisDisponibles();
   }, [navigate]);
 
+  // Debounce para la búsqueda de pacientes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (dniBusqueda.trim().length >= 2) {
+        buscarPacientesEnTiempoReal(dniBusqueda);
+      } else {
+        setSugerenciasPacientes([]);
+        setMostrarSugerencias(false);
+      }
+    }, 300); // 300ms de delay
+
+    return () => clearTimeout(timeoutId);
+  }, [dniBusqueda]);
+
   const cargarAnalisisDisponibles = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/analisis`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.get(`${apiUrl}/analisis`);
       if (response.data.success) {
         setAnalisisDisponibles(response.data.analisis);
       }
@@ -85,7 +163,42 @@ export default function NuevaSolicitud() {
     }
   };
 
-  const buscarPaciente = async () => {
+  const buscarPacientesEnTiempoReal = async (dni: string) => {
+    if (!dni.trim()) return;
+
+    setBuscandoPaciente(true);
+    setError("");
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.get(`${apiUrl}/pacientes/buscar-por-dni/${dni}`);
+      
+      if (response.data.success && response.data.pacientes) {
+        setSugerenciasPacientes(response.data.pacientes);
+        setMostrarSugerencias(true);
+      } else {
+        setSugerenciasPacientes([]);
+        setMostrarSugerencias(false);
+      }
+    } catch (error: any) {
+      console.error("Error al buscar pacientes:", error);
+      setSugerenciasPacientes([]);
+      setMostrarSugerencias(false);
+    } finally {
+      setBuscandoPaciente(false);
+    }
+  };
+
+  const seleccionarPaciente = (paciente: Paciente) => {
+    setPacienteSeleccionado(paciente);
+    setDniBusqueda(paciente.dni.toString());
+    setMostrarSugerencias(false);
+    setSugerenciasPacientes([]);
+    setStep(2);
+    setError("");
+  };
+
+  const buscarPacientePorDNICompleto = async () => {
     if (!dniBusqueda.trim()) {
       setError("Ingrese un DNI válido");
       return;
@@ -98,8 +211,7 @@ export default function NuevaSolicitud() {
       const response = await axios.get(`http://localhost:5000/api/paciente/buscar/${dniBusqueda}`);
       
       if (response.data.success && response.data.paciente) {
-        setPacienteSeleccionado(response.data.paciente);
-        setStep(2);
+        seleccionarPaciente(response.data.paciente);
       } else {
         setError("Paciente no encontrado. ¿Desea registrarlo?");
       }
@@ -111,6 +223,17 @@ export default function NuevaSolicitud() {
       }
     } finally {
       setBuscandoPaciente(false);
+    }
+  };
+
+  const handleDniChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ''); // Solo números
+    if (value.length <= 8) { // Limitar a 8 dígitos
+      setDniBusqueda(value);
+      setError("");
+      if (pacienteSeleccionado) {
+        setPacienteSeleccionado(null);
+      }
     }
   };
 
@@ -161,7 +284,6 @@ export default function NuevaSolicitud() {
       );
 
       if (response.data.success) {
-        // Redirigir al detalle de la orden creada
         navigate(`/medico/orden/${response.data.orden_id}`);
       } else {
         setError(response.data.message || "Error al crear la solicitud");
@@ -187,28 +309,36 @@ export default function NuevaSolicitud() {
   return (
     <div className="min-h-screen bg-blue-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <button
+              <Button
+                variant="ghost"
                 onClick={navigateBack}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900"
+                className="mr-4"
+                aria-label="Volver al dashboard"
               >
                 ← Volver
-              </button>
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  ➕ Nueva Solicitud de Análisis
+                  📋 Nueva Solicitud de Análisis
                 </h1>
                 <p className="text-gray-600">
                   Crear nueva orden de análisis clínicos
                 </p>
               </div>
             </div>
-            
-            {/* Indicador de pasos */}
-            <div className="flex items-center space-x-2">
+          </div>
+        </div>
+      </header>
+
+      {/* Progress Steps */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
               }`}>
@@ -232,57 +362,65 @@ export default function NuevaSolicitud() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
+            <strong>Error:</strong> {error}
           </div>
         )}
 
         {/* Step 1: Selección de Paciente */}
         {step === 1 && (
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+          <CustomCard>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
               👤 Paso 1: Seleccionar Paciente
             </h2>
             
-            <div className="max-w-md">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                DNI del Paciente
-              </label>
-              <div className="flex">
-                <input
-                  type="text"
-                  placeholder="Ingrese DNI..."
-                  value={dniBusqueda}
-                  onChange={(e) => setDniBusqueda(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyPress={(e) => e.key === 'Enter' && buscarPaciente()}
-                />
-                <button
-                  onClick={buscarPaciente}
-                  disabled={buscandoPaciente}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-r-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {buscandoPaciente ? '🔍' : 'Buscar'}
-                </button>
-              </div>
+            <div className="max-w-md relative">
+              <FormField htmlFor="dni-busqueda" label="DNI del Paciente">
+                <div className="flex">
+                  <Input
+                    id="dni-busqueda"
+                    type="text"
+                    placeholder="Ingrese DNI (ej: 12345678)"
+                    value={dniBusqueda}
+                    onChange={handleDniChange}
+                    className="flex-1 rounded-r-none"
+                    onKeyPress={(e) => e.key === 'Enter' && buscarPacientePorDNICompleto()}
+                  />
+                  <Button
+                    onClick={buscarPacientePorDNICompleto}
+                    disabled={buscandoPaciente || dniBusqueda.length < 7}
+                    className="rounded-l-none"
+                  >
+                    {buscandoPaciente ? '🔍' : 'Buscar'}
+                  </Button>
+                </div>
+              </FormField>
+              
               <p className="text-sm text-gray-500 mt-2">
-                Ingrese el DNI del paciente para buscar en el sistema
+                Ingrese el DNI del paciente para buscar en el sistema.
+                {dniBusqueda.length >= 2 && " Se mostrarán sugerencias automáticamente."}
               </p>
+
+              {/* Sugerencias de pacientes */}
+              {mostrarSugerencias && (
+                <SugerenciasPacientes
+                  pacientes={sugerenciasPacientes}
+                  onSeleccionar={seleccionarPaciente}
+                  loading={buscandoPaciente}
+                />
+              )}
             </div>
-          </div>
+          </CustomCard>
         )}
 
         {/* Step 2: Selección de Análisis */}
         {step === 2 && pacienteSeleccionado && (
           <div className="space-y-6">
             {/* Información del paciente seleccionado */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Paciente Seleccionado
-              </h3>
+            <CustomCard title="Paciente Seleccionado">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Nombre</p>
@@ -301,33 +439,38 @@ export default function NuevaSolicitud() {
                   <p className="font-medium">{pacienteSeleccionado.mutual}</p>
                 </div>
               </div>
-            </div>
+              <div className="mt-4 flex space-x-3">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => setStep(1)}
+                >
+                  Cambiar Paciente
+                </Button>
+                <Button 
+                  onClick={() => setStep(3)}
+                  disabled={analisisSeleccionados.length === 0}
+                >
+                  Continuar ({analisisSeleccionados.length} análisis)
+                </Button>
+              </div>
+            </CustomCard>
 
             {/* Selección de análisis */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                🧪 Paso 2: Seleccionar Análisis
-              </h3>
-              
+            <CustomCard title="🧪 Paso 2: Seleccionar Análisis">
               {/* Filtros */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Buscar análisis
-                  </label>
-                  <input
+                <FormField htmlFor="filtro-analisis" label="Buscar análisis">
+                  <Input
+                    id="filtro-analisis"
                     type="text"
                     placeholder="Buscar por nombre o código..."
                     value={filtroAnalisis}
                     onChange={(e) => setFiltroAnalisis(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoría
-                  </label>
+                </FormField>
+                <FormField htmlFor="categoria-filtro" label="Categoría">
                   <select
+                    id="categoria-filtro"
                     value={categoriaFiltro}
                     onChange={(e) => setCategoriaFiltro(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -337,7 +480,7 @@ export default function NuevaSolicitud() {
                       <option key={categoria} value={categoria}>{categoria}</option>
                     ))}
                   </select>
-                </div>
+                </FormField>
               </div>
 
               {/* Lista de análisis */}
@@ -358,15 +501,13 @@ export default function NuevaSolicitud() {
                               {analisis.descripcion}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {analisis.tipo} • Código: {analisis.codigo}
+                              Código: {analisis.codigo} • {analisis.tipo}
                             </p>
                           </div>
                           {analisis.honorarios && (
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-gray-900">
-                                ${analisis.honorarios.toFixed(2)}
-                              </p>
-                            </div>
+                            <span className="text-sm font-medium text-green-600">
+                              ${analisis.honorarios}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -375,110 +516,50 @@ export default function NuevaSolicitud() {
                 ))}
               </div>
 
+              {analisisFiltrados.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No se encontraron análisis con los criterios de búsqueda</p>
+                </div>
+              )}
+
               {/* Resumen de selección */}
               {analisisSeleccionados.length > 0 && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium text-blue-900">
                         {analisisSeleccionados.length} análisis seleccionados
                       </p>
                       <p className="text-sm text-blue-700">
-                        Costo estimado: ${calcularCostoTotal().toFixed(2)}
+                        Costo total estimado: ${calcularCostoTotal().toFixed(2)}
                       </p>
                     </div>
-                    <button
+                    <Button
                       onClick={() => setStep(3)}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
                     >
-                      Continuar →
-                    </button>
+                      Continuar
+                    </Button>
                   </div>
                 </div>
               )}
-            </div>
+            </CustomCard>
           </div>
         )}
 
-        {/* Step 3: Detalles finales */}
+        {/* Step 3: Detalles de la Orden */}
         {step === 3 && (
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              📝 Paso 3: Detalles de la Solicitud
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Opciones */}
-              <div className="space-y-6">
-                <div className="flex items-center">
-                  <input
-                    id="urgente"
-                    type="checkbox"
-                    checked={urgente}
-                    onChange={(e) => setUrgente(e.target.checked)}
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="urgente" className="ml-2 text-sm font-medium text-gray-700">
-                    🚨 Marcar como URGENTE
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    id="ayuno"
-                    type="checkbox"
-                    checked={requiereAyuno}
-                    onChange={(e) => setRequiereAyuno(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="ayuno" className="ml-2 text-sm font-medium text-gray-700">
-                    ⏰ Requiere ayuno
-                  </label>
-                </div>
-
+          <div className="space-y-6">
+            {/* Resumen */}
+            <CustomCard title="📋 Paso 3: Confirmar Solicitud">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Observaciones médicas
-                  </label>
-                  <textarea
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Información clínica relevante, antecedentes, etc."
-                  />
+                  <h4 className="font-medium text-gray-900 mb-3">Paciente</h4>
+                  <p>{pacienteSeleccionado?.nombre} {pacienteSeleccionado?.apellido}</p>
+                  <p className="text-sm text-gray-500">DNI: {pacienteSeleccionado?.dni}</p>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instrucciones para el paciente
-                  </label>
-                  <textarea
-                    value={instruccionesPaciente}
-                    onChange={(e) => setInstruccionesPaciente(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Preparación previa, horarios recomendados, etc."
-                  />
-                </div>
-              </div>
-
-              {/* Resumen */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Resumen de la Solicitud</h3>
-                
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Paciente:</h4>
-                  <p className="text-sm text-gray-600">
-                    {pacienteSeleccionado?.nombre} {pacienteSeleccionado?.apellido} - DNI: {pacienteSeleccionado?.dni}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">
-                    Análisis ({analisisSeleccionados.length}):
-                  </h4>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                  <h4 className="font-medium text-gray-900 mb-3">Análisis ({analisisSeleccionados.length})</h4>
+                  <div className="max-h-32 overflow-y-auto">
                     {analisisSeleccionados.map(codigo => {
                       const analisis = analisisDisponibles.find(a => a.codigo === codigo);
                       return (
@@ -489,36 +570,89 @@ export default function NuevaSolicitud() {
                     })}
                   </div>
                 </div>
+              </div>
+            </CustomCard>
 
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-900">Costo total estimado:</span>
-                    <span className="text-lg font-bold text-blue-600">
-                      ${calcularCostoTotal().toFixed(2)}
-                    </span>
-                  </div>
+            {/* Opciones adicionales */}
+            <CustomCard title="Opciones Adicionales">
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="urgente"
+                    checked={urgente}
+                    onChange={(e) => setUrgente(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="urgente" className="ml-2 text-sm text-gray-700">
+                    Marcar como urgente
+                  </label>
                 </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="ayuno"
+                    checked={requiereAyuno}
+                    onChange={(e) => setRequiereAyuno(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="ayuno" className="ml-2 text-sm text-gray-700">
+                    Requiere ayuno
+                  </label>
+                </div>
+              </div>
 
-                <div className="flex space-x-4 pt-4">
-                  <button
-                    onClick={() => setStep(2)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-400"
-                  >
-                    ← Volver
-                  </button>
-                  <button
-                    onClick={crearSolicitud}
-                    disabled={loading}
-                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Creando...' : '✓ Crear Solicitud'}
-                  </button>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <FormField htmlFor="observaciones" label="Observaciones">
+                  <textarea
+                    id="observaciones"
+                    rows={3}
+                    placeholder="Observaciones médicas..."
+                    value={observaciones}
+                    onChange={(e) => setObservaciones(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </FormField>
+                <FormField htmlFor="instrucciones" label="Instrucciones para el paciente">
+                  <textarea
+                    id="instrucciones"
+                    rows={3}
+                    placeholder="Instrucciones especiales..."
+                    value={instruccionesPaciente}
+                    onChange={(e) => setInstruccionesPaciente(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </FormField>
+              </div>
+            </CustomCard>
+
+            {/* Botones de acción */}
+            <div className="flex justify-between">
+              <Button
+                variant="secondary"
+                onClick={() => setStep(2)}
+              >
+                ← Volver
+              </Button>
+              <div className="space-x-3">
+                <Button
+                  variant="secondary"
+                  onClick={navigateBack}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={crearSolicitud}
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {loading ? 'Creando...' : 'Crear Solicitud'}
+                </Button>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
