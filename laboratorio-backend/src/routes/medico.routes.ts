@@ -1,44 +1,89 @@
-// src/routes/medico.routes.ts - RUTAS ACTUALIZADAS COMPLETAS
+// src/routes/medico.routes.ts - RUTAS COMPLETAS Y CORREGIDAS
 
 import { Router } from 'express';
 import { loginMedico, getDashboardMedico } from '../controllers/medico.controller';
-import { getOrdenesMedico, getOrdenDetalle } from '../controllers/orden.controller';
+import { getOrdenesMedico, getOrdenDetalle, crearNuevaOrden } from '../controllers/orden.controller';
+import { getAnalisisMedico, getTiposAnalisis, getAnalisisDisponibles } from '../controllers/analisis.controller';
 import { 
-  getAnalisisDisponibles, 
   buscarPacientePorDNI, 
-  crearNuevaSolicitud,
-  getPacientesMedico,
-  getAnalisisMedico,
-  buscarPacientesPorDNIParcial 
+  buscarPacientesPorDNIParcial,
+  buscarObrasSociales,
+  registrarNuevoPaciente
 } from '../controllers/nuevas-funcionalidades.controller';
+import { 
+  buscarPacientePorFicha,
+  actualizarPaciente
+} from '../controllers/paciente.controller';
 
 const router = Router();
 
-router.get('/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial);
+console.log('🔄 Cargando rutas de médico...');
 
-// Rutas de autenticación
+// ============================================
+// RUTAS DE AUTENTICACIÓN
+// ============================================
 router.post('/login', loginMedico);
 
-// Rutas del dashboard
+// ============================================
+// RUTAS DEL DASHBOARD
+// ============================================
 router.get('/dashboard/:id_medico', getDashboardMedico);
 
-// Rutas de órdenes
+// ============================================
+// RUTAS DE ÓRDENES
+// ============================================
 router.get('/:id_medico/ordenes', getOrdenesMedico);
 router.get('/:id_medico/orden/:id_orden', getOrdenDetalle);
+router.post('/:id_medico/nueva-orden', crearNuevaOrden);
 
-// Rutas para nueva solicitud
-router.post('/:id_medico/nueva-solicitud', crearNuevaSolicitud);
-
-// Rutas para gestión de pacientes
-router.get('/:id_medico/pacientes', getPacientesMedico);
-
-// Rutas para gestión de análisis
+// ============================================
+// RUTAS DE ANÁLISIS
+// ============================================
 router.get('/:id_medico/analisis', getAnalisisMedico);
+router.get('/tipos-analisis', getTiposAnalisis);
+router.get('/analisis-disponibles', getAnalisisDisponibles);
 
-// Rutas auxiliares
-router.get('/analisis', getAnalisisDisponibles); // Para obtener análisis disponibles
-router.get('/paciente/buscar/:dni', buscarPacientePorDNI); // Para buscar paciente por DNI
+// ============================================
+// RUTAS DE PACIENTES
+// ============================================
+// Búsqueda de pacientes
+router.get('/paciente/buscar-dni/:dni', buscarPacientePorDNI);
+router.get('/paciente/buscar-ficha/:nro_ficha', buscarPacientePorFicha);
+router.get('/paciente/buscar-dni-parcial/:dni_parcial', buscarPacientesPorDNIParcial);
+
+// Gestión de pacientes
+router.post('/paciente/registrar', registrarNuevoPaciente);
+router.put('/paciente/actualizar/:nro_ficha', actualizarPaciente);
+
+// ============================================
+// RUTAS AUXILIARES
+// ============================================
+router.get('/obras-sociales/buscar/:texto', buscarObrasSociales);
+
+// ============================================
+// MIDDLEWARE DE LOGGING
+// ============================================
+router.use((req, res, next) => {
+  console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  console.log('──────────────────────────────');
+  next();
+});
 
 console.log('✅ Rutas de médico cargadas correctamente');
+console.log('📋 Rutas disponibles:');
+console.log('   - POST /medico/login');
+console.log('   - GET /medico/dashboard/:id_medico');
+console.log('   - GET /medico/:id_medico/ordenes');
+console.log('   - GET /medico/:id_medico/orden/:id_orden');
+console.log('   - POST /medico/:id_medico/nueva-orden');
+console.log('   - GET /medico/:id_medico/analisis');
+console.log('   - GET /medico/tipos-analisis');
+console.log('   - GET /medico/analisis-disponibles');
+console.log('   - GET /medico/paciente/buscar-dni/:dni');
+console.log('   - GET /medico/paciente/buscar-ficha/:nro_ficha');
+console.log('   - GET /medico/paciente/buscar-dni-parcial/:dni_parcial');
+console.log('   - POST /medico/paciente/registrar');
+console.log('   - PUT /medico/paciente/actualizar/:nro_ficha');
+console.log('   - GET /medico/obras-sociales/buscar/:texto');
 
 export default router;
