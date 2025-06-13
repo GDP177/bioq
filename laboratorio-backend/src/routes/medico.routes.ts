@@ -1,7 +1,7 @@
 // src/routes/medico.routes.ts - RUTAS COMPLETAS Y CORREGIDAS
 
 import { Router } from 'express';
-import { loginMedico, getDashboardMedico } from '../controllers/medico.controller';
+import { loginMedico, getDashboardMedico, completarPerfilMedico } from '../controllers/medico.controller';
 import { getOrdenesMedico, getOrdenDetalle, crearNuevaOrden } from '../controllers/orden.controller';
 import { getAnalisisMedico, getTiposAnalisis, getAnalisisDisponibles } from '../controllers/analisis.controller';
 import { 
@@ -23,6 +23,7 @@ console.log('🔄 Cargando rutas de médico...');
 // RUTAS DE AUTENTICACIÓN
 // ============================================
 router.post('/login', loginMedico);
+router.post('/completar-perfil', completarPerfilMedico);
 
 // ============================================
 // RUTAS DEL DASHBOARD

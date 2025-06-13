@@ -9,6 +9,7 @@ import NuevaSolicitud from './pages/medico/NuevaSolicitud'
 import GestionPacientes from './pages/medico/GestionPacientes'
 import GestionAnalisis from './pages/medico/GestionAnalisis'
 import RegisterForm from './pages/login/RegisterForm'
+import CompletarPerfilMedico from './pages/medico/CompletarPerfilMedico';
 
 // Páginas de pacientes
 import NuevoPaciente from './pages/pacientes/NuevoPaciente'

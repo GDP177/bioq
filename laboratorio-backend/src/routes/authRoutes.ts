@@ -88,12 +88,12 @@ router.post("/login", async (req, res) => {
     res.status(200).json({
       message: "Login exitoso",
       usuario: {
-        id: user.id,
+        id: user.id_usuario,  // ← CORRECCIÓN
         username: user.username,
         email: user.email,
         rol: user.rol,
       },
-    });
+});
   } catch (error) {
     console.error("Error en login:", error);
     res.status(500).json({ message: "Error interno del servidor" });

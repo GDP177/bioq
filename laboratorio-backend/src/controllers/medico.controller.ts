@@ -47,20 +47,38 @@ export const loginMedico = async (req: Request, res: Response) => {
       });
     }
 
-    const medicoData = {
-      id: usuario.id_medico || usuario.id_usuario,
-      id_usuario: usuario.id_usuario,
-      nombre: usuario.nombre_medico || usuario.username,
-      apellido: usuario.apellido_medico || '',
-      email: usuario.email,
-      rol: usuario.rol
-    };
+   // VERIFICAR SI TIENE PERFIL COMPLETO
+    if (!usuario.id_medico) {
+      // NO tiene perfil completo - primera vez
+      return res.status(200).json({
+        success: true,
+        message: 'Login exitoso - Perfil incompleto',
+        requiere_completar_perfil: true,
+        usuario: {
+          id_usuario: usuario.id_usuario,
+          email: usuario.email,
+          username: usuario.username,
+          rol: usuario.rol
+        }
+      });
+    } else {
+      // SÍ tiene perfil completo - acceso normal
+      const medicoData = {
+        id: usuario.id_medico,
+        id_usuario: usuario.id_usuario,
+        nombre: usuario.nombre_medico,
+        apellido: usuario.apellido_medico,
+        email: usuario.email,
+        rol: usuario.rol
+      };
 
-    return res.status(200).json({
-      success: true,
-      message: 'Login exitoso',
-      medico: medicoData
-    });
+      return res.status(200).json({
+        success: true,
+        message: 'Login exitoso',
+        requiere_completar_perfil: false,
+        medico: medicoData
+      });
+    }
 
   } catch (error) {
     console.error('💥 ERROR EN LOGIN:', error);
@@ -344,6 +362,159 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
       success: false,
       message: "Error al obtener dashboard",
       error: process.env.NODE_ENV === 'development' ? error?.toString() : undefined
+    });
+  }
+};
+
+// COMPLETAR PERFIL MÉDICO - FUNCIÓN NUEVA
+export const completarPerfilMedico = async (req: Request, res: Response) => {
+  const { 
+    id_usuario,
+    nombre_medico,
+    apellido_medico,
+    dni_medico,
+    matricula_medica,
+    especialidad,
+    telefono,
+    direccion 
+  } = req.body;
+
+  try {
+    console.log('📝 COMPLETANDO PERFIL MÉDICO para usuario ID:', id_usuario);
+
+    // Validaciones básicas
+    if (!id_usuario || !nombre_medico || !apellido_medico || !dni_medico || !matricula_medica) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan datos obligatorios: nombre, apellido, DNI y matrícula son requeridos'
+      });
+    }
+
+    // Verificar que el usuario existe y es médico
+    const [userRows]: any = await pool.query(
+      'SELECT id_usuario, rol FROM usuarios WHERE id_usuario = ? AND rol = "medico" AND activo = 1',
+      [id_usuario]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado o no es médico'
+      });
+    }
+
+    // Verificar que no existe ya un perfil
+    const [existingRows]: any = await pool.query(
+      'SELECT id_medico FROM medico WHERE id_usuario = ?',
+      [id_usuario]
+    );
+
+    if (existingRows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'El perfil médico ya existe para este usuario'
+      });
+    }
+
+    // Verificar que DNI y matrícula no estén duplicados
+    const [duplicateRows]: any = await pool.query(
+      'SELECT id_medico FROM medico WHERE dni_medico = ? OR matricula_medica = ?',
+      [dni_medico, matricula_medica]
+    );
+
+    if (duplicateRows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'DNI o matrícula ya registrados'
+      });
+    }
+
+    // Insertar perfil médico
+    const [result]: any = await pool.query(
+      `INSERT INTO medico (
+        id_usuario,
+        nombre_medico,
+        apellido_medico,
+        dni_medico,
+        matricula_medica,
+        especialidad,
+        telefono,
+        direccion,
+        email,
+        activo,
+        fecha_creacion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 
+        (SELECT email FROM usuarios WHERE id_usuario = ?), 
+        1, NOW())`,
+      [
+        id_usuario,
+        nombre_medico,
+        apellido_medico,
+        dni_medico,
+        matricula_medica,
+        especialidad || null,
+        telefono || null,
+        direccion || null,
+        id_usuario
+      ]
+    );
+
+    const id_medico = result.insertId;
+    console.log('✅ Perfil médico creado con ID:', id_medico);
+
+    // Obtener perfil completo para la respuesta
+    const [newMedicoRows]: any = await pool.query(
+      `SELECT 
+        m.id_medico,
+        m.nombre_medico,
+        m.apellido_medico,
+        m.dni_medico,
+        m.matricula_medica,
+        m.especialidad,
+        m.telefono,
+        m.direccion,
+        m.email,
+        u.username,
+        u.rol
+       FROM medico m
+       JOIN usuarios u ON m.id_usuario = u.id_usuario
+       WHERE m.id_medico = ?`,
+      [id_medico]
+    );
+
+    const medico = newMedicoRows[0];
+
+    return res.status(201).json({
+      success: true,
+      message: 'Perfil médico completado exitosamente',
+      medico: {
+        id: medico.id_medico,
+        id_usuario: id_usuario,
+        nombre: medico.nombre_medico,
+        apellido: medico.apellido_medico,
+        email: medico.email,
+        dni: medico.dni_medico,
+        matricula: medico.matricula_medica,
+        especialidad: medico.especialidad,
+        telefono: medico.telefono,
+        direccion: medico.direccion,
+        rol: medico.rol
+      }
+    });
+
+  } catch (error: any) {
+    console.error('💥 ERROR AL COMPLETAR PERFIL:', error);
+    
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        message: 'DNI o matrícula ya registrados'
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
     });
   }
 };

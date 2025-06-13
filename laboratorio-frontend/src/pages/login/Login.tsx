@@ -3,17 +3,25 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import CompletarPerfilMedico from '../medico/CompletarPerfilMedico'; // ← AGREGAR ESTA LÍNEA
 
 import fondo from "../../assets/inicio-fondo.jpg";
 import logoBQ from "../../assets/logo-BQ.jpg";
 
 interface LoginResponse {
   success: boolean;
+  requiere_completar_perfil?: boolean; 
   medico: {
     rol: string;
     id: number;
     nombre: string;
     email: string;
+  };
+  usuario?: { 
+    id_usuario: number;
+    email: string;
+    username: string;
+    rol: string;
   };
 }
 
@@ -22,6 +30,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showCompletarPerfil, setShowCompletarPerfil] = useState(false);
+  const [usuarioIncompleto, setUsuarioIncompleto] = useState<any>(null);
+
 
   const navigate = useNavigate();
 
@@ -45,6 +56,13 @@ export default function Login() {
       console.log("📦 Data del servidor:", response.data);
 
       if (response.status === 200 && response.data.success) {
+         if (response.data.requiere_completar_perfil) {
+          console.log('👤 Usuario requiere completar perfil');
+          setUsuarioIncompleto(response.data.usuario);
+          setShowCompletarPerfil(true);
+          setIsLoading(false);
+          return;
+        }
         const { medico } = response.data;
 
         if (!medico) {
@@ -104,6 +122,9 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+   if (showCompletarPerfil && usuarioIncompleto) {
+    return <CompletarPerfilMedico usuario={usuarioIncompleto} />;
+  }
 
   return (
     <div
