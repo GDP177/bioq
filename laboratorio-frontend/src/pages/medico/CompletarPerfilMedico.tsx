@@ -1,6 +1,6 @@
 // laboratorio-frontend/src/pages/medico/CompletarPerfilMedico.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface PerfilData {
@@ -13,17 +13,10 @@ interface PerfilData {
   direccion: string;
 }
 
-interface Props {
-  usuario: {
-    id_usuario: number;
-    email: string;
-    username: string;
-    rol: string;
-  };
-}
-
-const CompletarPerfilMedico: React.FC<Props> = ({ usuario }) => {
+const CompletarPerfilMedico: React.FC = () => {
   const navigate = useNavigate();
+  const [usuario, setUsuario] = useState<any>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [formData, setFormData] = useState<PerfilData>({
     nombre_medico: '',
     apellido_medico: '',
@@ -38,6 +31,29 @@ const CompletarPerfilMedico: React.FC<Props> = ({ usuario }) => {
   const [message, setMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Partial<PerfilData>>({});
+
+  // Obtener usuario del localStorage al cargar el componente
+  useEffect(() => {
+    const usuarioData = localStorage.getItem('usuario');
+    if (usuarioData) {
+      try {
+        const parsedUser = JSON.parse(usuarioData);
+        if (parsedUser.rol === 'medico') {
+          setUsuario(parsedUser);
+        } else {
+          console.error('❌ Usuario no es médico:', parsedUser.rol);
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('❌ Error al parsear usuario:', error);
+        navigate('/login');
+      }
+    } else {
+      console.error('❌ No hay usuario en localStorage');
+      navigate('/login');
+    }
+    setIsLoadingUser(false);
+  }, [navigate]);
 
   const especialidades = [
     'Medicina General',
@@ -143,11 +159,14 @@ const CompletarPerfilMedico: React.FC<Props> = ({ usuario }) => {
         setIsSuccess(true);
         
         // Guardar datos del médico en localStorage
-        localStorage.setItem('usuario', JSON.stringify(data.medico));
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
         
-        // Redirigir al dashboard después de 2 segundos
+        console.log('✅ Perfil médico completado, redirigiendo al dashboard...');
+        
+        // Redirigir al dashboard médico después de 2 segundos
         setTimeout(() => {
-          navigate(`/medico/dashboard`);
+          // Navegar al dashboard médico
+          navigate('/medico/dashboard');
         }, 2000);
       } else {
         throw new Error(data.message || 'Error desconocido');
@@ -161,6 +180,23 @@ const CompletarPerfilMedico: React.FC<Props> = ({ usuario }) => {
       setIsLoading(false);
     }
   };
+
+  // Mostrar loading mientras carga el usuario
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay usuario válido, no renderizar nada (ya se redirigió)
+  if (!usuario) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -187,7 +223,7 @@ const CompletarPerfilMedico: React.FC<Props> = ({ usuario }) => {
               {message}
               {isSuccess && (
                 <div className="mt-2 text-sm text-green-600">
-                  Redirigiendo al dashboard...
+                  Redirigiendo al dashboard médico...
                 </div>
               )}
             </div>

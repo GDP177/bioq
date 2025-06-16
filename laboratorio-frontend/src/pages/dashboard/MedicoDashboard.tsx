@@ -1,4 +1,4 @@
-// src/pages/dashboard/MedicoDashboard.tsx - CON NAVEGACIÓN
+// src/pages/dashboard/MedicoDashboard.tsx - CON NAVEGACIÓN Y VALIDACIONES MEJORADAS
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -159,27 +159,92 @@ export default function MedicoDashboard() {
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      return new Date(fecha).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.warn("Error al formatear fecha:", fecha);
+      return 'Fecha inválida';
+    }
   };
 
-  const getEstadoBadge = (estado: string, urgente: boolean = false) => {
+  // FUNCIÓN MEJORADA PARA OBTENER BADGES CON VALIDACIONES
+  const getEstadoBadge = (estado: string | null | undefined, urgente: boolean = false) => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
     const urgenteClass = urgente ? "ring-2 ring-red-400" : "";
     
-    switch (estado) {
+    // Validar y normalizar el estado
+    const estadoNormalizado = (estado || 'desconocido').toLowerCase().trim();
+    
+    switch (estadoNormalizado) {
       case 'pendiente':
         return `${baseClasses} bg-yellow-100 text-yellow-800 ${urgenteClass}`;
       case 'en_proceso':
+      case 'procesando':
+      case 'proceso':
         return `${baseClasses} bg-blue-100 text-blue-800 ${urgenteClass}`;
       case 'completado':
+      case 'finalizado':
+      case 'listo':
         return `${baseClasses} bg-green-100 text-green-800 ${urgenteClass}`;
+      case 'entregado':
+        return `${baseClasses} bg-purple-100 text-purple-800 ${urgenteClass}`;
+      case 'cancelado':
+        return `${baseClasses} bg-red-100 text-red-800 ${urgenteClass}`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800 ${urgenteClass}`;
     }
+  };
+
+  // FUNCIÓN MEJORADA PARA MOSTRAR TEXTO DEL ESTADO CON VALIDACIONES
+  const getEstadoTexto = (estado: string | null | undefined, urgente: boolean = false) => {
+    const estadoNormalizado = (estado || 'desconocido').toLowerCase().trim();
+    const urgentePrefix = urgente ? '🚨 ' : '';
+    
+    switch (estadoNormalizado) {
+      case 'pendiente':
+        return `${urgentePrefix}PENDIENTE`;
+      case 'en_proceso':
+      case 'procesando':
+      case 'proceso':
+        return `${urgentePrefix}EN PROCESO`;
+      case 'completado':
+      case 'finalizado':
+      case 'listo':
+        return `${urgentePrefix}COMPLETADO`;
+      case 'entregado':
+        return `${urgentePrefix}ENTREGADO`;
+      case 'cancelado':
+        return `${urgentePrefix}CANCELADO`;
+      default:
+        return `${urgentePrefix}ESTADO DESCONOCIDO`;
+    }
+  };
+
+  // FUNCIÓN PARA VALIDAR Y OBTENER DATOS SEGUROS DE ÓRDENES
+  const getSafeOrdenData = (orden: any): OrdenReciente => {
+    return {
+      id: orden?.id || 0,
+      nro_orden: orden?.nro_orden || `Orden #${orden?.id || 'N/A'}`,
+      fecha_ingreso: orden?.fecha_ingreso || new Date().toISOString(),
+      estado: orden?.estado || 'pendiente',
+      urgente: Boolean(orden?.urgente),
+      paciente: {
+        nombre: orden?.paciente?.nombre || 'Nombre',
+        apellido: orden?.paciente?.apellido || 'Desconocido',
+        dni: orden?.paciente?.dni || 0,
+        mutual: orden?.paciente?.mutual || 'Sin mutual',
+        edad: orden?.paciente?.edad || 0
+      },
+      progreso: {
+        total_analisis: orden?.progreso?.total_analisis || 0,
+        analisis_listos: orden?.progreso?.analisis_listos || 0,
+        porcentaje: orden?.progreso?.porcentaje || 0
+      }
+    };
   };
 
   if (loading) {
@@ -274,7 +339,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Órdenes</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.estadisticas.total_ordenes}
+                  {dashboardData.estadisticas.total_ordenes || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para ver todas</p>
               </div>
@@ -292,7 +357,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Pendientes</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {dashboardData.estadisticas.ordenes_pendientes}
+                  {dashboardData.estadisticas.ordenes_pendientes || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para ver detalles</p>
               </div>
@@ -310,7 +375,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Completadas</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {dashboardData.estadisticas.ordenes_completadas}
+                  {dashboardData.estadisticas.ordenes_completadas || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para ver detalles</p>
               </div>
@@ -328,7 +393,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Urgentes</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {dashboardData.estadisticas.ordenes_urgentes}
+                  {dashboardData.estadisticas.ordenes_urgentes || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para ver urgentes</p>
               </div>
@@ -349,7 +414,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Análisis</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.estadisticas.total_analisis}
+                  {dashboardData.estadisticas.total_analisis || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para gestionar</p>
               </div>
@@ -367,7 +432,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Análisis Listos</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {dashboardData.estadisticas.analisis_listos}
+                  {dashboardData.estadisticas.analisis_listos || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para revisar</p>
               </div>
@@ -385,7 +450,7 @@ export default function MedicoDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Pacientes</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {dashboardData.estadisticas.total_pacientes}
+                  {dashboardData.estadisticas.total_pacientes || 0}
                 </p>
                 <p className="text-xs text-blue-600">Click para gestionar</p>
               </div>
@@ -396,7 +461,7 @@ export default function MedicoDashboard() {
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
-          {/* Órdenes Recientes - CLICKEABLES */}
+          {/* Órdenes Recientes - CLICKEABLES CON VALIDACIONES MEJORADAS */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -410,72 +475,83 @@ export default function MedicoDashboard() {
               </button>
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {dashboardData.ordenes_recientes.length > 0 ? (
-                dashboardData.ordenes_recientes.map((orden) => (
-                  <div 
-                    key={orden.id} 
-                    onClick={() => navigateToOrdenDetalle(orden.id)}
-                    className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400 cursor-pointer hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {orden.nro_orden || `Orden #${orden.id}`}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {orden.paciente.nombre} {orden.paciente.apellido}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {orden.paciente.mutual} • DNI: {orden.paciente.dni}
-                        </p>
+              {dashboardData.ordenes_recientes && dashboardData.ordenes_recientes.length > 0 ? (
+                dashboardData.ordenes_recientes.map((ordenRaw) => {
+                  // Usar la función de validación para obtener datos seguros
+                  const orden = getSafeOrdenData(ordenRaw);
+                  
+                  return (
+                    <div 
+                      key={orden.id} 
+                      onClick={() => navigateToOrdenDetalle(orden.id)}
+                      className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400 cursor-pointer hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {orden.nro_orden}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {orden.paciente.nombre} {orden.paciente.apellido}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {orden.paciente.mutual} • DNI: {orden.paciente.dni || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={getEstadoBadge(orden.estado, orden.urgente)}>
+                            {getEstadoTexto(orden.estado, orden.urgente)}
+                          </span>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatFecha(orden.fecha_ingreso)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={getEstadoBadge(orden.estado, orden.urgente)}>
-                          {orden.urgente && '🚨 '}{orden.estado.toUpperCase()}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatFecha(orden.fecha_ingreso)}
-                        </p>
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-600">
+                          Progreso: {orden.progreso.analisis_listos}/{orden.progreso.total_analisis} análisis
+                        </div>
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{ width: `${Math.min(100, Math.max(0, orden.progreso.porcentaje))}%` }}
+                          ></div>
+                        </div>
                       </div>
+                      <p className="text-xs text-blue-600 mt-1">Click para ver detalles</p>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-gray-600">
-                        Progreso: {orden.progreso.analisis_listos}/{orden.progreso.total_analisis} análisis
-                      </div>
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
-                          style={{ width: `${orden.progreso.porcentaje}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-1">Click para ver detalles</p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-gray-500 text-center py-4">No hay órdenes recientes</p>
               )}
             </div>
           </div>
 
-          {/* Notificaciones */}
+          {/* Notificaciones CON VALIDACIONES */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               🔔 Notificaciones
             </h3>
             <div className="space-y-3">
-              {dashboardData.notificaciones.map((notificacion, index) => (
-                <div key={index} className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                  <p className="text-sm text-gray-700">{notificacion}</p>
+              {dashboardData.notificaciones && dashboardData.notificaciones.length > 0 ? (
+                dashboardData.notificaciones.map((notificacion, index) => (
+                  <div key={index} className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                    <p className="text-sm text-gray-700">{notificacion || 'Notificación sin contenido'}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-gray-400">
+                  <p className="text-sm text-gray-500">No hay notificaciones nuevas</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
 
-        {/* Timestamp */}
+        {/* Timestamp CON VALIDACIÓN */}
         <div className="mt-8 text-center text-xs text-gray-500">
-          Última actualización: {formatFecha(dashboardData.timestamp)}
+          Última actualización: {dashboardData.timestamp ? formatFecha(dashboardData.timestamp) : 'Fecha no disponible'}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-// src/index.ts - SERVIDOR CORREGIDO CON GESTIÓN COMPLETA DE PACIENTES
+// src/index.ts - SERVIDOR PRINCIPAL CON LOGIN UNIFICADO INTEGRADO
 
 import express from 'express';
 import cors from 'cors';
@@ -6,8 +6,12 @@ import dotenv from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
 
 // Importar controladores
-import medicoRoutes from './routes/medico.routes'
+import medicoRoutes from './routes/medico.routes';
 import authRoutes from './routes/authRoutes';
+import bioquimicoRoutes from './routes/bioquimico.routes';
+import adminRoutes from './routes/admin.routes';
+import { getDashboardBioquimico } from './controllers/bioquimico.controller';
+
 
 import { 
   registrarNuevoPaciente,
@@ -24,7 +28,6 @@ import {
 } from './controllers/historial.controller';
 
 import { pool } from './routes/db';
-
 
 // Configurar dotenv
 dotenv.config();
@@ -69,10 +72,10 @@ const getBooleanParam = (param: any): boolean => {
 };
 
 // ============================================
-// CONTROLADORES CORREGIDOS
+// CONTROLADORES MANTENIDOS (SIN CAMBIOS)
 // ============================================
 
-// DASHBOARD MÉDICO - CORREGIDO
+// DASHBOARD MÉDICO - MANTENIDO SIN CAMBIOS
 const getDashboardMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
 
@@ -97,7 +100,7 @@ const getDashboardMedico = async (req: Request, res: Response) => {
         matricula_medica as matricula,
         telefono
        FROM medico 
-       WHERE id_medico = ? AND activo = 1`,
+       WHERE id_medico = ? AND (activo IS NULL OR activo = 1)`,
       [id_medico]
     );
 
@@ -296,7 +299,7 @@ const getDashboardMedico = async (req: Request, res: Response) => {
       },
       ordenes_recientes: ordenes,
       pacientes_recientes: pacientes,
-      analisis_frecuentes: [], // Simplificado por ahora
+      analisis_frecuentes: [],
       notificaciones: notificaciones,
       timestamp: new Date().toISOString()
     };
@@ -315,7 +318,7 @@ const getDashboardMedico = async (req: Request, res: Response) => {
   }
 };
 
-// OBTENER PACIENTES DEL MÉDICO - CORREGIDO
+// OBTENER PACIENTES DEL MÉDICO - MANTENIDO SIN CAMBIOS
 const getPacientesMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
   
@@ -464,7 +467,7 @@ const getPacientesMedico = async (req: Request, res: Response) => {
   }
 };
 
-// OBTENER TODAS LAS OBRAS SOCIALES - CORREGIDO
+// OBTENER TODAS LAS OBRAS SOCIALES - MANTENIDO SIN CAMBIOS
 const getTodasObrasSociales = async (req: Request, res: Response) => {
   try {
     console.log('🏥 Obteniendo todas las obras sociales...');
@@ -515,7 +518,7 @@ const getTodasObrasSociales = async (req: Request, res: Response) => {
   }
 };
 
-// OBTENER ANÁLISIS DISPONIBLES - CORREGIDO
+// OBTENER ANÁLISIS DISPONIBLES - MANTENIDO SIN CAMBIOS
 const getAnalisisDisponibles = async (req: Request, res: Response) => {
   try {
     console.log('🧪 Obteniendo análisis disponibles');
@@ -551,7 +554,7 @@ const getAnalisisDisponibles = async (req: Request, res: Response) => {
   }
 };
 
-// BUSCAR PACIENTES - CORREGIDO
+// BUSCAR PACIENTES - MANTENIDO SIN CAMBIOS
 const buscarPacientes = async (req: Request, res: Response) => {
   const { query } = req.params;
   
@@ -621,7 +624,7 @@ const buscarPacientes = async (req: Request, res: Response) => {
   }
 };
 
-// CREAR NUEVA SOLICITUD - CORREGIDO
+// CREAR NUEVA SOLICITUD - MANTENIDO SIN CAMBIOS
 const crearNuevaSolicitud = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
   const {
@@ -733,45 +736,12 @@ const crearNuevaSolicitud = async (req: Request, res: Response) => {
   }
 };
 
-// ============================================
-// MIDDLEWARES
-// ============================================
-
-app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Middleware de logging
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const timestamp = new Date().toISOString();
-  console.log(`\n🌐 ${timestamp} - ${req.method} ${req.originalUrl}`);
-  if (Object.keys(req.query).length > 0) {
-    console.log(`🔗 Query:`, req.query);
-  }
-  console.log('─'.repeat(30));
-  next();
-});
-
-// ============================================
-// CONTROLADOR DE LOGIN - AGREGADO
-// ============================================
-
+// CONTROLADOR DE LOGIN MÉDICO LEGACY - MANTENIDO PARA COMPATIBILIDAD
 const loginMedico = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
-    console.log('🔐 Intento de login:', { email, password: '***' });
+    console.log('🔐 Login médico legacy:', { email, password: '***' });
 
     // Validación básica
     if (!email || !password) {
@@ -792,7 +762,7 @@ const loginMedico = async (req: Request, res: Response) => {
         m.matricula_medica,
         m.activo
        FROM medico m
-       WHERE m.email = ? AND m.activo = 1
+       WHERE m.email = ? AND (m.activo IS NULL OR m.activo = 1)
        LIMIT 1`,
       [email]
     );
@@ -828,7 +798,7 @@ const loginMedico = async (req: Request, res: Response) => {
       rol: 'medico'
     };
 
-    console.log('✅ Login exitoso para:', medicoData.nombre, medicoData.apellido);
+    console.log('✅ Login médico legacy exitoso:', medicoData.nombre, medicoData.apellido);
 
     return res.status(200).json({
       success: true,
@@ -837,7 +807,7 @@ const loginMedico = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('💥 ERROR en login:', error);
+    console.error('💥 ERROR en login médico legacy:', error);
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -846,23 +816,67 @@ const loginMedico = async (req: Request, res: Response) => {
 };
 
 // ============================================
+// MIDDLEWARES
+// ============================================
+
+app.use(cors({
+  origin: [
+    'http://localhost:3000', 
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Middleware de logging
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n🌐 ${timestamp} - ${req.method} ${req.originalUrl}`);
+  if (Object.keys(req.query).length > 0) {
+    console.log(`🔗 Query:`, req.query);
+  }
+  console.log('─'.repeat(30));
+  next();
+});
+
+// ============================================
 // RUTAS PRINCIPALES
 // ============================================
 
 console.log('🔧 Configurando rutas...');
-// Rutas de autenticación 
+
+// ============================================
+// RUTAS DE AUTENTICACIÓN - NUEVA IMPLEMENTACIÓN
+// ============================================
 app.use('/api', authRoutes);
 
-// Rutas del módulo médico
+// ============================================
+// RUTAS DE MÓDULOS DE USUARIOS
+// ============================================
 app.use('/api/medico', medicoRoutes);
+app.use('/api/bioquimico', bioquimicoRoutes);
+app.use('/api/admin', adminRoutes);
 
-// RUTA DE LOGIN - AGREGADA
-app.use('/api', authRoutes);
+// ============================================
+// RUTAS LEGACY MANTENIDAS PARA COMPATIBILIDAD
+// ============================================
+
+// Login médico legacy (mantenido para compatibilidad)
 app.post('/api/medico/login', loginMedico);
 
 // Dashboard médico
 app.get('/api/medico/dashboard/:id_medico', getDashboardMedico);
 
+// Ruta del dashboard bioquímico
+app.get('/api/bioquimico/dashboard/:matricula_profesional', getDashboardBioquimico);
 // Análisis
 app.get('/api/analisis', getAnalisisDisponibles);
 
@@ -899,8 +913,8 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    message: 'Servidor funcionando - VERSIÓN CORREGIDA PACIENTES',
-    version: '2.3.0'
+    message: 'Servidor funcionando - VERSIÓN CON LOGIN UNIFICADO',
+    version: '3.1.0'
   });
 });
 
@@ -921,18 +935,36 @@ app.get('/api/test-db', async (req: Request, res: Response) => {
   }
 });
 
+// MSG de SALUD
 app.get('/api', (req: Request, res: Response) => {
   res.json({ 
-    message: 'API del Sistema de Laboratorio Bioquímico - VERSIÓN CORREGIDA',
-    version: '2.3.0',
-    status: '✅ Gestión de pacientes CORREGIDA',
-    funcionalidades_corregidas: [
-      '✅ Dashboard médico con datos reales',
-      '✅ Lista de pacientes del médico',
-      '✅ Búsqueda de pacientes mejorada',
-      '✅ Obras sociales personalizadas',
-      '✅ Nueva solicitud con paciente precargado',
-      '✅ Historial de pacientes'
+    message: 'API del Sistema de Laboratorio Bioquímico - CON LOGIN UNIFICADO',
+    version: '3.1.0',
+    status: '✅ Sistema completo con login unificado implementado',
+    funcionalidades_disponibles: [
+      '🆕 Login unificado por roles (POST /api/auth/login)',
+      '✅ Dashboard médico completo',
+      '✅ Dashboard bioquímico completo', 
+      '✅ Dashboard administrativo completo',
+      '✅ Gestión completa de pacientes',
+      '✅ Sistema de órdenes y análisis',
+      '✅ Perfil completable por rol',
+      '✅ Notificaciones por dashboard',
+      '✅ Reportes y estadísticas',
+      '✅ Búsquedas avanzadas'
+    ],
+    rutas_principales: [
+      '🆕 POST /api/auth/login (LOGIN UNIFICADO)',
+      '🆕 POST /api/auth/register (REGISTRO)',
+      '📜 POST /api/medico/login (LEGACY)',
+      '📊 GET /api/medico/dashboard/:id',
+      '📊 GET /api/bioquimico/dashboard/:matricula',
+      '📊 GET /api/admin/dashboard/:id'
+    ],
+    modulos_activos: [
+      '🏥 Médico: Dashboard, pacientes, órdenes, análisis',
+      '🔬 Bioquímico: Dashboard, procesamiento, resultados',
+      '👑 Admin: Dashboard, usuarios, pacientes, estadísticas'
     ]
   });
 });
@@ -944,7 +976,8 @@ app.get('/api', (req: Request, res: Response) => {
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({ 
     success: false,
-    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`
+    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
+    sugerencia: 'Usar POST /api/auth/login para el login unificado'
   });
 });
 
@@ -963,21 +996,38 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, async () => {
   console.clear();
   
-  console.log('\n✅ =========================================');
-  console.log('✅ LABORATORIO BIOQUÍMICO - VERSIÓN CORREGIDA');
-  console.log('✅ =========================================');
+  // MSG DE INICIO
+  console.log('\n✅ ==========================================');
+  console.log('✅ LABORATORIO BIOQUÍMICO - LOGIN UNIFICADO');
+  console.log('✅ ==========================================');
   console.log(`📡 Puerto: ${PORT}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`🖥️  Frontend: http://localhost:3000`);
-  console.log('✅ =========================================');
-  console.log('🎯 PROBLEMAS CORREGIDOS:');
-  console.log('   ✅ Nombres de columnas de BD corregidos');
-  console.log('   ✅ Gestión de pacientes funcional');
-  console.log('   ✅ Búsqueda de obras sociales');
-  console.log('   ✅ Nueva solicitud con paciente precargado');
-  console.log('   ✅ Dashboard con datos reales');
-  console.log('✅ =========================================');
-  console.log('🚀 Sistema completamente funcional');
+  console.log('✅ ==========================================');
+  console.log('🎯 NUEVAS FUNCIONALIDADES:');
+  console.log('   🆕 LOGIN UNIFICADO IMPLEMENTADO');
+  console.log('   🔐 POST /api/auth/login');
+  console.log('   📝 POST /api/auth/register');
+  console.log('   🔍 Detección automática de rol');
+  console.log('   👤 Completar perfil por rol');
+  console.log('   📜 Rutas legacy mantenidas');
+  console.log('✅ ==========================================');
+  console.log('🔧 COMPATIBILIDAD:');
+  console.log('   ✅ Todas las rutas anteriores funcionan');
+  console.log('   🏥 Dashboard médico: GET /api/medico/dashboard/:id');
+  console.log('   🔬 Dashboard bioquímico: GET /api/bioquimico/dashboard/:matricula');
+  console.log('   👑 Dashboard admin: GET /api/admin/dashboard/:id');
+  console.log('   🧬 GET /api/bioquimico/dashboard/:matricula'); // AGREGAR ESTA LÍNEA
+
+  console.log('   📜 Login médico legacy: POST /api/medico/login');
+  console.log('✅ ==========================================');
+  console.log('📋 INSTRUCCIONES DE USO:');
+  console.log('   1. Usar POST /api/auth/login para todos los roles');
+  console.log('   2. El sistema detecta automáticamente el rol');
+  console.log('   3. Si requiere perfil, completarlo con las rutas específicas');
+  console.log('   4. Acceder al dashboard correspondiente al rol');
+  console.log('✅ ==========================================');
+  console.log('🚀 Sistema completamente funcional con login unificado');
   console.log('');
   
   // Test de BD

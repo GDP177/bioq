@@ -1,9 +1,8 @@
-// src/pages/login/Login.tsx - VERSIÓN CORREGIDA Y OPTIMIZADA
+// src/pages/login/Login.tsx - VERSIÓN LIMPIA SIN ELEMENTOS NO PEDIDOS
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import CompletarPerfilMedico from '../medico/CompletarPerfilMedico'; // ← AGREGAR ESTA LÍNEA
 
 import fondo from "../../assets/inicio-fondo.jpg";
 import logoBQ from "../../assets/logo-BQ.jpg";
@@ -11,17 +10,16 @@ import logoBQ from "../../assets/logo-BQ.jpg";
 interface LoginResponse {
   success: boolean;
   requiere_completar_perfil?: boolean; 
-  medico: {
+  message: string;
+  usuario: {
     rol: string;
-    id: number;
-    nombre: string;
+    id: number | string;
+    nombre?: string;
+    apellido?: string;
     email: string;
-  };
-  usuario?: { 
-    id_usuario: number;
-    email: string;
-    username: string;
-    rol: string;
+    id_usuario?: number;
+    username?: string;
+    matricula?: string;
   };
 }
 
@@ -30,9 +28,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showCompletarPerfil, setShowCompletarPerfil] = useState(false);
-  const [usuarioIncompleto, setUsuarioIncompleto] = useState<any>(null);
-
 
   const navigate = useNavigate();
 
@@ -45,86 +40,87 @@ export default function Login() {
 
     try {
       const response = await axios.post<LoginResponse>(
-        "http://localhost:5000/api/medico/login", 
+        "http://localhost:5000/api/login", 
         {
           email: email.trim(),
           password: password
         }
       );
 
-      console.log("✅ Respuesta completa del servidor:", response);
-      console.log("📦 Data del servidor:", response.data);
+      console.log("✅ Respuesta del servidor:", response.data);
 
       if (response.status === 200 && response.data.success) {
-         if (response.data.requiere_completar_perfil) {
-          console.log('👤 Usuario requiere completar perfil');
-          setUsuarioIncompleto(response.data.usuario);
-          setShowCompletarPerfil(true);
-          setIsLoading(false);
-          return;
-        }
-        const { medico } = response.data;
+        const { usuario, requiere_completar_perfil } = response.data;
 
-        if (!medico) {
-          console.error("❌ No se recibieron datos del médico");
+        if (!usuario) {
+          console.error("❌ No se recibieron datos del usuario");
           setError("Error: No se recibieron datos del usuario");
           return;
         }
 
-        console.log("👨‍⚕️ Datos del médico:", medico);
+        // Guardar usuario en localStorage
+        localStorage.setItem("usuario", JSON.stringify(usuario));
+        console.log("💾 Usuario guardado en localStorage");
 
-        // Validar que tenemos los datos necesarios
-        if (!medico.id || !medico.nombre || !medico.email) {
-          console.error("❌ Datos del médico incompletos:", medico);
-          setError("Error: Datos de usuario incompletos");
+        // MANEJAR PERFIL INCOMPLETO
+        if (requiere_completar_perfil) {
+          console.log(`👤 Usuario ${usuario.rol} requiere completar perfil`);
+          
+          switch (usuario.rol) {
+            case 'medico':
+              navigate("/completar-perfil-medico");
+              break;
+            case 'bioquimico':
+              navigate("/completar-perfil-bioquimico");
+              break;
+            case 'admin':
+              navigate("/dashboard/admin");
+              break;
+            default:
+              setError("Rol de usuario no reconocido");
+              return;
+          }
           return;
         }
 
-        // Guardar en localStorage
-        localStorage.setItem("usuario", JSON.stringify(medico));
-        console.log("💾 Usuario guardado en localStorage");
-
-        // Verificar que se guardó correctamente
-        const verificacion = localStorage.getItem("usuario");
-        console.log("🔍 Verificación localStorage:", verificacion);
-
-        // Navegar según el rol
-        if (medico.rol === "medico" || !medico.rol) {
-          console.log("🏥 Navegando a MedicoDashboard...");
-          navigate("/MedicoDashboard");
-        } else if (medico.rol === "bioquimico") {
-          console.log("🔬 Navegando a BioquimicoDashboard...");
-          navigate("/BioquimicoDashboard");
-        } else {
-          console.warn("⚠️ Rol no reconocido:", medico.rol);
-          // Si no hay rol específico, asumir que es médico
-          navigate("/MedicoDashboard");
+        // PERFIL COMPLETO - REDIRECCIONAR AL DASHBOARD
+        switch (usuario.rol) {
+          case 'medico':
+            navigate(`/dashboard/medico/${usuario.id}`);
+            break;
+          case 'bioquimico':
+            navigate(`/dashboard/bioquimico/${usuario.matricula || usuario.id}`);
+            break;
+          case 'admin':
+            navigate(`/dashboard/admin/${usuario.id}`);
+            break;
+          default:
+            setError("Rol de usuario no reconocido");
+            return;
         }
+
       } else {
-        console.error("❌ Respuesta del servidor no exitosa");
-        setError("Error en el servidor. Intenta nuevamente.");
+        setError(response.data.message || "Error en el login");
       }
-    } catch (err: any) {
-      console.error("❌ Error en login:", err);
+
+    } catch (error: any) {
+      console.error("❌ Error en login:", error);
       
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err.response?.status === 401) {
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else if (error.response?.status === 401) {
         setError("Credenciales incorrectas");
-      } else if (err.response?.status >= 500) {
-        setError("Error del servidor. Intenta más tarde.");
-      } else if (err.code === 'ECONNREFUSED') {
-        setError("No se puede conectar al servidor. Verifica que esté funcionando.");
+      } else if (error.response?.status === 404) {
+        setError("Servicio no disponible. Verifica que el servidor esté funcionando.");
+      } else if (error.code === 'ECONNREFUSED') {
+        setError("No se puede conectar al servidor.");
       } else {
-        setError("Error de conexión. Intenta más tarde.");
+        setError("Error de conexión. Intenta nuevamente.");
       }
     } finally {
       setIsLoading(false);
     }
   };
-   if (showCompletarPerfil && usuarioIncompleto) {
-    return <CompletarPerfilMedico usuario={usuarioIncompleto} />;
-  }
 
   return (
     <div
@@ -201,15 +197,6 @@ export default function Login() {
             Registrate acá
           </Link>
         </p>
-
-        {/* Debug info en desarrollo */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
-            <p><strong>Debug:</strong> Backend: http://localhost:5000</p>
-            <p><strong>LocalStorage:</strong> {localStorage.getItem('usuario') ? '✅ Tiene datos' : '❌ Vacío'}</p>
-            <p><strong>Email test:</strong> med1@gmail.com</p>
-          </div>
-        )}
       </div>
     </div>
   );
