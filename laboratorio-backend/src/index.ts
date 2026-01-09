@@ -5,28 +5,29 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
 
-// Importar controladores
+// Importar rutas
 import medicoRoutes from './routes/medico.routes';
 import authRoutes from './routes/authRoutes';
 import bioquimicoRoutes from './routes/bioquimico.routes';
 import adminRoutes from './routes/admin.routes';
-import { getDashboardBioquimico } from './controllers/bioquimico.controller';
+import analisisRoutes from './routes/analisis.routes';
+import pacienteRoutes from './routes/paciente.routes';
+import ordenRoutes from './routes/orden.routes';
+
+
 
 
 import { 
-  registrarNuevoPaciente,
-  actualizarPaciente,
-  buscarPacientePorDNI,
-  buscarPacientePorFicha,
-  buscarObrasSociales,
-  buscarPacientesPorDNIParcial
+    registrarNuevoPaciente,
+    actualizarPaciente,
+    buscarPacientePorDNI,
+    buscarPacientePorFicha,
+    buscarObrasSociales,
+    buscarPacientesPorDNIParcial
 } from './controllers/paciente.controller';
 
-import {
-  getHistorialPaciente,
-  getAnalisisDetalladoPorOrden
-} from './controllers/historial.controller';
-
+import { getDashboardBioquimico } from './controllers/bioquimico.controller';
+import { getHistorialPaciente, getAnalisisDetalladoPorOrden } from './controllers/historial.controller';
 import { pool } from './routes/db';
 
 // Configurar dotenv
@@ -40,282 +41,39 @@ const PORT = process.env.PORT || 5000;
 // ============================================
 
 const getStringParam = (param: any): string => {
-  if (typeof param === 'string') {
-    return param.trim();
-  }
-  if (Array.isArray(param) && param.length > 0) {
-    return String(param[0]).trim();
-  }
-  return '';
+    if (typeof param === 'string') return param.trim();
+    if (Array.isArray(param) && param.length > 0) return String(param[0]).trim();
+    return '';
 };
 
 const getNumberParam = (param: any, defaultValue: number): number => {
-  if (typeof param === 'string') {
-    const parsed = parseInt(param, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-  }
-  if (Array.isArray(param) && param.length > 0) {
-    const parsed = parseInt(String(param[0]), 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-  }
-  return defaultValue;
+    if (typeof param === 'string') {
+        const parsed = parseInt(param, 10);
+        return isNaN(parsed) ? defaultValue : parsed;
+    }
+    return defaultValue;
 };
-
-const getBooleanParam = (param: any): boolean => {
-  if (typeof param === 'string') {
-    return param.toLowerCase() === 'true';
-  }
-  if (Array.isArray(param) && param.length > 0) {
-    return String(param[0]).toLowerCase() === 'true';
-  }
-  return false;
-};
-
 // ============================================
 // CONTROLADORES MANTENIDOS (SIN CAMBIOS)
 // ============================================
 
 // DASHBOARD MÉDICO - MANTENIDO SIN CAMBIOS
 const getDashboardMedico = async (req: Request, res: Response) => {
-  const id_medico = parseInt(req.params.id_medico);
+    const id_medico = parseInt(req.params.id_medico);
+    try {
+        const [medicoRows]: any = await pool.query(
+            `SELECT id_medico as id, nombre_medico as nombre, apellido_medico as apellido, email, especialidad FROM medico WHERE id_medico = ?`,
+            [id_medico]
+        );
+        if (medicoRows.length === 0) return res.status(404).json({ success: false, message: 'Médico no encontrado' });
+        
+        const [stats]: any = await pool.query(
+            `SELECT COUNT(*) as total_ordenes FROM orden WHERE id_medico_solicitante = ?`,
+            [id_medico]
+        );
 
-  try {
-    console.log('📊 Generando dashboard para médico ID:', id_medico);
-
-    if (!id_medico || id_medico <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de médico inválido'
-      });
-    }
-
-    // 1. OBTENER INFORMACIÓN DEL MÉDICO - CORREGIDO
-    const [medicoRows]: [any[], any] = await pool.query(
-      `SELECT 
-        id_medico as id,
-        nombre_medico as nombre,
-        apellido_medico as apellido,
-        email,
-        especialidad,
-        matricula_medica as matricula,
-        telefono
-       FROM medico 
-       WHERE id_medico = ? AND (activo IS NULL OR activo = 1)`,
-      [id_medico]
-    );
-
-    if (medicoRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Médico no encontrado o inactivo'
-      });
-    }
-
-    const medico = medicoRows[0];
-
-    // 2. ESTADÍSTICAS DE ÓRDENES
-    const [ordenesStats]: [any[], any] = await pool.query(
-      `SELECT 
-        COUNT(*) as total_ordenes,
-        COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as ordenes_pendientes,
-        COUNT(CASE WHEN estado = 'en_proceso' THEN 1 END) as ordenes_proceso,
-        COUNT(CASE WHEN estado = 'completado' THEN 1 END) as ordenes_completadas,
-        COUNT(CASE WHEN COALESCE(urgente, 0) = 1 THEN 1 END) as ordenes_urgentes
-       FROM orden 
-       WHERE id_medico_solicitante = ?`,
-      [id_medico]
-    );
-
-    const statsOrdenes = ordenesStats[0] || {
-      total_ordenes: 0,
-      ordenes_pendientes: 0,
-      ordenes_proceso: 0,
-      ordenes_completadas: 0,
-      ordenes_urgentes: 0
-    };
-
-    // 3. ESTADÍSTICAS DE ANÁLISIS
-    const [analisisStats]: [any[], any] = await pool.query(
-      `SELECT 
-        COUNT(*) as total_analisis,
-        COUNT(CASE WHEN oa.estado = 'pendiente' THEN 1 END) as analisis_pendientes,
-        COUNT(CASE WHEN oa.estado = 'en_proceso' THEN 1 END) as analisis_proceso,
-        COUNT(CASE WHEN oa.estado = 'finalizado' THEN 1 END) as analisis_listos,
-        COUNT(CASE WHEN oa.fecha_realizacion IS NOT NULL THEN 1 END) as analisis_entregados
-       FROM orden_analisis oa
-       JOIN orden o ON oa.id_orden = o.id_orden
-       WHERE o.id_medico_solicitante = ?`,
-      [id_medico]
-    );
-
-    const statsAnalisis = analisisStats[0] || {
-      total_analisis: 0,
-      analisis_pendientes: 0,
-      analisis_proceso: 0,
-      analisis_listos: 0,
-      analisis_entregados: 0
-    };
-
-    // 4. ESTADÍSTICAS DE PACIENTES - CORREGIDO
-    const [pacientesStats]: [any[], any] = await pool.query(
-      `SELECT 
-        COUNT(DISTINCT p.nro_ficha) as total_pacientes
-       FROM paciente p
-       JOIN orden o ON p.nro_ficha = o.nro_ficha_paciente
-       WHERE o.id_medico_solicitante = ?`,
-      [id_medico]
-    );
-
-    const statsPacientes = pacientesStats[0] || { total_pacientes: 0 };
-
-    // 5. ÓRDENES RECIENTES - CORREGIDO CON NOMBRES CORRECTOS
-    const [ordenesRecientes]: [any[], any] = await pool.query(
-      `SELECT 
-        o.id_orden as id,
-        o.nro_orden,
-        o.fecha_ingreso_orden,
-        o.estado,
-        COALESCE(o.urgente, 0) as urgente,
-        p.Nombre_paciente as nombre_paciente,
-        p.Apellido_paciente as apellido_paciente,
-        p.DNI as dni,
-        p.mutual,
-        p.edad,
-        COUNT(oa.id_orden_analisis) as total_analisis,
-        COUNT(CASE WHEN oa.estado = 'finalizado' THEN 1 END) as analisis_listos
-       FROM orden o
-       JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-       LEFT JOIN orden_analisis oa ON o.id_orden = oa.id_orden
-       WHERE o.id_medico_solicitante = ?
-       GROUP BY o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.estado, 
-                o.urgente, p.Nombre_paciente, p.Apellido_paciente,
-                p.DNI, p.mutual, p.edad
-       ORDER BY o.fecha_ingreso_orden DESC
-       LIMIT 10`,
-      [id_medico]
-    );
-
-    const ordenes = ordenesRecientes.map((orden: any) => {
-      const totalAnalisis = parseInt(orden.total_analisis) || 0;
-      const analisisListos = parseInt(orden.analisis_listos) || 0;
-      const porcentaje = totalAnalisis > 0 ? Math.round((analisisListos / totalAnalisis) * 100) : 0;
-
-      return {
-        id: orden.id,
-        nro_orden: orden.nro_orden || `ORD-${orden.id}`,
-        fecha_ingreso: orden.fecha_ingreso_orden,
-        estado: orden.estado,
-        urgente: orden.urgente === 1,
-        paciente: {
-          nombre: orden.nombre_paciente,
-          apellido: orden.apellido_paciente,
-          dni: parseInt(orden.dni) || 0,
-          mutual: orden.mutual,
-          edad: orden.edad
-        },
-        progreso: {
-          total_analisis: totalAnalisis,
-          analisis_listos: analisisListos,
-          porcentaje: porcentaje
-        }
-      };
-    });
-
-    // 6. PACIENTES RECIENTES - CORREGIDO
-    const [pacientesRecientes]: [any[], any] = await pool.query(
-      `SELECT 
-        p.nro_ficha,
-        p.Nombre_paciente as nombre,
-        p.Apellido_paciente as apellido,
-        p.DNI as dni,
-        COALESCE(p.edad, 0) as edad,
-        COALESCE(p.sexo, 'N/A') as sexo,
-        COALESCE(p.mutual, 'Sin obra social') as mutual,
-        MAX(o.fecha_ingreso_orden) as ultima_orden,
-        COUNT(o.id_orden) as total_ordenes
-       FROM paciente p
-       JOIN orden o ON p.nro_ficha = o.nro_ficha_paciente
-       WHERE o.id_medico_solicitante = ?
-       GROUP BY p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, 
-                p.DNI, p.edad, p.sexo, p.mutual
-       ORDER BY MAX(o.fecha_ingreso_orden) DESC
-       LIMIT 8`,
-      [id_medico]
-    );
-
-    const pacientes = pacientesRecientes.map((paciente: any) => ({
-      nro_ficha: paciente.nro_ficha,
-      nombre: paciente.nombre,
-      apellido: paciente.apellido,
-      dni: parseInt(paciente.dni) || 0,
-      edad: paciente.edad,
-      sexo: paciente.sexo,
-      mutual: paciente.mutual,
-      ultima_orden: paciente.ultima_orden,
-      total_ordenes: parseInt(paciente.total_ordenes)
-    }));
-
-    // 7. NOTIFICACIONES
-    const notificaciones = [];
-    
-    if (parseInt(statsOrdenes.ordenes_urgentes) > 0) {
-      notificaciones.push(`⚠️ Tienes ${statsOrdenes.ordenes_urgentes} órdenes urgentes`);
-    }
-    
-    if (parseInt(statsAnalisis.analisis_listos) > 0) {
-      notificaciones.push(`✅ ${statsAnalisis.analisis_listos} análisis listos para revisar`);
-    }
-
-    if (notificaciones.length === 0) {
-      notificaciones.push('🎉 ¡Todo al día! No hay notificaciones pendientes');
-    }
-
-    // 8. CONSTRUIR RESPUESTA FINAL
-    const dashboardData = {
-      success: true,
-      medico: {
-        id: medico.id,
-        nombre: medico.nombre || 'Doctor',
-        apellido: medico.apellido || 'Medico',
-        email: medico.email || 'email@ejemplo.com',
-        especialidad: medico.especialidad || 'Medicina General',
-        matricula: medico.matricula || 'N/A',
-        telefono: medico.telefono || 'N/A',
-        rol: 'medico'
-      },
-      estadisticas: {
-        total_ordenes: parseInt(statsOrdenes.total_ordenes) || 0,
-        ordenes_pendientes: parseInt(statsOrdenes.ordenes_pendientes) || 0,
-        ordenes_proceso: parseInt(statsOrdenes.ordenes_proceso) || 0,
-        ordenes_completadas: parseInt(statsOrdenes.ordenes_completadas) || 0,
-        ordenes_urgentes: parseInt(statsOrdenes.ordenes_urgentes) || 0,
-        total_analisis: parseInt(statsAnalisis.total_analisis) || 0,
-        analisis_pendientes: parseInt(statsAnalisis.analisis_pendientes) || 0,
-        analisis_proceso: parseInt(statsAnalisis.analisis_proceso) || 0,
-        analisis_listos: parseInt(statsAnalisis.analisis_listos) || 0,
-        analisis_entregados: parseInt(statsAnalisis.analisis_entregados) || 0,
-        total_pacientes: parseInt(statsPacientes.total_pacientes) || 0,
-        ordenes_recientes: ordenesRecientes.length
-      },
-      ordenes_recientes: ordenes,
-      pacientes_recientes: pacientes,
-      analisis_frecuentes: [],
-      notificaciones: notificaciones,
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('✅ Dashboard generado exitosamente');
-
-    return res.status(200).json(dashboardData);
-
-  } catch (error: any) {
-    console.error('💥 ERROR al generar dashboard:', error);
-    return res.status(500).json({ 
-      success: false,
-      message: 'Error al obtener datos del dashboard',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+        res.json({ success: true, medico: medicoRows[0], estadisticas: stats[0] });
+    } catch (error) { res.status(500).json({ success: false }); }
 };
 
 // OBTENER PACIENTES DEL MÉDICO - MANTENIDO SIN CAMBIOS
@@ -814,23 +572,23 @@ const loginMedico = async (req: Request, res: Response) => {
     });
   }
 };
+//rutas de analisis y pacienetes
 
+
+app.use('/api/paciente', pacienteRoutes); // Agrega el prefijo /api/paciente
+app.use('/api', ordenRoutes);            // Agrega el prefijo /api (para /admin/analisis y /medico/...)
 // ============================================
 // MIDDLEWARES
 // ============================================
 
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5174'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    origin: [
+        'http://localhost:3000', 
+        'http://127.0.0.1:3000'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -838,76 +596,63 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Middleware de logging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const timestamp = new Date().toISOString();
-  console.log(`\n🌐 ${timestamp} - ${req.method} ${req.originalUrl}`);
-  if (Object.keys(req.query).length > 0) {
-    console.log(`🔗 Query:`, req.query);
-  }
-  console.log('─'.repeat(30));
-  next();
+    console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    next();
 });
 
+
+
+
+
 // ============================================
-// RUTAS PRINCIPALES
+// RUTAS PRINCIPALES (⚠️ EL ORDEN ES IMPORTANTE)
 // ============================================
 
 console.log('🔧 Configurando rutas...');
 
-// ============================================
-// RUTAS DE AUTENTICACIÓN - NUEVA IMPLEMENTACIÓN
-// ============================================
 app.use('/api', authRoutes);
+app.use('/api/medico', medicoRoutes);
+app.use('/api/bioquimico', bioquimicoRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/pacientes', pacienteRoutes);
+app.use('/api', ordenRoutes);
+app.use('/api/analisis', analisisRoutes);
 
-// ============================================
-// RUTAS DE MÓDULOS DE USUARIOS
-// ============================================
+
+app.use('/api', authRoutes);
 app.use('/api/medico', medicoRoutes);
 app.use('/api/bioquimico', bioquimicoRoutes);
 app.use('/api/admin', adminRoutes);
 
-// ============================================
-// RUTAS LEGACY MANTENIDAS PARA COMPATIBILIDAD
-// ============================================
-
-// Login médico legacy (mantenido para compatibilidad)
-app.post('/api/medico/login', loginMedico);
-
-// Dashboard médico
+// Rutas Directas Mantenidas
 app.get('/api/medico/dashboard/:id_medico', getDashboardMedico);
+app.get('/api/health', (req, res) => res.json({ status: 'OK', version: '3.5.0' }));
 
-// Ruta del dashboard bioquímico
+// ✅ RUTA DE ANÁLISIS MOVIDA ANTES DEL MIDDLEWARE DE ERROR 404
+app.use('/api/analisis', analisisRoutes); 
+
+// RUTAS PARA NUEVA SOLICITUD
+app.use('/api/paciente', pacienteRoutes); // Para /api/paciente/buscar/:dni
+app.use('/api', ordenRoutes);            // Para /api/admin/analisis
+
+// Rutas Legacy y Directas
+app.post('/api/medico/login', loginMedico);
+app.get('/api/medico/dashboard/:id_medico', getDashboardMedico);
 app.get('/api/bioquimico/dashboard/:matricula_profesional', getDashboardBioquimico);
-// Análisis
-app.get('/api/analisis', getAnalisisDisponibles);
-
-// Búsqueda de pacientes
+app.get('/api/analisis/disponibles', getAnalisisDisponibles);
 app.get('/api/pacientes/buscar/:query', buscarPacientes);
-
-// Nueva solicitud
 app.post('/api/medico/:id_medico/nueva-solicitud', crearNuevaSolicitud);
-
-// Pacientes del médico
 app.get('/api/medico/:id_medico/pacientes', getPacientesMedico);
-
-// Rutas de pacientes
 app.post('/api/pacientes', registrarNuevoPaciente);
 app.post('/api/paciente/registrar', registrarNuevoPaciente);
 app.put('/api/paciente/actualizar/:nro_ficha', actualizarPaciente);
 app.get('/api/paciente/buscar/:dni', buscarPacientePorDNI);
 app.get('/api/paciente/buscar/ficha/:nro_ficha', buscarPacientePorFicha);
 app.get('/api/pacientes/buscar-por-dni/:dni_parcial', buscarPacientesPorDNIParcial);
-
-// Rutas de historial
 app.get('/api/paciente/historial/:nro_ficha', getHistorialPaciente);
 app.get('/api/orden/analisis/:id_orden', getAnalisisDetalladoPorOrden);
-
-// Rutas de obras sociales
 app.get('/api/obras-sociales/buscar/:texto', buscarObrasSociales);
 app.get('/api/obras-sociales/todas', getTodasObrasSociales);
-
-// ============================================
-// RUTAS DE SISTEMA
-// ============================================
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ 
@@ -921,122 +666,39 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.get('/api/test-db', async (req: Request, res: Response) => {
   try {
     const [rows]: [any[], any] = await pool.query('SELECT 1 as test, NOW() as timestamp');
-    res.json({
-      success: true,
-      message: 'Conexión a base de datos exitosa',
-      data: rows[0]
-    });
+    res.json({ success: true, message: 'Conexión a BD exitosa', data: rows[0] });
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Error de conexión a base de datos',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error de conexión a BD', error: error.message });
   }
 });
 
-// MSG de SALUD
-app.get('/api', (req: Request, res: Response) => {
-  res.json({ 
-    message: 'API del Sistema de Laboratorio Bioquímico - CON LOGIN UNIFICADO',
-    version: '3.1.0',
-    status: '✅ Sistema completo con login unificado implementado',
-    funcionalidades_disponibles: [
-      '🆕 Login unificado por roles (POST /api/auth/login)',
-      '✅ Dashboard médico completo',
-      '✅ Dashboard bioquímico completo', 
-      '✅ Dashboard administrativo completo',
-      '✅ Gestión completa de pacientes',
-      '✅ Sistema de órdenes y análisis',
-      '✅ Perfil completable por rol',
-      '✅ Notificaciones por dashboard',
-      '✅ Reportes y estadísticas',
-      '✅ Búsquedas avanzadas'
-    ],
-    rutas_principales: [
-      '🆕 POST /api/auth/login (LOGIN UNIFICADO)',
-      '🆕 POST /api/auth/register (REGISTRO)',
-      '📜 POST /api/medico/login (LEGACY)',
-      '📊 GET /api/medico/dashboard/:id',
-      '📊 GET /api/bioquimico/dashboard/:matricula',
-      '📊 GET /api/admin/dashboard/:id'
-    ],
-    modulos_activos: [
-      '🏥 Médico: Dashboard, pacientes, órdenes, análisis',
-      '🔬 Bioquímico: Dashboard, procesamiento, resultados',
-      '👑 Admin: Dashboard, usuarios, pacientes, estadísticas'
-    ]
-  });
-});
-
 // ============================================
-// MIDDLEWARES DE ERROR
+// MIDDLEWARES DE ERROR (⚠️ SIEMPRE AL FINAL)
 // ============================================
 
 app.use('*', (req: Request, res: Response) => {
-  res.status(404).json({ 
-    success: false,
-    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
-    sugerencia: 'Usar POST /api/auth/login para el login unificado'
-  });
+    res.status(404).json({ 
+        success: false,
+        message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`
+    });
 });
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('💥 ERROR DEL SERVIDOR:', err.message);
-  res.status(500).json({ 
-    success: false,
-    message: 'Error interno del servidor'
-  });
+    console.error('💥 ERROR DEL SERVIDOR:', err.message);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
 });
-
 // ============================================
 // INICIAR SERVIDOR
 // ============================================
 
 app.listen(PORT, async () => {
-  console.clear();
-  
-  // MSG DE INICIO
-  console.log('\n✅ ==========================================');
-  console.log('✅ LABORATORIO BIOQUÍMICO - LOGIN UNIFICADO');
-  console.log('✅ ==========================================');
-  console.log(`📡 Puerto: ${PORT}`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`🖥️  Frontend: http://localhost:3000`);
-  console.log('✅ ==========================================');
-  console.log('🎯 NUEVAS FUNCIONALIDADES:');
-  console.log('   🆕 LOGIN UNIFICADO IMPLEMENTADO');
-  console.log('   🔐 POST /api/auth/login');
-  console.log('   📝 POST /api/auth/register');
-  console.log('   🔍 Detección automática de rol');
-  console.log('   👤 Completar perfil por rol');
-  console.log('   📜 Rutas legacy mantenidas');
-  console.log('✅ ==========================================');
-  console.log('🔧 COMPATIBILIDAD:');
-  console.log('   ✅ Todas las rutas anteriores funcionan');
-  console.log('   🏥 Dashboard médico: GET /api/medico/dashboard/:id');
-  console.log('   🔬 Dashboard bioquímico: GET /api/bioquimico/dashboard/:matricula');
-  console.log('   👑 Dashboard admin: GET /api/admin/dashboard/:id');
-  console.log('   🧬 GET /api/bioquimico/dashboard/:matricula'); // AGREGAR ESTA LÍNEA
-
-  console.log('   📜 Login médico legacy: POST /api/medico/login');
-  console.log('✅ ==========================================');
-  console.log('📋 INSTRUCCIONES DE USO:');
-  console.log('   1. Usar POST /api/auth/login para todos los roles');
-  console.log('   2. El sistema detecta automáticamente el rol');
-  console.log('   3. Si requiere perfil, completarlo con las rutas específicas');
-  console.log('   4. Acceder al dashboard correspondiente al rol');
-  console.log('✅ ==========================================');
-  console.log('🚀 Sistema completamente funcional con login unificado');
-  console.log('');
-  
-  // Test de BD
-  try {
-    await pool.query('SELECT 1');
-    console.log('✅ Base de datos conectada correctamente');
-  } catch (error) {
-    console.error('❌ Error de conexión a BD:', error);
-  }
+    console.log(`\n✅ SERVIDOR ACTIVO EN PUERTO: ${PORT}`);
+    try {
+        await pool.query('SELECT 1');
+        console.log('✅ Base de datos conectada correctamente');
+    } catch (error) {
+        console.error('❌ Error de conexión a BD:', error);
+    }
 });
 
 export default app;

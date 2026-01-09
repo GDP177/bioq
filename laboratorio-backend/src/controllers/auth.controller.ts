@@ -361,3 +361,6 @@ export const verificarPerfilCompleto = async (idUsuario: number, rol: string): P
     return false;
   }
 };
+
+
+

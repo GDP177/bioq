@@ -665,6 +665,45 @@ export const buscarPacientesPorDNIParcial = async (req: Request, res: Response) 
   }
 };
 
+// Búsqueda exacta para el botón "Buscar"
+export const buscarPaciente = async (req: Request, res: Response) => {
+    const { dni } = req.params;
+    try {
+        const [rows]: any = await pool.query(
+            `SELECT nro_ficha, Nombre_paciente as nombre, Apellido_paciente as apellido, 
+                    DNI as dni, edad, sexo, mutual 
+             FROM paciente 
+             WHERE DNI = ? AND (estado IS NULL OR estado != 'inactivo')`, 
+            [dni]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+        }
+        res.json({ success: true, paciente: rows[0] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+
+// Sugerencias para el buscador en tiempo real
+export const getSugerencias = async (req: Request, res: Response) => {
+    const { dni } = req.params;
+    try {
+        const [rows]: any = await pool.query(
+            `SELECT nro_ficha, Nombre_paciente as nombre, Apellido_paciente as apellido, 
+                    DNI as dni, edad, mutual 
+             FROM paciente 
+             WHERE DNI LIKE ? AND (estado IS NULL OR estado != 'inactivo')
+             LIMIT 5`, 
+            [`${dni}%`]
+        );
+        res.json({ success: true, pacientes: rows });
+    } catch (error) {
+        res.status(500).json({ success: false });
+    }
+};
+
 export default {
   registrarNuevoPaciente,
   actualizarPaciente,        // ⚠️ Nueva función

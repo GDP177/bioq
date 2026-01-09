@@ -4,6 +4,49 @@ import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 import bcrypt from 'bcrypt';
 
+
+
+
+
+// ============================================
+// Crear solicitudad medica
+// ============================================
+export const crearSolicitudMedica = async (req: Request, res: Response) => {
+    const { id_medico } = req.params;
+    const { nro_ficha_paciente, analisis_solicitados, urgente, requiere_ayuno, observaciones, instrucciones_paciente } = req.body;
+    
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // 1. Insertar en tabla 'ordenes'
+        const nro_orden = `ORD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const [result]: any = await connection.query(
+            `INSERT INTO ordenes (nro_orden, urgente, id_medico_solicitante, fecha_ingreso_orden, nro_ficha_paciente, estado, observaciones, requiere_ayuno, instrucciones_paciente) 
+             VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?, ?, ?)`,
+            [nro_orden, urgente ? 1 : 0, id_medico, nro_ficha_paciente, observaciones, requiere_ayuno ? 1 : 0, instrucciones_paciente]
+        );
+
+        const id_orden = result.insertId;
+
+        // 2. Insertar cada análisis en 'orden_analisis'
+        for (const codigo_practica of analisis_solicitados) {
+            await connection.query(
+                `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
+                 VALUES (?, ?, 'pendiente', NOW())`,
+                [id_orden, codigo_practica]
+            );
+        }
+
+        await connection.commit();
+        res.json({ success: true, orden_id: id_orden, nro_orden });
+    } catch (error: any) {
+        await connection.rollback();
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        connection.release();
+    }
+};
 // ============================================
 // LOGIN MÉDICO - RESPETANDO TU ESTRUCTURA REAL
 // ============================================

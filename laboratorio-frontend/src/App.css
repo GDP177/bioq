@@ -1,8 +1,35 @@
+/* src/App.css - RESET DE LAYOUT PARA PANTALLA COMPLETA */
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  /* Eliminamos el límite de 1280px y el centrado */
+  width: 100%;
+  max-width: 100% !important; 
+  margin: 0;
+  padding: 0;
+  text-align: left; /* Corregimos el centrado de texto */
+}
+
+.App {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Optimizamos el scroll para las tablas largas */
+main {
+  overflow-x: hidden;
+  background-color: #f9fafb; /* bg-gray-50 */
+}
+
+/* Estilo para las filas expandibles de análisis (Animación) */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out forwards;
 }
 
 .logo {

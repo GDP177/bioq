@@ -259,63 +259,81 @@ export default function BioquimicoDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Stats Cards - Órdenes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-3xl">📋</div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Órdenes</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.estadisticas.total_ordenes || 0}
-                </p>
-              </div>
-            </div>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-3xl">⏳</div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {dashboardData.estadisticas.ordenes_pendientes || 0}
-                </p>
-              </div>
-            </div>
-          </div>
+              {/* Total Órdenes */}
+              <button
+                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/todas`)}
+                className="text-left"
+              >
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 text-3xl">📋</div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Total Órdenes</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {dashboardData.estadisticas.total_ordenes || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </button>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-3xl">✅</div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Completadas</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {dashboardData.estadisticas.ordenes_completadas || 0}
-                </p>
-              </div>
-            </div>
-          </div>
+              {/* Órdenes Pendientes */}
+              <button
+                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/pendientes`)}
+                className="text-left"
+              >
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 text-3xl">⏳</div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Pendientes</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {dashboardData.estadisticas.ordenes_pendientes || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </button>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-3xl">📅</div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Hoy</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {dashboardData.estadisticas.ordenes_hoy || 0}
-                </p>
-              </div>
+              {/* Órdenes Completadas */}
+              <button
+                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/completadas`)}
+                className="text-left"
+              >
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 text-3xl">✅</div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Completadas</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {dashboardData.estadisticas.ordenes_completadas || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Órdenes de Hoy */}
+              <button
+                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/hoy`)}
+                className="text-left"
+              >
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 text-3xl">📅</div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Hoy</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {dashboardData.estadisticas.ordenes_hoy || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </button>
             </div>
-          </div>
-        </div>
+
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

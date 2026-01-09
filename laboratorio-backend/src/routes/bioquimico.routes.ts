@@ -7,7 +7,8 @@ import {
   getOrdenesBioquimico,
   procesarOrden,
   cargarResultado,
-  getDetalleOrden
+  getDetalleOrden,
+  
 } from '../controllers/bioquimico.controller';
 
 const router = Router();

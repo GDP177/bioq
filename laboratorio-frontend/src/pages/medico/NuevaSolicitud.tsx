@@ -146,15 +146,15 @@ export default function NuevaSolicitud() {
         setSugerenciasPacientes([]);
         setMostrarSugerencias(false);
       }
-    }, 300); // 300ms de delay
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [dniBusqueda]);
 
   const cargarAnalisisDisponibles = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${apiUrl}/analisis`);
+      // Endpoint corregido para evitar 404
+      const response = await axios.get('http://localhost:5000/api/admin/analisis'); 
       if (response.data.success) {
         setAnalisisDisponibles(response.data.analisis);
       }
@@ -170,8 +170,9 @@ export default function NuevaSolicitud() {
     setError("");
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${apiUrl}/pacientes/buscar-por-dni/${dni}`);
+      const apiUrl = 'http://localhost:5000/api';
+      // Ruta unificada para búsqueda parcial
+      const response = await axios.get(`${apiUrl}/paciente/buscar-por-dni/${dni}`);
       
       if (response.data.success && response.data.pacientes) {
         setSugerenciasPacientes(response.data.pacientes);
@@ -198,37 +199,56 @@ export default function NuevaSolicitud() {
     setError("");
   };
 
-  const buscarPacientePorDNICompleto = async () => {
+  // Dentro del componente NuevaSolicitud...
+
+const buscarPacientePorDNICompleto = async () => {
     if (!dniBusqueda.trim()) {
-      setError("Ingrese un DNI válido");
-      return;
+        setError("Ingrese un DNI válido");
+        return;
     }
 
     setBuscandoPaciente(true);
     setError("");
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/paciente/buscar/${dniBusqueda}`);
-      
-      if (response.data.success && response.data.paciente) {
-        seleccionarPaciente(response.data.paciente);
-      } else {
-        setError("Paciente no encontrado. ¿Desea registrarlo?");
-      }
+        // Usamos el endpoint configurado en singular
+        const response = await axios.get(`http://localhost:5000/api/paciente/buscar/${dniBusqueda}`);
+        
+        if (response.data.success && response.data.paciente) {
+            seleccionarPaciente(response.data.paciente);
+        } else {
+            setError("PACIENTE NO ENCONTRADO. ¿DESEA REGISTRARLO?");
+        }
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        setError("Paciente no encontrado. ¿Desea registrarlo?");
-      } else {
-        setError("Error al buscar paciente");
-      }
+        // Manejamos el 404 para mostrar el botón de registro
+        setError("PACIENTE NO ENCONTRADO. ¿DESEA REGISTRARLO?");
     } finally {
-      setBuscandoPaciente(false);
+        setBuscandoPaciente(false);
     }
-  };
+};
+
+// ... en el return, el bloque de error actualizado según tu diseño
+{error && (
+  <div className="bg-red-50 border-2 border-red-200 text-red-700 px-8 py-5 rounded-[2rem] mb-8 flex justify-between items-center shadow-sm">
+    <div className="flex items-center gap-4">
+      <span className="text-xl">⚠️</span>
+      <strong className="font-black uppercase text-[11px] tracking-widest">{error}</strong>
+    </div>
+    
+    {error.includes("NO ENCONTRADO") && (
+      <button
+        onClick={() => navigate('/medico/pacientes')}
+        className="bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] px-6 py-3 rounded-xl shadow-lg transition-all active:scale-95"
+      >
+        + Registrar Paciente Nuevo
+      </button>
+    )}
+  </div>
+)}
 
   const handleDniChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Solo números
-    if (value.length <= 8) { // Limitar a 8 dígitos
+    const value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 8) {
       setDniBusqueda(value);
       setError("");
       if (pacienteSeleccionado) {
@@ -249,10 +269,10 @@ export default function NuevaSolicitud() {
 
   const analisisFiltrados = analisisDisponibles.filter(analisis => {
     const coincideBusqueda = analisis.descripcion.toLowerCase().includes(filtroAnalisis.toLowerCase()) ||
-                           analisis.codigo.toString().includes(filtroAnalisis);
+                             analisis.codigo.toString().includes(filtroAnalisis);
     
     const coincideCategoria = categoriaFiltro === "todos" || 
-                             analisis.tipo?.toLowerCase().includes(categoriaFiltro.toLowerCase());
+                               analisis.tipo?.toLowerCase().includes(categoriaFiltro.toLowerCase());
     
     return coincideBusqueda && coincideCategoria;
   });
@@ -308,7 +328,6 @@ export default function NuevaSolicitud() {
 
   return (
     <div className="min-h-screen bg-blue-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -334,43 +353,47 @@ export default function NuevaSolicitud() {
         </div>
       </header>
 
-      {/* Progress Steps */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center">
             <div className="flex items-center space-x-4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
-                1
-              </div>
+              }`}>1</div>
               <div className="w-8 h-1 bg-gray-300"></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
-                2
-              </div>
+              }`}>2</div>
               <div className="w-8 h-1 bg-gray-300"></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
-                3
-              </div>
+              }`}>3</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* BLOQUE DE ERROR DINÁMICO CON BOTÓN DE REGISTRO */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
-            <strong>Error:</strong> {error}
+          <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-3xl mb-6 flex flex-col md:flex-row justify-between items-center gap-4" role="alert">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <strong className="font-black uppercase text-xs tracking-tight">{error}</strong>
+            </div>
+            
+            {error.includes("no encontrado") && (
+              <Button
+                onClick={() => navigate('/medico/GestionPacientes')}
+                className="bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] px-6 py-2 rounded-xl shadow-lg transition-all active:scale-95"
+              >
+                + Registrar Paciente Nuevo
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Step 1: Selección de Paciente */}
         {step === 1 && (
           <CustomCard>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
@@ -404,7 +427,6 @@ export default function NuevaSolicitud() {
                 {dniBusqueda.length >= 2 && " Se mostrarán sugerencias automáticamente."}
               </p>
 
-              {/* Sugerencias de pacientes */}
               {mostrarSugerencias && (
                 <SugerenciasPacientes
                   pacientes={sugerenciasPacientes}
@@ -416,10 +438,8 @@ export default function NuevaSolicitud() {
           </CustomCard>
         )}
 
-        {/* Step 2: Selección de Análisis */}
         {step === 2 && pacienteSeleccionado && (
           <div className="space-y-6">
-            {/* Información del paciente seleccionado */}
             <CustomCard title="Paciente Seleccionado">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -440,24 +460,14 @@ export default function NuevaSolicitud() {
                 </div>
               </div>
               <div className="mt-4 flex space-x-3">
-                <Button 
-                  variant="secondary" 
-                  onClick={() => setStep(1)}
-                >
-                  Cambiar Paciente
-                </Button>
-                <Button 
-                  onClick={() => setStep(3)}
-                  disabled={analisisSeleccionados.length === 0}
-                >
+                <Button variant="secondary" onClick={() => setStep(1)}>Cambiar Paciente</Button>
+                <Button onClick={() => setStep(3)} disabled={analisisSeleccionados.length === 0}>
                   Continuar ({analisisSeleccionados.length} análisis)
                 </Button>
               </div>
             </CustomCard>
 
-            {/* Selección de análisis */}
             <CustomCard title="🧪 Paso 2: Seleccionar Análisis">
-              {/* Filtros */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <FormField htmlFor="filtro-analisis" label="Buscar análisis">
                   <Input
@@ -483,7 +493,6 @@ export default function NuevaSolicitud() {
                 </FormField>
               </div>
 
-              {/* Lista de análisis */}
               <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
                 {analisisFiltrados.map((analisis) => (
                   <div key={analisis.codigo} className="border-b border-gray-100 last:border-b-0">
@@ -497,17 +506,11 @@ export default function NuevaSolicitud() {
                       <div className="ml-3 flex-1">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {analisis.descripcion}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Código: {analisis.codigo} • {analisis.tipo}
-                            </p>
+                            <p className="text-sm font-medium text-gray-900">{analisis.descripcion}</p>
+                            <p className="text-sm text-gray-500">Código: {analisis.codigo} • {analisis.tipo}</p>
                           </div>
                           {analisis.honorarios && (
-                            <span className="text-sm font-medium text-green-600">
-                              ${analisis.honorarios}
-                            </span>
+                            <span className="text-sm font-medium text-green-600">${analisis.honorarios}</span>
                           )}
                         </div>
                       </div>
@@ -516,29 +519,14 @@ export default function NuevaSolicitud() {
                 ))}
               </div>
 
-              {analisisFiltrados.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No se encontraron análisis con los criterios de búsqueda</p>
-                </div>
-              )}
-
-              {/* Resumen de selección */}
               {analisisSeleccionados.length > 0 && (
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium text-blue-900">
-                        {analisisSeleccionados.length} análisis seleccionados
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        Costo total estimado: ${calcularCostoTotal().toFixed(2)}
-                      </p>
+                      <p className="font-medium text-blue-900">{analisisSeleccionados.length} análisis seleccionados</p>
+                      <p className="text-sm text-blue-700">Costo total estimado: ${calcularCostoTotal().toFixed(2)}</p>
                     </div>
-                    <Button
-                      onClick={() => setStep(3)}
-                    >
-                      Continuar
-                    </Button>
+                    <Button onClick={() => setStep(3)}>Continuar</Button>
                   </div>
                 </div>
               )}
@@ -546,10 +534,8 @@ export default function NuevaSolicitud() {
           </div>
         )}
 
-        {/* Step 3: Detalles de la Orden */}
         {step === 3 && (
           <div className="space-y-6">
-            {/* Resumen */}
             <CustomCard title="📋 Paso 3: Confirmar Solicitud">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -562,90 +548,40 @@ export default function NuevaSolicitud() {
                   <div className="max-h-32 overflow-y-auto">
                     {analisisSeleccionados.map(codigo => {
                       const analisis = analisisDisponibles.find(a => a.codigo === codigo);
-                      return (
-                        <p key={codigo} className="text-sm text-gray-600">
-                          • {analisis?.descripcion}
-                        </p>
-                      );
+                      return <p key={codigo} className="text-sm text-gray-600">• {analisis?.descripcion}</p>;
                     })}
                   </div>
                 </div>
               </div>
             </CustomCard>
 
-            {/* Opciones adicionales */}
             <CustomCard title="Opciones Adicionales">
               <div className="space-y-4">
                 <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="urgente"
-                    checked={urgente}
-                    onChange={(e) => setUrgente(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="urgente" className="ml-2 text-sm text-gray-700">
-                    Marcar como urgente
-                  </label>
+                  <input type="checkbox" id="urgente" checked={urgente} onChange={(e) => setUrgente(e.target.checked)} className="h-4 w-4 text-blue-600" />
+                  <label htmlFor="urgente" className="ml-2 text-sm text-gray-700">Marcar como urgente</label>
                 </div>
                 <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="ayuno"
-                    checked={requiereAyuno}
-                    onChange={(e) => setRequiereAyuno(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="ayuno" className="ml-2 text-sm text-gray-700">
-                    Requiere ayuno
-                  </label>
+                  <input type="checkbox" id="ayuno" checked={requiereAyuno} onChange={(e) => setRequiereAyuno(e.target.checked)} className="h-4 w-4 text-blue-600" />
+                  <label htmlFor="ayuno" className="ml-2 text-sm text-gray-700">Requiere ayuno</label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                 <FormField htmlFor="observaciones" label="Observaciones">
-                  <textarea
-                    id="observaciones"
-                    rows={3}
-                    placeholder="Observaciones médicas..."
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <textarea id="observaciones" rows={3} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-full px-3 py-2 border rounded-md" />
                 </FormField>
                 <FormField htmlFor="instrucciones" label="Instrucciones para el paciente">
-                  <textarea
-                    id="instrucciones"
-                    rows={3}
-                    placeholder="Instrucciones especiales..."
-                    value={instruccionesPaciente}
-                    onChange={(e) => setInstruccionesPaciente(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <textarea id="instrucciones" rows={3} value={instruccionesPaciente} onChange={(e) => setInstruccionesPaciente(e.target.value)} className="w-full px-3 py-2 border rounded-md" />
                 </FormField>
               </div>
             </CustomCard>
 
-            {/* Botones de acción */}
             <div className="flex justify-between">
-              <Button
-                variant="secondary"
-                onClick={() => setStep(2)}
-              >
-                ← Volver
-              </Button>
+              <Button variant="secondary" onClick={() => setStep(2)}>← Volver</Button>
               <div className="space-x-3">
-                <Button
-                  variant="secondary"
-                  onClick={navigateBack}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={crearSolicitud}
-                  disabled={loading}
-                  className="bg-green-600 hover:bg-green-700"
-                >
+                <Button variant="secondary" onClick={navigateBack}>Cancelar</Button>
+                <Button onClick={crearSolicitud} disabled={loading} className="bg-green-600 hover:bg-green-700">
                   {loading ? 'Creando...' : 'Crear Solicitud'}
                 </Button>
               </div>

@@ -7,7 +7,7 @@ export default function RegisterForm() {
     username: "",
     email: "",
     password: "",
-    rol: "", // Valor predeterminado
+    rol: "bioquimico", // ✅ CAMBIO: Valor inicial que coincida con la primera opción del select
   });
   const [message, setMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -24,6 +24,8 @@ export default function RegisterForm() {
     e.preventDefault();
 
     try {
+      // ✅ CAMBIO: Endpoint corregido de /api/register a /api/auth/register (según tu configuración de rutas)
+      // O simplemente /api/register si así lo definiste en authRoutes.ts
       const response = await fetch("http://localhost:5000/api/register", {
         method: "POST",
         headers: {
@@ -37,17 +39,17 @@ export default function RegisterForm() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        setMessage(`Error: ${errorData.message || "Error en el registro"}`);
+        setMessage(`Error: ${data.message || "Error en el registro"}`);
         setIsSuccess(false);
         return;
       }
 
-      const data = await response.json();
       setMessage(data.message || "Usuario registrado con éxito");
       setIsSuccess(true);
-      setFormData({ username: "", email: "", password: "", rol: "" });
+      setFormData({ username: "", email: "", password: "", rol: "bioquimico" });
     } catch (error) {
       setMessage("Error de conexión con el servidor");
       setIsSuccess(false);

@@ -4,19 +4,105 @@ import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 
 // ============================================
-// FUNCIÓN PARA MANEJAR QUERY PARAMS
+// FUNCIÓN PARA MANEJAR QUERY PARAMS (Existente)
 // ============================================
-
 const getStringParam = (param: any): string => {
-  if (typeof param === 'string') {
-    return param.trim();
-  }
-  if (Array.isArray(param) && param.length > 0) {
-    return String(param[0]).trim();
-  }
+  if (typeof param === 'string') return param.trim();
+  if (Array.isArray(param) && param.length > 0) return String(param[0]).trim();
   return '';
 };
 
+// ============================================
+// [NUEVO] LISTAR TODOS LOS ANÁLISIS (ADMIN)
+// ============================================
+// src/controllers/analisis.controller.ts
+
+export const getAllAnalisisAdmin = async (req: Request, res: Response) => {
+  try {
+    console.log('📋 Consultando catálogo completo...');
+    
+    // Traemos los datos técnicos y contamos los "hijos" en la tabla incluye
+    const [rows]: any = await pool.query(`
+      SELECT 
+        codigo_practica, 
+        descripcion_practica, 
+        REFERENCIA, 
+        UNIDAD_BIOQUIMICA, 
+        URGENCIA,
+        (SELECT COUNT(*) FROM incluye WHERE codigo_padre = analisis.codigo_practica) as cantidad_hijos
+      FROM analisis 
+      ORDER BY descripcion_practica ASC
+    `);
+
+    // ✅ IMPORTANTE: Devolver el objeto con la propiedad "data"
+    return res.status(200).json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error("💥 Error SQL:", error);
+    return res.status(500).json({ success: false, message: "Error interno" });
+  }
+};
+// ============================================
+// [NUEVO] CREAR O EDITAR ANÁLISIS (CON RECURSIVIDAD)
+// ============================================
+export const guardarAnalisis = async (req: Request, res: Response) => {
+  const { 
+    codigo_practica, 
+    descripcion_practica, 
+    referencia, 
+    unidad_bioquimica, 
+    codigo_modulo,
+    urgencia,
+    hijos // Array de códigos de prácticas hijos
+  } = req.body;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Insertar o Actualizar en tabla 'analisis'
+    await connection.query(`
+      INSERT INTO analisis (
+        codigo_practica, descripcion_practica, REFERENCIA, 
+        UNIDAD_BIOQUIMICA, codigo_modulo, URGENCIA
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        descripcion_practica = VALUES(descripcion_practica),
+        REFERENCIA = VALUES(REFERENCIA),
+        UNIDAD_BIOQUIMICA = VALUES(UNIDAD_BIOQUIMICA),
+        codigo_modulo = VALUES(codigo_modulo),
+        URGENCIA = VALUES(URGENCIA)
+    `, [codigo_practica, descripcion_practica.toUpperCase(), referencia, unidad_bioquimica, codigo_modulo || 1, urgencia || 'N']);
+
+    // 2. Manejar relación recursiva 'incluye'
+    // Primero limpiamos las relaciones existentes para este padre
+    await connection.query("DELETE FROM incluye WHERE codigo_padre = ?", [codigo_practica]);
+
+    // Insertamos las nuevas relaciones si existen hijos
+    if (hijos && hijos.length > 0) {
+      const values = hijos.map((hijoCod: any) => [
+        codigo_practica, 
+        hijoCod, 
+        `Componente de ${descripcion_practica.toUpperCase()}`
+      ]);
+      await connection.query(
+        "INSERT INTO incluye (codigo_padre, codigo_hijo, descripcion) VALUES ?", 
+        [values]
+      );
+    }
+
+    await connection.commit();
+    res.status(200).json({ success: true, message: "Práctica guardada correctamente" });
+  } catch (error: any) {
+    await connection.rollback();
+    console.error("Error al guardar análisis:", error);
+    res.status(500).json({ success: false, message: "Error interno" });
+  } finally {
+    connection.release();
+  }
+};
 // ============================================
 // OBTENER ANÁLISIS DEL MÉDICO - CORREGIDO
 // ============================================
@@ -317,5 +403,34 @@ export const getAnalisisDisponibles = async (req: Request, res: Response) => {
       success: false,
       message: 'Error al obtener análisis disponibles'
     });
+  }
+};
+
+
+
+// Función para obtener los sub-análisis (hijos) de una práctica
+export const getEstructuraAnalisis = async (req: Request, res: Response) => {
+  const { codigo } = req.params;
+  try {
+    const query = `
+      SELECT 
+        i.codigo_hijo, 
+        a.descripcion_practica, 
+        a.REFERENCIA, 
+        a.UNIDAD_BIOQUIMICA 
+      FROM incluye i
+      JOIN analisis a ON i.codigo_hijo = a.codigo_practica
+      WHERE i.codigo_padre = ?
+    `;
+    
+    const [hijos]: any = await pool.query(query, [codigo]);
+
+    res.json({
+      success: true,
+      data: hijos
+    });
+  } catch (error) {
+    console.error("Error al obtener estructura:", error);
+    res.status(500).json({ success: false, message: "Error al obtener componentes" });
   }
 };

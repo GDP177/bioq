@@ -19,11 +19,7 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
 
     // 1. VERIFICAR QUE ES ADMINISTRADOR
     const [adminRows]: any = await pool.query(
-      `SELECT 
-        u.id_usuario,
-        u.username,
-        u.email,
-        u.rol
+      `SELECT u.id_usuario, u.username, u.email, u.rol
        FROM usuarios u 
        WHERE u.id_usuario = ? AND u.rol = 'admin' AND u.activo = 1`, 
       [id_usuario]
@@ -32,7 +28,7 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
     if (adminRows.length === 0) {
       return res.status(404).json({ 
         success: false,
-        message: 'Administrador no encontrado' 
+        message: 'Administrador no encontrado o inactivo' 
       });
     }
 
@@ -44,9 +40,9 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
         (SELECT COUNT(*) FROM orden WHERE DATE(fecha_ingreso_orden) = CURDATE()) as ordenes_hoy,
         (SELECT COUNT(*) FROM orden WHERE DATE(fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) as ordenes_semana,
         (SELECT COUNT(*) FROM orden WHERE DATE(fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) as ordenes_mes,
-        (SELECT COUNT(*) FROM paciente WHERE activo = 1) as total_pacientes,
-        (SELECT COUNT(*) FROM medico WHERE activo = 1) as total_medicos,
-        (SELECT COUNT(*) FROM bioquimico WHERE activo = 1) as total_bioquimicos,
+        (SELECT COUNT(*) FROM paciente) as total_pacientes,
+        (SELECT COUNT(*) FROM medico) as total_medicos,
+        (SELECT COUNT(*) FROM bioquimico) as total_bioquimicos,
         (SELECT COUNT(*) FROM usuarios WHERE activo = 1) as total_usuarios`
     );
 
@@ -54,9 +50,7 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
 
     // 3. ESTADÍSTICAS DE ÓRDENES POR ESTADO
     const [estadosRows]: any = await pool.query(
-      `SELECT 
-        estado,
-        COUNT(*) as cantidad
+      `SELECT estado, COUNT(*) as cantidad
        FROM orden 
        WHERE DATE(fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
        GROUP BY estado`
@@ -69,9 +63,7 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
 
     // 4. ANÁLISIS MÁS SOLICITADOS
     const [analisisFrecuentesRows]: any = await pool.query(
-      `SELECT 
-        oa.codigo_practica,
-        COUNT(*) as cantidad
+      `SELECT oa.codigo_practica, COUNT(*) as cantidad
        FROM orden_analisis oa
        JOIN orden o ON oa.id_orden = o.id_orden
        WHERE DATE(o.fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
@@ -80,17 +72,12 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
        LIMIT 10`
     );
 
-    // 5. RENDIMIENTO POR MÉDICO (TOP 10)
+    // 5. RENDIMIENTO POR MÉDICO
     const [medicoRendimientoRows]: any = await pool.query(
-      `SELECT 
-        m.nombre_medico,
-        m.apellido_medico,
-        m.especialidad,
-        COUNT(o.id_orden) as ordenes_solicitadas
+      `SELECT m.nombre_medico, m.apellido_medico, m.especialidad, COUNT(o.id_orden) as ordenes_solicitadas
        FROM medico m
        LEFT JOIN orden o ON m.id_medico = o.id_medico_solicitante 
          AND DATE(o.fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-       WHERE m.activo = 1
        GROUP BY m.id_medico, m.nombre_medico, m.apellido_medico, m.especialidad
        ORDER BY COUNT(o.id_orden) DESC
        LIMIT 10`
@@ -98,17 +85,9 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
 
     // 6. ÓRDENES RECIENTES
     const [ordenesRecientesRows]: any = await pool.query(
-      `SELECT 
-        o.id_orden,
-        o.nro_orden,
-        o.fecha_ingreso_orden,
-        o.estado,
-        o.urgente,
-        p.Nombre_paciente as nombre_paciente,
-        p.Apellido_paciente as apellido_paciente,
-        p.DNI as dni,
-        m.nombre_medico,
-        m.apellido_medico
+      `SELECT o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.estado, o.urgente,
+              p.Nombre_paciente as nombre_paciente, p.Apellido_paciente as apellido_paciente, p.DNI as dni,
+              m.nombre_medico, m.apellido_medico
        FROM orden o
        JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
        LEFT JOIN medico m ON o.id_medico_solicitante = m.id_medico
@@ -116,42 +95,26 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
        LIMIT 15`
     );
 
-    // 7. FACTURACIÓN ESTIMADA (si tienes precios)
+    // 7. FACTURACIÓN
     const [facturacionRows]: any = await pool.query(
-      `SELECT 
-        COUNT(o.id_orden) as total_ordenes_facturables,
-        COUNT(CASE WHEN o.estado = 'finalizado' THEN 1 END) as ordenes_finalizadas
+      `SELECT COUNT(o.id_orden) as total_ordenes_facturables,
+              COUNT(CASE WHEN o.estado = 'finalizado' THEN 1 END) as ordenes_finalizadas
        FROM orden o
        WHERE DATE(o.fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`
     );
 
     const facturacion = facturacionRows[0] || {};
 
-    // 8. NOTIFICACIONES PARA ADMIN
+    // 8. NOTIFICACIONES
     const notificaciones = [];
-    
-    if (parseInt(metricas.ordenes_hoy) > 50) {
-      notificaciones.push(`📈 Alto volumen: ${metricas.ordenes_hoy} órdenes procesadas hoy`);
-    }
-    
+    if (parseInt(metricas.ordenes_hoy) > 50) notificaciones.push(`📈 Alto volumen: ${metricas.ordenes_hoy} órdenes hoy`);
     const ordenesPendientes = estadosPorCantidad.pendiente || 0;
-    if (ordenesPendientes > 20) {
-      notificaciones.push(`⚠️ ${ordenesPendientes} órdenes pendientes requieren atención`);
-    }
+    if (ordenesPendientes > 20) notificaciones.push(`⚠️ ${ordenesPendientes} órdenes pendientes`);
+    if (notificaciones.length === 0) notificaciones.push('✅ Sistema funcionando normalmente');
 
-    if (notificaciones.length === 0) {
-      notificaciones.push('✅ Sistema funcionando normalmente');
-    }
-
-    // 9. CONSTRUIR RESPUESTA
-    const dashboardData = {
+    return res.status(200).json({
       success: true,
-      administrador: {
-        id: admin.id_usuario,
-        username: admin.username,
-        email: admin.email,
-        rol: admin.rol
-      },
+      administrador: { id: admin.id_usuario, username: admin.username, email: admin.email, rol: admin.rol },
       metricas_generales: {
         ordenes_hoy: parseInt(metricas.ordenes_hoy) || 0,
         ordenes_semana: parseInt(metricas.ordenes_semana) || 0,
@@ -162,36 +125,20 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
         total_usuarios: parseInt(metricas.total_usuarios) || 0
       },
       estadisticas_ordenes: {
-        pendientes: estadosPorCantidad.pendiente || 0,
+        pendientes: ordenesPendientes,
         en_proceso: estadosPorCantidad.en_proceso || 0,
         finalizadas: estadosPorCantidad.finalizado || 0,
         canceladas: estadosPorCantidad.cancelado || 0
       },
-      analisis_frecuentes: analisisFrecuentesRows.map((analisis: any) => ({
-        codigo: analisis.codigo_practica,
-        cantidad: analisis.cantidad
+      analisis_frecuentes: analisisFrecuentesRows.map((a: any) => ({ codigo: a.codigo_practica, cantidad: a.cantidad })),
+      rendimiento_medicos: medicoRendimientoRows.map((m: any) => ({
+        nombre: m.nombre_medico, apellido: m.apellido_medico, especialidad: m.especialidad, ordenes_solicitadas: m.ordenes_solicitadas
       })),
-      rendimiento_medicos: medicoRendimientoRows.map((medico: any) => ({
-        nombre: medico.nombre_medico,
-        apellido: medico.apellido_medico,
-        especialidad: medico.especialidad,
-        ordenes_solicitadas: medico.ordenes_solicitadas
-      })),
-      ordenes_recientes: ordenesRecientesRows.map((orden: any) => ({
-        id: orden.id_orden,
-        nro_orden: orden.nro_orden || `ORD-${orden.id_orden}`,
-        fecha_ingreso: orden.fecha_ingreso_orden,
-        estado: orden.estado,
-        urgente: orden.urgente === 1,
-        paciente: {
-          nombre: orden.nombre_paciente,
-          apellido: orden.apellido_paciente,
-          dni: orden.dni
-        },
-        medico: {
-          nombre: orden.nombre_medico,
-          apellido: orden.apellido_medico
-        }
+      ordenes_recientes: ordenesRecientesRows.map((o: any) => ({
+        id: o.id_orden, nro_orden: o.nro_orden || `ORD-${o.id_orden}`, fecha_ingreso: o.fecha_ingreso_orden,
+        estado: o.estado, urgente: o.urgente === 1,
+        paciente: { nombre: o.nombre_paciente, apellido: o.apellido_paciente, dni: o.dni },
+        medico: { nombre: o.nombre_medico, apellido: o.apellido_medico }
       })),
       facturacion: {
         ordenes_facturables: parseInt(facturacion.total_ordenes_facturables) || 0,
@@ -201,45 +148,29 @@ export const getDashboardAdmin = async (req: Request, res: Response) => {
       },
       notificaciones,
       timestamp: new Date().toISOString()
-    };
-
-    console.log('✅ Dashboard admin preparado exitosamente');
-
-    return res.status(200).json(dashboardData);
-
-  } catch (error) {
-    console.error("💥 ERROR EN DASHBOARD ADMIN:", error);
-    return res.status(500).json({ 
-      success: false,
-      message: "Error al obtener dashboard administrativo",
-      error: process.env.NODE_ENV === 'development' ? error?.toString() : undefined
     });
+
+  } catch (error: any) {
+    console.error("💥 ERROR EN DASHBOARD ADMIN:", error);
+    return res.status(500).json({ success: false, message: "Error al obtener dashboard", error: error.message });
   }
 };
 
-// GESTIÓN DE TODOS LOS PACIENTES (ADMIN)
+// GESTIÓN DE TODOS LOS PACIENTES (ADMIN) - ✅ CLAVES CORREGIDAS PARA EL FRONTEND
 export const getAllPacientesAdmin = async (req: Request, res: Response) => {
   const buscar = req.query.buscar as string || '';
   const mutual = req.query.mutual as string || 'todos';
   const sexo = req.query.sexo as string || 'todos';
-  const orden = req.query.orden as string || 'reciente';
   const pagina = parseInt(req.query.pagina as string) || 1;
   const limite = parseInt(req.query.limite as string) || 50;
 
   try {
-    console.log('👥 Admin obteniendo todos los pacientes');
-
-    let whereConditions = ['p.estado IS NULL OR p.estado = "activo"'];
+    let whereConditions = ['1=1'];
     let queryParams: any[] = [];
 
-    // Filtros
     if (buscar) {
       const searchTerm = `%${buscar}%`;
-      whereConditions.push(`(
-        p.Nombre_paciente LIKE ? OR 
-        p.Apellido_paciente LIKE ? OR 
-        p.DNI LIKE ?
-      )`);
+      whereConditions.push(`(p.Nombre_paciente LIKE ? OR p.Apellido_paciente LIKE ? OR p.DNI LIKE ?)`);
       queryParams.push(searchTerm, searchTerm, searchTerm);
     }
 
@@ -254,167 +185,72 @@ export const getAllPacientesAdmin = async (req: Request, res: Response) => {
     }
 
     const whereClause = whereConditions.join(' AND ');
-
-    // Determinar ORDER BY
-    let orderBy = 'p.fecha_alta DESC';
-    switch (orden) {
-      case 'nombre':
-        orderBy = 'p.Apellido_paciente ASC, p.Nombre_paciente ASC';
-        break;
-      case 'dni':
-        orderBy = 'p.DNI ASC';
-        break;
-      case 'edad_desc':
-        orderBy = 'p.edad DESC';
-        break;
-      case 'mas_ordenes':
-        orderBy = 'total_ordenes DESC';
-        break;
-    }
-
     const offset = (pagina - 1) * limite;
 
-    // Query principal
     const mainQuery = `
-      SELECT 
-        p.nro_ficha,
-        p.Nombre_paciente,
-        p.Apellido_paciente,
-        p.DNI,
-        p.fecha_nacimiento,
-        p.edad,
-        p.sexo,
-        p.telefono,
-        p.direccion,
-        p.email,
-        p.mutual,
-        p.nro_afiliado,
-        p.grupo_sanguineo,
-        p.estado,
-        p.fecha_alta,
-        COALESCE(COUNT(o.id_orden), 0) as total_ordenes,
-        MAX(o.fecha_ingreso_orden) as ultima_orden
+      SELECT p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, p.DNI, p.fecha_nacimiento, p.edad, p.sexo, 
+             p.telefono, p.direccion, p.mutual, p.nro_afiliado, p.grupo_sanguineo,
+             COALESCE(COUNT(o.id_orden), 0) as total_ordenes, MAX(o.fecha_ingreso_orden) as ultima_orden
       FROM paciente p
       LEFT JOIN orden o ON p.nro_ficha = o.nro_ficha_paciente
       WHERE ${whereClause}
-      GROUP BY p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, p.DNI,
-               p.fecha_nacimiento, p.edad, p.sexo, p.telefono, p.direccion,
-               p.email, p.mutual, p.nro_afiliado, p.grupo_sanguineo, p.estado, p.fecha_alta
-      ORDER BY ${orderBy}
-      LIMIT ? OFFSET ?
-    `;
+      GROUP BY p.nro_ficha
+      ORDER BY p.nro_ficha DESC
+      LIMIT ? OFFSET ?`;
 
     queryParams.push(limite, offset);
+    const [pacientesRows]: any = await pool.query(mainQuery, queryParams);
 
-    const [pacientesRows]: [any[], any] = await pool.query(mainQuery, queryParams);
-
-    // Contar total
-    const countQuery = `
-      SELECT COUNT(DISTINCT p.nro_ficha) as total
-      FROM paciente p
-      WHERE ${whereClause}
-    `;
-
-    const [countRows]: [any[], any] = await pool.query(countQuery, queryParams.slice(0, -2));
-    const total = countRows[0]?.total || 0;
-
-    const pacientes = pacientesRows.map((paciente: any) => ({
-      nro_ficha: paciente.nro_ficha,
-      nombre: paciente.Nombre_paciente,
-      apellido: paciente.Apellido_paciente,
-      dni: parseInt(paciente.DNI),
-      fecha_nacimiento: paciente.fecha_nacimiento,
-      edad: paciente.edad,
-      sexo: paciente.sexo,
-      telefono: paciente.telefono,
-      direccion: paciente.direccion,
-      email: paciente.email,
-      mutual: paciente.mutual,
-      nro_afiliado: paciente.nro_afiliado,
-      grupo_sanguineo: paciente.grupo_sanguineo,
-      estado: paciente.estado,
-      fecha_alta: paciente.fecha_alta,
-      total_ordenes: parseInt(paciente.total_ordenes),
-      ultima_orden: paciente.ultima_orden
+    // ✅ MAPEADO DE CLAVES PARA EL FRONTEND
+    const pacientes = pacientesRows.map((p: any) => ({
+      nro_ficha: p.nro_ficha,
+      nombre: p.Nombre_paciente,
+      apellido: p.Apellido_paciente,
+      dni: p.DNI,
+      fecha_nacimiento: p.fecha_nacimiento,
+      edad: p.edad,
+      sexo: p.sexo,
+      telefono: p.telefono,
+      direccion: p.direccion,
+      mutual: p.mutual,
+      nro_afiliado: p.nro_afiliado,
+      grupo_sanguineo: p.grupo_sanguineo,
+      total_ordenes: p.total_ordenes,
+      ultima_orden: p.ultima_orden
     }));
 
-    console.log('✅ Pacientes admin obtenidos:', pacientes.length);
-
+    const countQuery = `SELECT COUNT(DISTINCT p.nro_ficha) as total FROM paciente p WHERE ${whereClause}`;
+    const [countRows]: any = await pool.query(countQuery, queryParams.slice(0, -2));
+    
     return res.status(200).json({
       success: true,
       pacientes,
-      total,
+      total: countRows[0]?.total || 0,
       pagina_actual: pagina,
-      total_paginas: Math.ceil(total / limite),
-      filtros_aplicados: { buscar, mutual, sexo, orden }
+      total_paginas: Math.ceil((countRows[0]?.total || 0) / limite)
     });
-
   } catch (error: any) {
-    console.error('💥 ERROR al obtener pacientes admin:', error);
-    return res.status(500).json({ 
-      success: false,
-      message: 'Error al obtener pacientes'
-    });
+    return res.status(500).json({ success: false, message: "Error al obtener pacientes" });
   }
 };
 
 // GESTIÓN DE USUARIOS (ADMIN)
 export const getAllUsuariosAdmin = async (req: Request, res: Response) => {
   try {
-    console.log('👤 Admin obteniendo todos los usuarios');
-
     const [usuariosRows]: any = await pool.query(
-      `SELECT 
-        u.id_usuario,
-        u.username,
-        u.email,
-        u.rol,
-        u.activo,
-        u.fecha_creacion,
-        u.ultimo_acceso,
-        u.intentos_fallidos,
-        CASE 
-          WHEN u.rol = 'medico' THEN CONCAT(m.nombre_medico, ' ', m.apellido_medico)
-          WHEN u.rol = 'bioquimico' THEN CONCAT(b.nombre_bq, ' ', b.apellido_bq)
-          ELSE u.username
-        END as nombre_completo,
-        CASE 
-          WHEN u.rol = 'medico' THEN m.matricula_medica
-          WHEN u.rol = 'bioquimico' THEN b.matricula_profesional
-          ELSE NULL
-        END as matricula
+      `SELECT u.id_usuario, u.username, u.email, u.rol, u.activo, u.fecha_creacion, u.ultimo_acceso,
+              CASE 
+                WHEN u.rol = 'medico' THEN CONCAT(m.nombre_medico, ' ', m.apellido_medico)
+                WHEN u.rol = 'bioquimico' THEN CONCAT(b.nombre_bq, ' ', b.apellido_bq)
+                ELSE u.username
+              END as nombre_completo
        FROM usuarios u
        LEFT JOIN medico m ON u.id_usuario = m.id_usuario AND u.rol = 'medico'
        LEFT JOIN bioquimico b ON u.id_usuario = b.id_usuario AND u.rol = 'bioquimico'
        ORDER BY u.fecha_creacion DESC`
     );
-
-    const usuarios = usuariosRows.map((usuario: any) => ({
-      id_usuario: usuario.id_usuario,
-      username: usuario.username,
-      email: usuario.email,
-      rol: usuario.rol,
-      activo: usuario.activo === 1,
-      fecha_creacion: usuario.fecha_creacion,
-      ultimo_acceso: usuario.ultimo_acceso,
-      intentos_fallidos: usuario.intentos_fallidos,
-      nombre_completo: usuario.nombre_completo,
-      matricula: usuario.matricula
-    }));
-
-    console.log('✅ Usuarios admin obtenidos:', usuarios.length);
-
-    return res.status(200).json({
-      success: true,
-      usuarios,
-      total: usuarios.length
-    });
-
+    return res.status(200).json({ success: true, usuarios: usuariosRows, total: usuariosRows.length });
   } catch (error: any) {
-    console.error('💥 ERROR al obtener usuarios admin:', error);
-    return res.status(500).json({ 
-      success: false,
-      message: 'Error al obtener usuarios'
-    });
+    return res.status(500).json({ success: false, message: "Error al obtener usuarios" });
   }
 };

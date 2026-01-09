@@ -1,4 +1,4 @@
-// src/pages/login/Login.tsx - VERSIÓN LIMPIA SIN ELEMENTOS NO PEDIDOS
+// src/pages/login/Login.tsx - VERSIÓN CORREGIDA PARA REDIRECCIÓN ADMIN
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -74,7 +74,8 @@ export default function Login() {
               navigate("/completar-perfil-bioquimico");
               break;
             case 'admin':
-              navigate("/dashboard/admin");
+              // ✅ Redirección consistente con App.tsx
+              navigate("/admin/dashboard"); 
               break;
             default:
               setError("Rol de usuario no reconocido");
@@ -92,7 +93,9 @@ export default function Login() {
             navigate(`/dashboard/bioquimico/${usuario.matricula || usuario.id}`);
             break;
           case 'admin':
-            navigate(`/dashboard/admin/${usuario.id}`);
+            // ✅ Aseguramos que use la ruta registrada en App.tsx
+            console.log("👑 Redirigiendo a Panel Administrativo");
+            navigate("/admin/dashboard");
             break;
           default:
             setError("Rol de usuario no reconocido");

@@ -641,7 +641,7 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
   try {
     console.log(`📋 Obteniendo detalle de orden ${id_orden}`);
 
-    // Obtener datos de la orden
+    // 1. Obtener datos de la orden y del paciente
     const [ordenRows]: any = await pool.query(
       `SELECT 
         o.id_orden,
@@ -649,11 +649,13 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
         o.fecha_ingreso_orden,
         o.estado,
         o.urgente,
-        p.Nombre_paciente as nombre_paciente,
-        p.Apellido_paciente as apellido_paciente,
-        p.DNI as dni,
+        p.Nombre_paciente AS nombre_paciente,
+        p.Apellido_paciente AS apellido_paciente,
+        p.DNI AS dni,
         p.fecha_nacimiento,
-        p.sexo
+        p.sexo,
+        p.edad,
+        p.mutual
        FROM orden o
        JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
        WHERE o.id_orden = ?`,
@@ -669,34 +671,39 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
 
     const orden = ordenRows[0];
 
-    // Obtener análisis de la orden
-    const [analisisRows]: any = await pool.query(
-      `SELECT 
+    // 2. Obtener análisis vinculando la tabla maestra 'analisis' para traer REFERENCIA
+    // ... dentro de la función getDetalleOrden, actualiza la query de análisis:
+
+    const [analisisRows]: any = await pool.query(`
+      SELECT 
         oa.id_orden_analisis,
         oa.codigo_practica,
+        a.descripcion_practica AS descripcion_analisis,
+        a.unidad_bioquimica,      -- ✅ Agregado
+        a.codigo_modulo,          -- ✅ Agregado
+        a.URGENCIA,               -- ✅ Agregado
         oa.estado,
-        oa.resultado,
-        oa.observaciones,
-        oa.valores_referencia,
-        oa.fecha_resultado,
-        a.Descripcion as descripcion_analisis
-       FROM orden_analisis oa
-       LEFT JOIN analisis a ON oa.codigo_practica = a.Cod_analisis
-       WHERE oa.id_orden = ?
-       ORDER BY oa.codigo_practica`,
-      [id_orden]
-    );
+        oa.valor_hallado,
+        oa.unidad_hallada,
+        COALESCE(oa.valor_referencia_aplicado, a.REFERENCIA) AS valor_referencia_final,
+        oa.observaciones
+      FROM orden_analisis oa
+      LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
+      WHERE oa.id_orden = ?
+      ORDER BY oa.codigo_practica`, [id_orden]);
 
-    const analisisTransformados = analisisRows.map((analisis: any) => ({
-      id: analisis.id_orden_analisis,
-      codigo: analisis.codigo_practica,
-      descripcion: analisis.descripcion_analisis || `Análisis ${analisis.codigo_practica}`,
-      estado: analisis.estado,
-      resultado: analisis.resultado ? JSON.parse(analisis.resultado) : null,
-      observaciones: analisis.observaciones,
-      valores_referencia: analisis.valores_referencia ? 
-        JSON.parse(analisis.valores_referencia) : null,
-      fecha_resultado: analisis.fecha_resultado
+    const analisisTransformados = analisisRows.map((a: any) => ({
+      id: a.id_orden_analisis,
+      codigo: a.codigo_practica,
+      descripcion: a.descripcion_analisis || `Análisis ${a.codigo_practica}`,
+      modulo: a.codigo_modulo,      // ✅ Nuevo
+      ub: a.unidad_bioquimica,      // ✅ Nuevo (Unidades Bioquímicas)
+      urgencia: a.URGENCIA,         // ✅ Nuevo
+      estado: a.estado,
+      resultado: a.valor_hallado || null,
+      unidad: a.unidad_bioquimica || a.unidad_hallada || '',
+      referencia: a.valor_referencia_final || 'No posee',
+      observaciones: a.observaciones || null
     }));
 
     console.log(`✅ Detalle de orden ${id_orden} obtenido exitosamente`);
@@ -714,17 +721,20 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
           apellido: orden.apellido_paciente,
           dni: orden.dni,
           fecha_nacimiento: orden.fecha_nacimiento,
-          sexo: orden.sexo
+          sexo: orden.sexo,
+          edad: orden.edad,
+          mutual: orden.mutual
         },
         analisis: analisisTransformados
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 ERROR AL OBTENER DETALLE DE ORDEN:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error al obtener detalle de orden'
+      message: 'Error al obtener detalle de orden',
+      error: error.message
     });
   }
 };

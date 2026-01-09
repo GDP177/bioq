@@ -1,55 +1,87 @@
-// src/components/layout/Sidebar.tsx
-import { SidebarItem } from '../ui/SidebarItem';
-import { Button } from '../ui/button';
-
-// ¡Importa desde @heroicons/react/24/outline para los iconos de 24x24px!
+import { useNavigate, useLocation } from "react-router-dom";
 import {
-  HomeIcon,
-  UsersIcon,
-  ClipboardDocumentListIcon, // <-- CAMBIO AQUÍ: Corrected from ClipboardListIcon
-  BeakerIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,             // <-- CAMBIO AQUÍ: Assuming you meant the gear icon (was CogIcon/CodIcon)
-  ArrowRightOnRectangleIcon, // (Previously corrected)
+  HomeIcon, UsersIcon, ClipboardDocumentListIcon,
+  BeakerIcon, ChartBarIcon, Cog6ToothIcon,
+  ArrowRightOnRectangleIcon, UserCircleIcon, 
+  DocumentPlusIcon, InboxStackIcon
 } from '@heroicons/react/24/outline';
 
 export function Sidebar() {
-  return (
-    <aside className="w-64 bg-white p-4 shadow-md border-r border-gray-200 flex flex-col justify-between">
-      <nav>
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Menú Principal</h3>
-          <ul>
-            <li className="mb-1">
-              <SidebarItem to="/dashboard" label="Dashboard" icon={<HomeIcon className="h-5 w-5" />} />
-            </li>
-            <li className="mb-1">
-              <SidebarItem to="/patients" label="Pacientes" icon={<UsersIcon className="h-5 w-5" />} />
-            </li>
-            <li className="mb-1">
-              <SidebarItem to="/orders" label="Órdenes de Laboratorio" icon={<ClipboardDocumentListIcon className="h-5 w-5" />} /> {/* <-- USO AQUÍ */}
-            </li>
-            <li className="mb-1">
-              <SidebarItem to="/results" label="Resultados" icon={<BeakerIcon className="h-5 w-5" />} />
-            </li>
-            <li className="mb-1">
-              <SidebarItem to="/reports" label="Reportes" icon={<ChartBarIcon className="h-5 w-5" />} />
-            </li>
-          </ul>
-        </div>
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const usuarioJson = localStorage.getItem("usuario");
+  // ✅ Validación robusta del objeto usuario para evitar errores de renderizado
+  const usuario = usuarioJson ? JSON.parse(usuarioJson) : { username: "Invitado", rol: "invitado" };
 
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Gestión</h3>
-          <ul>
-            <li className="mb-1">
-              <SidebarItem to="/settings" label="Configuración" icon={<Cog6ToothIcon className="h-5 w-5" />} /> {/* <-- USO AQUÍ */}
-            </li>
-          </ul>
+  const menuConfig = {
+    admin: [
+      { label: "Dashboard", path: "/admin/dashboard", icon: <HomeIcon className="w-5 h-5" /> },
+      { label: "Pacientes", path: "/admin/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
+      { label: "Usuarios", path: "/admin/usuarios", icon: <UserCircleIcon className="w-5 h-5" /> },
+      { label: "Catálogo Análisis", path: "/admin/analisis", icon: <BeakerIcon className="w-5 h-5" /> },
+      { label: "Configuración", path: "/admin/config", icon: <Cog6ToothIcon className="w-5 h-5" /> },
+    ],
+    medico: [
+      { label: "Panel Inicio", path: "/medico/dashboard", icon: <HomeIcon className="w-5 h-5" /> },
+      { label: "Nueva Solicitud", path: "/medico/nueva-solicitud", icon: <DocumentPlusIcon className="w-5 h-5" /> },
+      { label: "Gestión Pacientes", path: "/medico/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
+      { label: "Órdenes Enviadas", path: "/medico/ordenes", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
+    ],
+    bioquimico: [
+      { label: "Panel Central", path: "/bioquimico/dashboard", icon: <BeakerIcon className="w-5 h-5" /> },
+      { label: "Órdenes Entrantes", path: "/bioquimico/ordenes", icon: <InboxStackIcon className="w-5 h-5" /> },
+      { label: "Consulta Técnicas", path: "/admin/analisis", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
+      { label: "Reportes", path: "/medico/reportes", icon: <ChartBarIcon className="w-5 h-5" /> },
+    ]
+  };
+
+  const currentMenu = menuConfig[usuario.rol as keyof typeof menuConfig] || [];
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
+
+  return (
+    <aside className="w-64 bg-indigo-950 text-white h-screen fixed left-0 top-0 flex flex-col shadow-2xl z-[60]">
+      <div className="p-6 border-b border-indigo-900/50">
+        <div className="flex items-center gap-3">
+          <UserCircleIcon className="w-10 h-10 text-indigo-400" />
+          <div className="overflow-hidden">
+            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">
+              {usuario?.rol || "SIN ROL"}
+            </p>
+            {/* ✅ CORRECCIÓN CLAVE: Agregamos '?' para evitar el error si username no existe */}
+            <p className="text-sm font-bold truncate uppercase">
+              {usuario?.username || "Usuario"}
+            </p>
+          </div>
         </div>
+      </div>
+
+      <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
+        {currentMenu.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+              location.pathname.includes(item.path)
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-indigo-300 hover:bg-indigo-900/50 hover:text-white"
+            }`}
+          >
+            {item.icon}
+            <span className="text-sm font-bold">{item.label}</span>
+          </button>
+        ))}
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-gray-200">
-        <SidebarItem to="/logout" label="Cerrar Sesión" icon={<ArrowRightOnRectangleIcon className="h-5 w-5" />} />
+      <div className="p-4 border-t border-indigo-900/50">
+        <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all font-black text-xs uppercase tracking-widest">
+          <ArrowRightOnRectangleIcon className="w-5 h-5" />
+          Cerrar Sesión
+        </button>
       </div>
     </aside>
   );

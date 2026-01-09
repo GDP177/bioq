@@ -377,6 +377,119 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
   }
 };
 
+
+// Obtener catálogo para el médico
+export const getCatalogoAnalisis = async (req: Request, res: Response) => {
+    try {
+        const [rows]: any = await pool.query("SELECT * FROM analisis WHERE estado != 'INACTIVO'");
+        res.json({ success: true, analisis: rows });
+    } catch (error) {
+        res.status(500).json({ success: false });
+    }
+};
+
+// Crear solicitud unificada
+export const crearSolicitud = async (req: Request, res: Response) => {
+    const { nro_ficha_paciente, analisis_solicitados, urgente, observaciones, id_medico } = req.body;
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const nro_orden = `ORD-${Date.now()}`;
+
+        // Insertar cabecera
+        const [resOrden]: any = await connection.query(
+            "INSERT INTO ordenes (nro_orden, urgente, id_medico_solicitante, nro_ficha_paciente, estado) VALUES (?, ?, ?, ?, 'pendiente')",
+            [nro_orden, urgente ? 1 : 0, id_medico, nro_ficha_paciente]
+        );
+
+        // Insertar detalle
+        for (const codigo of analisis_solicitados) {
+            await connection.query(
+                "INSERT INTO orden_analisis (id_orden, codigo_practica, estado) VALUES (?, ?, 'pendiente')",
+                [resOrden.insertId, codigo]
+            );
+        }
+
+        await connection.commit();
+        res.json({ success: true, orden_id: resOrden.insertId });
+    } catch (error) {
+        await connection.rollback();
+        res.status(500).json({ success: false });
+    } finally { connection.release(); }
+};
+// ============================================
+// CREAR SOLICITUD COMPLETA
+// ============================================
+export const crearSolicitudCompleta = async (req: Request, res: Response) => {
+    const { nro_ficha_paciente, id_medico_solicitante, urgente, observaciones, analisis } = req.body;
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        // 1. Insertar en tabla 'ordenes'
+        const [resultOrden]: any = await connection.query(
+            `INSERT INTO ordenes (nro_orden, urgente, id_medico_solicitante, fecha_ingreso_orden, nro_ficha_paciente, estado, observaciones) 
+             VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?)`,
+            [`ORD-${Date.now()}`, urgente ? 1 : 0, id_medico_solicitante, nro_ficha_paciente, observaciones]
+        );
+
+        const id_orden = resultOrden.insertId;
+
+        // 2. Insertar en tabla 'orden_analisis' cada práctica seleccionada
+        for (const item of analisis) {
+            await connection.query(
+                `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
+                 VALUES (?, ?, 'pendiente', NOW())`,
+                [id_orden, item.codigo]
+            );
+        }
+
+        await connection.commit();
+        res.json({ success: true, id_orden });
+    } catch (error: any) {
+        await connection.rollback();
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        connection.release();
+    }
+};
+
+
+
+export const getCatalogo = async (req: Request, res: Response) => {
+    try {
+        const [rows]: any = await pool.query("SELECT * FROM analisis WHERE estado != 'INACTIVO'");
+        res.json({ success: true, analisis: rows });
+    } catch (e) { res.status(500).json({ success: false }); }
+};
+
+export const registrarOrden = async (req: Request, res: Response) => {
+    const id_medico = req.params.id;
+    const { nro_ficha_paciente, analisis_solicitados, urgente, observaciones } = req.body;
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const nro_orden = `ORD-${Date.now()}`;
+        
+        const [resOrden]: any = await connection.query(
+            "INSERT INTO orden (nro_orden, nro_ficha_paciente, id_medico_solicitante, fecha_ingreso_orden, urgente, estado, observaciones) VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?)",
+            [nro_orden, nro_ficha_paciente, id_medico, urgente ? 1 : 0, observaciones]
+        );
+
+        for (const codigo of analisis_solicitados) {
+            await connection.query(
+                "INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) VALUES (?, ?, 'pendiente', NOW())",
+                [resOrden.insertId, codigo]
+            );
+        }
+        await connection.commit();
+        res.json({ success: true, nro_orden });
+    } catch (e) {
+        await connection.rollback();
+        res.status(500).json({ success: false });
+    } finally { connection.release(); }
+};
 // ============================================
 // CREAR NUEVA ORDEN - YA ESTÁ BIEN
 // ============================================
