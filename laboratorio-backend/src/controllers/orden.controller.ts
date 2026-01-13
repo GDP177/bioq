@@ -197,186 +197,63 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
 // OBTENER DETALLE DE ORDEN - CORREGIDO
 // ============================================
 
-export const getOrdenDetalle = async (req: Request, res: Response) => {
-  const id_orden = parseInt(req.params.id_orden);
-  const id_medico = parseInt(req.params.id_medico);
+// src/controllers/orden.controller.ts
+export const getOrdenDetalleFinal = async (req: Request, res: Response) => {
+    const { id_orden } = req.params;
+    try {
+        const [ordenRows]: any = await pool.query(
+            `SELECT o.*, p.Nombre_paciente as nombre, p.Apellido_paciente as apellido, p.DNI as dni, p.edad, p.sexo, p.mutual, p.grupo_sanguineo
+             FROM orden o
+             JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+             WHERE o.id_orden = ?`,
+            [id_orden]
+        );
 
-  try {
-    console.log('🔍 ==========================================');
-    console.log('🔍 OBTENIENDO DETALLE DE ORDEN');
-    console.log('🔍 ==========================================');
-    console.log('📋 Orden ID:', id_orden);
-    console.log('👨‍⚕️ Médico ID:', id_medico);
+        if (ordenRows.length === 0) return res.status(404).json({ success: false, message: "Orden no encontrada" });
 
-    if (!id_orden || isNaN(id_orden) || !id_medico || isNaN(id_medico)) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'IDs inválidos' 
-      });
+        const [analisisRows]: any = await pool.query(
+            `SELECT oa.*, a.descripcion_practica 
+             FROM orden_analisis oa
+             JOIN analisis a ON oa.codigo_practica = a.codigo_practica
+             WHERE oa.id_orden = ?`,
+            [id_orden]
+        );
+
+        return res.json({ success: true, orden: ordenRows[0], analisis: analisisRows });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    // Verificar que la orden pertenece al médico
-    const [ordenRows]: [any[], any] = await pool.query(
-      `SELECT 
-        o.id_orden,
-        o.nro_orden,
-        o.fecha_ingreso_orden,
-        o.fecha_procesamiento,
-        o.fecha_finalizacion,
-        o.fecha_toma_muestra,
-        o.estado,
-        COALESCE(o.urgente, 0) as urgente,
-        o.observaciones,
-        o.instrucciones_paciente,
-        COALESCE(o.requiere_ayuno, 0) as requiere_ayuno,
-        o.costo_total,
-        p.nro_ficha,
-        p.Nombre_paciente as nombre_paciente,
-        p.Apellido_paciente as apellido_paciente,
-        p.DNI as dni,
-        p.fecha_nacimiento,
-        p.edad,
-        p.sexo,
-        p.telefono,
-        p.direccion,
-        p.mutual,
-        p.nro_afiliado,
-        p.grupo_sanguineo,
-        m.nombre_medico,
-        m.apellido_medico,
-        m.especialidad,
-        m.matricula_medica
-       FROM orden o
-       JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-       JOIN medico m ON o.id_medico_solicitante = m.id_medico
-       WHERE o.id_orden = ? AND o.id_medico_solicitante = ?`,
-      [id_orden, id_medico]
-    );
-
-    if (ordenRows.length === 0) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Orden no encontrada o no autorizada' 
-      });
-    }
-
-    const orden = ordenRows[0];
-    console.log('✅ Orden encontrada:', orden.nro_orden || `ORD-${orden.id_orden}`);
-
-    // ⚠️ AQUÍ ESTÁ LA CORRECCIÓN PRINCIPAL - USAR LOS NOMBRES CORRECTOS DE COLUMNAS
-    const [analisisRows]: [any[], any] = await pool.query(
-      `SELECT 
-        oa.id_orden_analisis,
-        oa.codigo_practica,
-        oa.estado,
-        oa.fecha_realizacion,
-        oa.valor_hallado,
-        oa.unidad_hallada,
-        oa.valor_referencia_aplicado,
-        oa.interpretacion,
-        oa.observaciones,
-        oa.tecnico_responsable,
-        a.descripcion_practica as descripcion_practica,
-        a.TIPO as tipo_analisis
-       FROM orden_analisis oa
-       LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
-       WHERE oa.id_orden = ?
-       ORDER BY COALESCE(a.descripcion_practica, oa.codigo_practica)`,
-      [id_orden]
-    );
-
-    console.log('🧪 Análisis encontrados:', analisisRows.length);
-
-    // Formatear respuesta
-    const detalleOrden = {
-      success: true,
-      orden: {
-        id: orden.id_orden,
-        nro_orden: orden.nro_orden || `ORD-${orden.id_orden}`,
-        fecha_ingreso: orden.fecha_ingreso_orden,
-        fecha_procesamiento: orden.fecha_procesamiento,
-        fecha_finalizacion: orden.fecha_finalizacion,
-        fecha_toma_muestra: orden.fecha_toma_muestra,
-        estado: orden.estado,
-        urgente: orden.urgente === 1,
-        observaciones: orden.observaciones,
-        instrucciones_paciente: orden.instrucciones_paciente,
-        requiere_ayuno: orden.requiere_ayuno === 1,
-        costo_total: orden.costo_total,
-        
-        paciente: {
-          nro_ficha: orden.nro_ficha,
-          nombre: orden.nombre_paciente,
-          apellido: orden.apellido_paciente,
-          dni: orden.dni,
-          fecha_nacimiento: orden.fecha_nacimiento,
-          edad: orden.edad,
-          sexo: orden.sexo,
-          telefono: orden.telefono,
-          direccion: orden.direccion,
-          mutual: orden.mutual,
-          nro_afiliado: orden.nro_afiliado,
-          grupo_sanguineo: orden.grupo_sanguineo
-        },
-        
-        medico_solicitante: {
-          nombre: orden.nombre_medico,
-          apellido: orden.apellido_medico,
-          especialidad: orden.especialidad,
-          matricula: orden.matricula_medica
-        },
-        
-        analisis: analisisRows.map((analisis: any) => ({
-          id: analisis.id_orden_analisis,
-          codigo: analisis.codigo_practica,
-          descripcion: analisis.descripcion_practica || `Análisis ${analisis.codigo_practica}`,
-          tipo: analisis.tipo_analisis || 'General',
-          estado: analisis.estado,
-          fecha_realizacion: analisis.fecha_realizacion,
-          valor_hallado: analisis.valor_hallado,
-          unidad_hallada: analisis.unidad_hallada,
-          valor_referencia: analisis.valor_referencia_aplicado,
-          interpretacion: analisis.interpretacion,
-          observaciones: analisis.observaciones,
-          tecnico_responsable: analisis.tecnico_responsable
-        })),
-        
-        resumen: {
-          total_analisis: analisisRows.length,
-          analisis_pendientes: analisisRows.filter((a: any) => a.estado === 'pendiente').length,
-          analisis_procesando: analisisRows.filter((a: any) => a.estado === 'procesando').length,
-          analisis_finalizados: analisisRows.filter((a: any) => a.estado === 'finalizado').length,
-          porcentaje_completado: analisisRows.length > 0 ? 
-            Math.round((analisisRows.filter((a: any) => a.estado === 'finalizado').length / analisisRows.length) * 100) : 0
-        }
-      }
-    };
-
-    console.log('✅ Detalle de orden preparado');
-    console.log('🔍 ==========================================');
-
-    return res.status(200).json(detalleOrden);
-
-  } catch (error: any) {
-    console.error('💥 ==========================================');
-    console.error('💥 ERROR AL OBTENER DETALLE DE ORDEN');
-    console.error('💥 ==========================================');
-    console.error('💥 Error completo:', error);
-    console.error('💥 Stack:', error.stack);
-    console.error('💥 ==========================================');
-    
-    return res.status(500).json({ 
-      success: false,
-      message: 'Error al obtener detalle de orden',
-      error: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        code: error.code,
-        sqlState: error.sqlState
-      } : 'Error interno del servidor'
-    });
-  }
 };
 
+
+export const getOrdenDetalle = async (req: Request, res: Response) => {
+    const { id_orden } = req.params;
+    try {
+        const [ordenRows]: any = await pool.query(
+            `SELECT o.*, p.Nombre_paciente as nombre, p.Apellido_paciente as apellido, p.DNI as dni, p.edad, p.sexo, p.mutual 
+             FROM orden o JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha 
+             WHERE o.id_orden = ?`, [id_orden]
+        );
+
+        if (ordenRows.length === 0) return res.status(404).json({ success: false });
+
+        // JOIN para traer la descripción y el nuevo rango de referencia
+        const [analisisRows]: any = await pool.query(
+            `SELECT oa.*, a.descripcion_practica, a.valor_referencia_rango, a.TIPO
+             FROM orden_analisis oa
+             JOIN analisis a ON oa.codigo_practica = a.codigo_practica
+             WHERE oa.id_orden = ?`, [id_orden]
+        );
+
+        return res.json({ 
+            success: true, 
+            orden: ordenRows[0], 
+            analisis: analisisRows 
+        });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
 
 // Obtener catálogo para el médico
 export const getCatalogoAnalisis = async (req: Request, res: Response) => {
@@ -456,39 +333,63 @@ export const crearSolicitudCompleta = async (req: Request, res: Response) => {
 };
 
 
-
 export const getCatalogo = async (req: Request, res: Response) => {
-    try {
-        const [rows]: any = await pool.query("SELECT * FROM analisis WHERE estado != 'INACTIVO'");
-        res.json({ success: true, analisis: rows });
-    } catch (e) { res.status(500).json({ success: false }); }
-};
+  try {
+    const [rows] = await pool.query('SELECT codigo_practica, descripcion_practica, TIPO FROM analisis');
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al obtener catálogo' });
+  }
+};  
 
+// src/controllers/orden.controller.ts
+
+// src/controllers/orden.controller.ts
+// src/controllers/orden.controller.ts
+
+// src/controllers/orden.controller.ts
 export const registrarOrden = async (req: Request, res: Response) => {
-    const id_medico = req.params.id;
-    const { nro_ficha_paciente, analisis_solicitados, urgente, observaciones } = req.body;
-    const connection = await pool.getConnection();
+    const id_medico = parseInt(req.params.id); 
+    const { nro_ficha_paciente, analisis_solicitados, urgente, observaciones, requiere_ayuno } = req.body;
+
     try {
-        await connection.beginTransaction();
-        const nro_orden = `ORD-${Date.now()}`;
-        
-        const [resOrden]: any = await connection.query(
-            "INSERT INTO orden (nro_orden, nro_ficha_paciente, id_medico_solicitante, fecha_ingreso_orden, urgente, estado, observaciones) VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?)",
-            [nro_orden, nro_ficha_paciente, id_medico, urgente ? 1 : 0, observaciones]
+        await pool.query('START TRANSACTION');
+
+        // 1. Generar nro_orden (Formato: ORD-timestamp-random)
+        const nro_orden = `ORD-${Date.now()}-${Math.floor(Math.random() * 100)}`;
+
+        // 2. Insertar en tabla 'orden' (Columnas según image_da30ac)
+        const [ordenResult]: any = await pool.query(
+            `INSERT INTO orden 
+            (nro_orden, urgente, id_medico_solicitante, fecha_ingreso_orden, nro_ficha_paciente, estado, observaciones, requiere_ayuno, fecha_creacion) 
+            VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?, ?, NOW())`,
+            [nro_orden, urgente ? 1 : 0, id_medico, nro_ficha_paciente, observaciones || null, requiere_ayuno ? 1 : 0]
         );
 
-        for (const codigo of analisis_solicitados) {
-            await connection.query(
-                "INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) VALUES (?, ?, 'pendiente', NOW())",
-                [resOrden.insertId, codigo]
+        const id_nueva_orden = ordenResult.insertId;
+
+        // 3. Insertar detalle en 'orden_analisis' (Columnas según image_da312c)
+        for (const codigo_practica of analisis_solicitados) {
+            await pool.query(
+                `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
+                 VALUES (?, ?, 'pendiente', NOW())`,
+                [id_nueva_orden, codigo_practica]
             );
         }
-        await connection.commit();
-        res.json({ success: true, nro_orden });
-    } catch (e) {
-        await connection.rollback();
-        res.status(500).json({ success: false });
-    } finally { connection.release(); }
+
+        await pool.query('COMMIT');
+
+        // Devolvemos el ID real para la redirección del frontend
+        return res.status(201).json({ 
+            success: true, 
+            orden_id: id_nueva_orden 
+        });
+
+    } catch (error: any) {
+        await pool.query('ROLLBACK');
+        console.error("Error al guardar orden:", error.message);
+        return res.status(500).json({ success: false, message: error.message });
+    }
 };
 // ============================================
 // CREAR NUEVA ORDEN - YA ESTÁ BIEN

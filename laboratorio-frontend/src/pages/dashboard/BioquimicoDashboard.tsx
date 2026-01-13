@@ -336,6 +336,60 @@ export default function BioquimicoDashboard() {
 
 
         {/* Content Grid */}
+
+        {/* Contenedor de Órdenes Pendientes modificado */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            📋 Órdenes Pendientes
+          </h3>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {dashboardData.ordenes_pendientes && dashboardData.ordenes_pendientes.length > 0 ? (
+              dashboardData.ordenes_pendientes.map((orden) => (
+                <div 
+                  key={orden.id} 
+                  // 🚩 ACCIÓN: Al hacer clic, navegamos a la pantalla de carga
+                  onClick={() => navigate(`/bioquimico/orden/${orden.id}/cargar`)}
+                  className={`p-3 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all transform hover:-translate-x-1
+                    ${orden.urgente 
+                      ? 'bg-red-50 border-red-500 shadow-sm' 
+                      : 'bg-gray-50 border-green-400'}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className={`font-bold ${orden.urgente ? 'text-red-700' : 'text-gray-900'}`}>
+                        {orden.urgente && "🚨 "}{orden.nro_orden}
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        {orden.paciente.nombre} {orden.paciente.apellido}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        DNI: {orden.paciente.dni}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={getEstadoBadge(orden.estado, orden.urgente)}>
+                        {getEstadoTexto(orden.estado, orden.urgente)}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-2 italic">
+                        {formatFecha(orden.fecha_ingreso)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                    <span className="text-xs font-medium text-gray-500">
+                      🧪 {orden.total_analisis} análisis solicitados
+                    </span>
+                    <span className="text-xs text-blue-600 font-bold hover:underline">
+                      CARGAR RESULTADOS →
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No hay órdenes pendientes</p>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
           {/* Órdenes Pendientes */}
@@ -346,33 +400,20 @@ export default function BioquimicoDashboard() {
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {dashboardData.ordenes_pendientes && dashboardData.ordenes_pendientes.length > 0 ? (
                 dashboardData.ordenes_pendientes.map((orden) => (
-                  <div 
+                 <div 
                     key={orden.id} 
-                    className="p-3 bg-gray-50 rounded-lg border-l-4 border-green-400"
+                    onClick={() => navigate(`/bioquimico/orden/${orden.id}/cargar`)} // <-- BOTÓN FUNCIONAL
+                    className={`p-3 bg-gray-50 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-shadow
+                      ${orden.urgente ? 'border-l-red-600 bg-red-50' : 'border-l-green-400'}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {orden.nro_orden}
+                        <p className={`font-bold ${orden.urgente ? 'text-red-700' : 'text-gray-900'}`}>
+                          {orden.nro_orden} {orden.urgente && "🚨"}
                         </p>
-                        <p className="text-sm text-gray-600">
-                          {orden.paciente.nombre} {orden.paciente.apellido}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          DNI: {orden.paciente.dni}
-                        </p>
+                        {/* ... resto del contenido del paciente ... */}
                       </div>
-                      <div className="text-right">
-                        <span className={getEstadoBadge(orden.estado, orden.urgente)}>
-                          {getEstadoTexto(orden.estado, orden.urgente)}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatFecha(orden.fecha_ingreso)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      Total análisis: {orden.total_analisis}
+                      {/* ... resto del badge de estado ... */}
                     </div>
                   </div>
                 ))

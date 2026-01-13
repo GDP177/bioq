@@ -2,28 +2,34 @@ import { Router } from 'express';
 import { 
     registrarNuevoPaciente, 
     actualizarPaciente, 
-    buscarPacientePorDNI, 
-    buscarPacientePorFicha, 
-    buscarObrasSociales, 
-    buscarPacientesPorDNIParcial,
-    buscarPaciente,
-    getSugerencias
+    buscarPacientePorFicha,
+    buscarPacientesSugeridos, // Usaremos esta para la búsqueda en tiempo real
+    buscarObrasSociales
 } from '../controllers/paciente.controller';
 
 const router = Router();
 
-// Registro y Actualización
-router.post('/registrar', registrarNuevoPaciente);
-router.put('/actualizar/:nro_ficha', actualizarPaciente);
+// ==========================================
+// 1. RUTAS ESPECÍFICAS (Orden importante)
+// ==========================================
 
-// Búsquedas
+// Búsqueda en tiempo real (dropdown del buscador)
+router.get('/buscar-por-dni/:dni', buscarPacientesSugeridos);
+
+// Obtener detalles completos de un paciente (para el Modal)
 router.get('/ficha/:nro_ficha', buscarPacientePorFicha);
-router.get('/dni/:dni', buscarPacientePorDNI);
-router.get('/buscar-dni/:dni_parcial', buscarPacientesPorDNIParcial);
+
+// Búsqueda de obras sociales
 router.get('/obras-sociales/:texto', buscarObrasSociales);
 
-// Estas rutas deben coincidir con las llamadas del frontend
-router.get('/buscar/:dni', buscarPaciente);
-router.get('/buscar-por-dni/:dni', getSugerencias);
+// ==========================================
+// 2. RUTAS DE GESTIÓN (CRUD)
+// ==========================================
+
+// Registrar nuevo paciente
+router.post('/registrar', registrarNuevoPaciente);
+
+// Actualizar paciente existente
+router.put('/:nro_ficha', actualizarPaciente);
 
 export default router;

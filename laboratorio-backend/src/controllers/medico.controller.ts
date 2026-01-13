@@ -9,6 +9,101 @@ import bcrypt from 'bcrypt';
 
 
 // ============================================
+// OBTENER DETALLE DE UNA ORDEN (PARA EL MÉDICO)
+// ============================================
+export const getOrdenDetalle = async (req: Request, res: Response) => {
+    const { id_orden } = req.params;
+
+    try {
+        console.log(`👨‍⚕️ Médico consultando detalle orden #${id_orden}`);
+
+        // 1. Obtener cabecera de la orden y datos del paciente
+        const [ordenRows]: any = await pool.query(
+            `SELECT 
+                o.id_orden, 
+                o.nro_orden, 
+                o.fecha_ingreso_orden, 
+                o.estado, 
+                o.urgente,
+                o.observaciones as observaciones_medico,
+                p.Nombre_paciente, 
+                p.Apellido_paciente, 
+                p.DNI, 
+                p.edad, 
+                p.mutual,
+                p.sexo
+             FROM orden o
+             JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+             WHERE o.id_orden = ?`,
+            [id_orden]
+        );
+
+        if (ordenRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Orden no encontrada' });
+        }
+
+        const orden = ordenRows[0];
+
+        // 2. Obtener análisis con el NOMBRE REAL (JOIN con tabla analisis)
+        const [analisisRows]: any = await pool.query(`
+            SELECT 
+                oa.id_orden_analisis,
+                oa.codigo_practica,
+                -- 👇 ESTO ES LO IMPORTANTE: Traemos la descripción del catálogo
+                a.descripcion_practica,
+                oa.estado,
+                oa.valor_hallado,
+                oa.unidad_hallada,
+                oa.observaciones as interpretacion,
+                COALESCE(oa.valor_referencia_aplicado, a.REFERENCIA) as referencia
+            FROM orden_analisis oa
+            LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
+            WHERE oa.id_orden = ?
+            ORDER BY oa.codigo_practica`, 
+            [id_orden]
+        );
+
+        // 3. Formatear para el frontend
+        const analisisFormateados = analisisRows.map((a: any) => ({
+            id: a.id_orden_analisis,
+            codigo: a.codigo_practica,
+            // ✅ Si existe descripcion_practica la usamos, si no, mostramos el código
+            descripcion: a.descripcion_practica || `Práctica ${a.codigo_practica}`,
+            estado: a.estado,
+            resultado: a.valor_hallado || "-",
+            unidad: a.unidad_hallada || "",
+            referencia: a.referencia || "",
+            interpretacion: a.interpretacion || ""
+        }));
+
+        return res.json({
+            success: true,
+            orden: {
+                id: orden.id_orden,
+                nro_orden: orden.nro_orden || `ORD-${orden.id_orden}`,
+                fecha: orden.fecha_ingreso_orden,
+                estado: orden.estado,
+                urgente: orden.urgente === 1,
+                observaciones: orden.observaciones_medico,
+                paciente: {
+                    nombre: orden.Nombre_paciente,
+                    apellido: orden.Apellido_paciente,
+                    dni: orden.DNI,
+                    edad: orden.edad,
+                    mutual: orden.mutual,
+                    sexo: orden.sexo
+                },
+                analisis: analisisFormateados
+            }
+        });
+
+    } catch (error: any) {
+        console.error("💥 Error en getOrdenDetalle (Médico):", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ============================================
 // Crear solicitudad medica
 // ============================================
 export const crearSolicitudMedica = async (req: Request, res: Response) => {

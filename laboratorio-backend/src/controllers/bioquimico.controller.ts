@@ -468,6 +468,28 @@ export const getOrdenesBioquimico = async (req: Request, res: Response) => {
   }
 };
 
+
+export const getOrdenesEntrantes = async (req: Request, res: Response) => {
+    try {
+        // Consulta que une orden con paciente para mostrar datos completos
+        const query = `
+            SELECT o.*, p.Nombre_paciente, p.Apellido_paciente, p.DNI 
+            FROM orden o
+            JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+            WHERE o.estado IN ('pendiente', 'en_proceso')
+            ORDER BY o.urgente DESC, o.fecha_ingreso_orden ASC
+        `;
+
+        const [ordenes]: any = await pool.query(query);
+
+        return res.json({ 
+            success: true, 
+            ordenes 
+        });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
 // PROCESAR ORDEN - CAMBIAR ESTADO A "EN PROCESO"
 export const procesarOrden = async (req: Request, res: Response) => {
   const { id_orden } = req.params;
@@ -536,205 +558,136 @@ export const procesarOrden = async (req: Request, res: Response) => {
   }
 };
 
-// CARGAR RESULTADO DE ANÁLISIS
+// 1. FUNCIÓN PARA GUARDAR (SOLUCIONA EL ERROR AL VALIDAR)
 export const cargarResultado = async (req: Request, res: Response) => {
   const { id_orden_analisis } = req.params;
   const { resultado, observaciones, valores_referencia } = req.body;
 
   try {
-    console.log(`📝 CARGANDO RESULTADO para análisis ${id_orden_analisis}`);
+    console.log(`📝 CARGANDO RESULTADO para análisis ${id_orden_analisis}`, req.body);
 
-    // Verificar que el análisis existe
-    const [analisisRows]: any = await pool.query(
-      'SELECT id_orden_analisis, estado FROM orden_analisis WHERE id_orden_analisis = ?',
-      [id_orden_analisis]
-    );
-
-    if (analisisRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Análisis no encontrado'
-      });
-    }
-
-    const analisis = analisisRows[0];
-
-    if (analisis.estado === 'finalizado') {
-      return res.status(400).json({
-        success: false,
-        message: 'El análisis ya está finalizado'
-      });
-    }
-
-    // Actualizar resultado del análisis
+    // Actualizar resultado usando los nombres de columna REALES de tu tabla orden_analisis
     await pool.query(
       `UPDATE orden_analisis 
-       SET resultado = ?,
-           observaciones = ?,
-           valores_referencia = ?,
+       SET valor_hallado = ?,              -- Antes: resultado
+           interpretacion = ?,             -- Antes: observaciones
+           valor_referencia_aplicado = ?,  -- Antes: valores_referencia
            estado = 'finalizado',
-           fecha_resultado = NOW()
+           fecha_realizacion = NOW()       -- Antes: fecha_resultado
        WHERE id_orden_analisis = ?`,
       [
-        JSON.stringify(resultado),
+        String(resultado),      // Aseguramos que se guarde como string
         observaciones || null,
-        JSON.stringify(valores_referencia) || null,
+        valores_referencia || null,
         id_orden_analisis
       ]
     );
 
-    // Verificar si todos los análisis de la orden están finalizados
-    const [estadoOrdenRows]: any = await pool.query(
-      `SELECT 
-        o.id_orden,
-        COUNT(oa.id_orden_analisis) as total_analisis,
-        COUNT(CASE WHEN oa.estado = 'finalizado' THEN 1 END) as analisis_finalizados
-       FROM orden o
-       JOIN orden_analisis oa ON o.id_orden = oa.id_orden
-       WHERE oa.id_orden_analisis = ?
-       GROUP BY o.id_orden`,
-      [id_orden_analisis]
+    // --- LÓGICA DE FINALIZACIÓN DE ORDEN (Mantenemos igual) ---
+    // Verificar si quedan pendientes
+    const [estadoRows]: any = await pool.query(
+        `SELECT id_orden FROM orden_analisis WHERE id_orden_analisis = ?`, 
+        [id_orden_analisis]
     );
-
-    if (estadoOrdenRows.length > 0) {
-      const estadoOrden = estadoOrdenRows[0];
-      
-      // Si todos los análisis están finalizados, finalizar la orden
-      if (estadoOrden.total_analisis === estadoOrden.analisis_finalizados) {
-        await pool.query(
-          `UPDATE orden 
-           SET estado = 'finalizado',
-               fecha_finalizacion = NOW()
-           WHERE id_orden = ?`,
-          [estadoOrden.id_orden]
-        );
+    
+    if (estadoRows.length > 0) {
+        const id_orden = estadoRows[0].id_orden;
         
-        console.log(`✅ Orden ${estadoOrden.id_orden} finalizada completamente`);
-      }
-    }
+        // Contar pendientes en esa orden
+        const [pendientes]: any = await pool.query(
+            `SELECT count(*) as total FROM orden_analisis 
+             WHERE id_orden = ? AND estado != 'finalizado'`,
+            [id_orden]
+        );
 
-    console.log(`✅ Resultado cargado exitosamente para análisis ${id_orden_analisis}`);
+        if (pendientes[0].total === 0) {
+            await pool.query(
+                `UPDATE orden SET estado = 'finalizado', fecha_finalizacion = NOW() WHERE id_orden = ?`,
+                [id_orden]
+            );
+            console.log(`✅ Orden ${id_orden} finalizada automáticamnete.`);
+        }
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Resultado cargado exitosamente',
-      analisis: {
-        id: id_orden_analisis,
-        estado: 'finalizado',
-        fecha_resultado: new Date().toISOString()
-      }
+      message: 'Resultado validado correctamente'
     });
 
-  } catch (error) {
-    console.error('💥 ERROR AL CARGAR RESULTADO:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al cargar resultado'
-    });
+  } catch (error: any) {
+    console.error('💥 ERROR AL CARGAR RESULTADO:', error.message);
+    return res.status(500).json({ success: false, message: 'Error de base de datos al guardar' });
   }
 };
 
-// OBTENER DETALLE DE ORDEN PARA CARGA DE RESULTADOS
+// 2. FUNCIÓN PARA LEER DETALLE (ASEGURA QUE NO HAYA ERROR 500 AL CARGAR)
 export const getDetalleOrden = async (req: Request, res: Response) => {
   const { id_orden } = req.params;
 
   try {
-    console.log(`📋 Obteniendo detalle de orden ${id_orden}`);
-
-    // 1. Obtener datos de la orden y del paciente
+    // 1. Datos de Orden
     const [ordenRows]: any = await pool.query(
-      `SELECT 
-        o.id_orden,
-        o.nro_orden,
-        o.fecha_ingreso_orden,
-        o.estado,
-        o.urgente,
-        p.Nombre_paciente AS nombre_paciente,
-        p.Apellido_paciente AS apellido_paciente,
-        p.DNI AS dni,
-        p.fecha_nacimiento,
-        p.sexo,
-        p.edad,
-        p.mutual
+      `SELECT o.*, p.Nombre_paciente, p.Apellido_paciente, p.DNI, p.edad, p.mutual, p.sexo
        FROM orden o
        JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
        WHERE o.id_orden = ?`,
       [id_orden]
     );
 
-    if (ordenRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Orden no encontrada'
-      });
-    }
+    if (ordenRows.length === 0) return res.status(404).json({ success: false });
 
-    const orden = ordenRows[0];
-
-    // 2. Obtener análisis vinculando la tabla maestra 'analisis' para traer REFERENCIA
-    // ... dentro de la función getDetalleOrden, actualiza la query de análisis:
-
+    // 2. Datos de Análisis (Con corrección de nombres y JOIN)
     const [analisisRows]: any = await pool.query(`
       SELECT 
         oa.id_orden_analisis,
         oa.codigo_practica,
-        a.descripcion_practica AS descripcion_analisis,
-        a.unidad_bioquimica,      -- ✅ Agregado
-        a.codigo_modulo,          -- ✅ Agregado
-        a.URGENCIA,               -- ✅ Agregado
+        a.descripcion_practica, 
         oa.estado,
         oa.valor_hallado,
         oa.unidad_hallada,
-        COALESCE(oa.valor_referencia_aplicado, a.REFERENCIA) AS valor_referencia_final,
-        oa.observaciones
+        oa.interpretacion, 
+        -- Corrección crítica: valor_referencia_aplicado (como en la DB)
+        COALESCE(oa.valor_referencia_aplicado, a.REFERENCIA) as referencia
       FROM orden_analisis oa
       LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
       WHERE oa.id_orden = ?
-      ORDER BY oa.codigo_practica`, [id_orden]);
+      ORDER BY oa.codigo_practica`, 
+      [id_orden]
+    );
 
     const analisisTransformados = analisisRows.map((a: any) => ({
       id: a.id_orden_analisis,
       codigo: a.codigo_practica,
-      descripcion: a.descripcion_analisis || `Análisis ${a.codigo_practica}`,
-      modulo: a.codigo_modulo,      // ✅ Nuevo
-      ub: a.unidad_bioquimica,      // ✅ Nuevo (Unidades Bioquímicas)
-      urgencia: a.URGENCIA,         // ✅ Nuevo
+      // Mapeo seguro del nombre
+      descripcion: a.descripcion_practica || `Análisis ${a.codigo_practica}`,
       estado: a.estado,
-      resultado: a.valor_hallado || null,
-      unidad: a.unidad_bioquimica || a.unidad_hallada || '',
-      referencia: a.valor_referencia_final || 'No posee',
-      observaciones: a.observaciones || null
+      resultado: a.valor_hallado || "", 
+      unidad: a.unidad_hallada || "",
+      referencia: a.referencia || 'No posee',
+      observaciones: a.interpretacion || "Normal" // Mapeamos interpretacion DB a observaciones Front
     }));
-
-    console.log(`✅ Detalle de orden ${id_orden} obtenido exitosamente`);
 
     return res.status(200).json({
       success: true,
       orden: {
-        id: orden.id_orden,
-        nro_orden: orden.nro_orden || `ORD-${orden.id_orden}`,
-        fecha_ingreso: orden.fecha_ingreso_orden,
-        estado: orden.estado,
-        urgente: orden.urgente === 1,
+        id: ordenRows[0].id_orden,
+        nro_orden: ordenRows[0].nro_orden,
+        fecha_ingreso: ordenRows[0].fecha_ingreso_orden,
+        estado: ordenRows[0].estado,
+        urgente: ordenRows[0].urgente === 1,
         paciente: {
-          nombre: orden.nombre_paciente,
-          apellido: orden.apellido_paciente,
-          dni: orden.dni,
-          fecha_nacimiento: orden.fecha_nacimiento,
-          sexo: orden.sexo,
-          edad: orden.edad,
-          mutual: orden.mutual
+          nombre: ordenRows[0].Nombre_paciente,
+          apellido: ordenRows[0].Apellido_paciente,
+          dni: ordenRows[0].DNI,
+          edad: ordenRows[0].edad,
+          mutual: ordenRows[0].mutual
         },
         analisis: analisisTransformados
       }
     });
 
   } catch (error: any) {
-    console.error('💥 ERROR AL OBTENER DETALLE DE ORDEN:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al obtener detalle de orden',
-      error: error.message
-    });
+    console.error('💥 ERROR GET DETALLE:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -351,7 +351,8 @@ export default function NuevoPaciente(): JSX.Element {
     return Object.keys(nuevosErrores).length === 0;
   };
 
-  const registrarPaciente = async () => {
+const registrarPaciente = async () => {
+    // 1. Validar el formulario antes de intentar el envío
     if (!validarFormulario()) {
       showToast("Por favor, corrija los errores en el formulario", 'error');
       return;
@@ -362,33 +363,42 @@ export default function NuevoPaciente(): JSX.Element {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       
-      // Preparar datos para enviar
+      // 🛠️ PREPARACIÓN DE DATOS SEGÚN EL CONTROLADOR DEL BACKEND
+      // Convertimos tipos de datos para que pasen las validaciones de la base de datos
       const datosEnvio = {
-        ...formData,
-        mutual: formData.mutual === "Otra" ? formData.mutual_personalizada : formData.mutual,
-        telefono: formData.telefono || null,
-        direccion: formData.direccion || null,
-        email: formData.email || null,
-        nro_afiliado: formData.nro_afiliado || null,
-        grupo_sanguineo: formData.grupo_sanguineo || null,
-        contacto_emergencia: formData.contacto_emergencia || null,
-        telefono_emergencia: formData.telefono_emergencia || null,
-        observaciones: formData.observaciones || null,
+        // El controlador requiere que el DNI sea numérico (typeof dni === 'number')
+        dni: Number(formData.dni),
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        fecha_nacimiento: formData.fecha_nacimiento,
+        sexo: formData.sexo,
+        // Limpiamos el teléfono para enviar solo números o null si está vacío
+        telefono: formData.telefono ? formData.telefono.replace(/\D/g, '') : null,
+        direccion: formData.direccion?.trim() || null,
+        email: formData.email?.trim() || null,
+        // Mapeo lógico de Obra Social: si elige "Otra", enviamos el valor del campo personalizado
+        mutual: formData.mutual === "Otra" ? formData.mutual_personalizada?.trim() : formData.mutual,
+        // Convertimos nro_afiliado a string/null según tu controlador
+        nro_afiliado: formData.nro_afiliado?.trim() || null,
+        grupo_sanguineo: formData.grupo_sanguineo || 'ND',
+        contacto_emergencia: formData.contacto_emergencia?.trim() || null,
+        telefono_emergencia: formData.telefono_emergencia?.trim() || null,
+        observaciones: formData.observaciones?.trim() || null,
       };
 
-      // Eliminar mutual_personalizada del objeto a enviar
-      delete (datosEnvio as any).mutual_personalizada;
-
-      const response = await axios.post(`${apiUrl}/pacientes`, datosEnvio);
+      // 🚀 PETICIÓN POST AL BACKEND
+    // ✅ Corregido para coincidir con tu ruta de backend (paciente.routes.ts)
+      const response = await axios.post(`${apiUrl}/paciente/registrar`, datosEnvio);
 
       if (response.data.success) {
         showToast(`Paciente registrado exitosamente. Nro. de ficha: ${response.data.nro_ficha}`, 'success');
         
-        // ⚠️ REDIRECCIÓN CORRECTA CON DATOS DEL PACIENTE
+        // 🔄 REDIRECCIÓN TRAS ÉXITO
+        // Redirigimos al médico de vuelta a la creación de solicitud para que el paciente aparezca en la búsqueda
         setTimeout(() => {
-          // Usar URL params para pasar el número de ficha
-          window.location.href = `/pacientes/registro-exitoso?nro_ficha=${response.data.nro_ficha}&action=registro`;
-        }, 1500);
+          navigate('/medico/nueva-solicitud');
+        }, 2000);
+        
       } else {
         throw new Error(response.data.message || 'Error al registrar el paciente');
       }
@@ -396,18 +406,18 @@ export default function NuevoPaciente(): JSX.Element {
     } catch (error: any) {
       console.error("Error al registrar paciente:", error);
       
-      if (error.response?.data?.message) {
-        showToast(error.response.data.message, 'error');
-      } else if (error.response?.status === 409) {
-        showToast("Ya existe un paciente registrado con este DNI", 'error');
-      } else {
-        showToast("Error al registrar el paciente. Intente nuevamente.", 'error');
+      // Manejo dinámico de mensajes de error desde el servidor
+      const mensajeError = error.response?.data?.message || "Error al registrar el paciente. Intente nuevamente.";
+      showToast(mensajeError, 'error');
+
+      // Si el error es un DNI duplicado (Status 409), marcamos el campo de error
+      if (error.response?.status === 409) {
+        setErrores(prev => ({ ...prev, dni: "Este DNI ya pertenece a otro paciente" }));
       }
     } finally {
       setLoading(false);
     }
   };
-
   const limpiarFormulario = () => {
     setFormData({
       dni: 0,

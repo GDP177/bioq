@@ -27,6 +27,10 @@ import EditarPaciente from './pages/pacientes/EditarPaciente'
 import HistorialPaciente from './pages/pacientes/HistorialPaciente'
 
 
+
+import CargaResultados from "./pages/bioquimico/CargaResultados";
+
+
 //paginas usuarios
 import GestionUsuarios from './pages/admin/GestionUsuarios'; // ✅ Verifica que esta ruta sea la correcta
 
@@ -88,7 +92,7 @@ function App() {
             <Route path="/dashboard/bioquimico/:matricula" element={<BioquimicoDashboard />} />
             <Route path="/bioquimico/:matricula/ordenes/:tipo" element={<OrdenesFiltradas />} />
             <Route path="/orden/:id" element={<BioquimicoOrdenDetalle />} />
-
+            <Route path="/bioquimico/orden/:id_orden/cargar" element={<CargaResultados />} />
           </Route>
 
           {/* --- RUTAS DE COMPATIBILIDAD --- */}

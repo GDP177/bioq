@@ -11,7 +11,7 @@ import {
 // ✅ Importación crucial para corregir el ReferenceError
 import { getUsuarios, updateUsuario, createUsuario, resetPassword } from '../controllers/usuario.controller';
 
-
+import { getAllAnalisisAdmin } from '../controllers/analisis.controller';
 
 
 

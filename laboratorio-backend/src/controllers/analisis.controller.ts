@@ -11,39 +11,33 @@ const getStringParam = (param: any): string => {
   if (Array.isArray(param) && param.length > 0) return String(param[0]).trim();
   return '';
 };
-
 // ============================================
-// [NUEVO] LISTAR TODOS LOS ANÁLISIS (ADMIN)
+// [NUEVO] LISTAR TODOS LOS ANÁLISIS (ADMIN) - CORREGIDO
 // ============================================
-// src/controllers/analisis.controller.ts
-
 export const getAllAnalisisAdmin = async (req: Request, res: Response) => {
   try {
-    console.log('📋 Consultando catálogo completo...');
-    
-    // Traemos los datos técnicos y contamos los "hijos" en la tabla incluye
+    // ✅ Query simplificada con columnas confirmadas en image_389d6c.png
     const [rows]: any = await pool.query(`
       SELECT 
         codigo_practica, 
         descripcion_practica, 
-        REFERENCIA, 
-        UNIDAD_BIOQUIMICA, 
+        TIPO, 
         URGENCIA,
-        (SELECT COUNT(*) FROM incluye WHERE codigo_padre = analisis.codigo_practica) as cantidad_hijos
+        HONORARIOS
       FROM analisis 
       ORDER BY descripcion_practica ASC
     `);
 
-    // ✅ IMPORTANTE: Devolver el objeto con la propiedad "data"
     return res.status(200).json({
       success: true,
-      data: rows
+      data: rows // Enviamos la propiedad 'data' que el frontend espera
     });
-  } catch (error) {
-    console.error("💥 Error SQL:", error);
-    return res.status(500).json({ success: false, message: "Error interno" });
+  } catch (error: any) {
+    console.error("💥 Error SQL en getAllAnalisisAdmin:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 // ============================================
 // [NUEVO] CREAR O EDITAR ANÁLISIS (CON RECURSIVIDAD)
 // ============================================
@@ -55,14 +49,14 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
     unidad_bioquimica, 
     codigo_modulo,
     urgencia,
-    hijos // Array de códigos de prácticas hijos
+    hijos 
   } = req.body;
 
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    console.log(`💾 Guardando análisis: ${codigo_practica} - ${descripcion_practica}`);
 
-    // 1. Insertar o Actualizar en tabla 'analisis'
     await connection.query(`
       INSERT INTO analisis (
         codigo_practica, descripcion_practica, REFERENCIA, 
@@ -76,11 +70,8 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
         URGENCIA = VALUES(URGENCIA)
     `, [codigo_practica, descripcion_practica.toUpperCase(), referencia, unidad_bioquimica, codigo_modulo || 1, urgencia || 'N']);
 
-    // 2. Manejar relación recursiva 'incluye'
-    // Primero limpiamos las relaciones existentes para este padre
     await connection.query("DELETE FROM incluye WHERE codigo_padre = ?", [codigo_practica]);
 
-    // Insertamos las nuevas relaciones si existen hijos
     if (hijos && hijos.length > 0) {
       const values = hijos.map((hijoCod: any) => [
         codigo_practica, 
@@ -94,22 +85,22 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
     }
 
     await connection.commit();
+    console.log('✅ Análisis y relaciones guardadas con éxito');
     res.status(200).json({ success: true, message: "Práctica guardada correctamente" });
   } catch (error: any) {
     await connection.rollback();
-    console.error("Error al guardar análisis:", error);
-    res.status(500).json({ success: false, message: "Error interno" });
+    console.error("💥 Error al guardar análisis:", error);
+    res.status(500).json({ success: false, message: "Error interno al procesar guardado" });
   } finally {
     connection.release();
   }
 };
-// ============================================
-// OBTENER ANÁLISIS DEL MÉDICO - CORREGIDO
-// ============================================
 
+// ============================================
+// OBTENER ANÁLISIS DEL MÉDICO - MANTENIDO Y ASEGURADO
+// ============================================
 export const getAnalisisMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
-  
   const estado = getStringParam(req.query.estado) || 'todos';
   const tipo = getStringParam(req.query.tipo) || 'todos';
   const buscar = getStringParam(req.query.buscar);
@@ -117,150 +108,67 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
   const fecha_hasta = getStringParam(req.query.fecha_hasta);
 
   try {
-    console.log('🧪 ==========================================');
-    console.log('🧪 OBTENIENDO ANÁLISIS PARA MÉDICO');
-    console.log('🧪 ==========================================');
-    console.log('🧪 ID Médico:', id_medico);
-    console.log('🧪 Filtros:', { estado, tipo, buscar, fecha_desde, fecha_hasta });
+    console.log('🧪 Buscando análisis para Médico ID:', id_medico);
 
     if (!id_medico || id_medico <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de médico inválido'
-      });
+      return res.status(400).json({ success: false, message: 'ID de médico inválido' });
     }
-
-    // ============================================
-    // CONSTRUIR QUERY BASADA EN TU ESTRUCTURA BD
-    // ============================================
 
     let whereConditions = ['o.id_medico_solicitante = ?'];
     let queryParams: any[] = [id_medico];
 
-    // Filtro por estado
     if (estado && estado !== 'todos') {
-      switch (estado) {
-        case 'pendiente':
-          whereConditions.push('oa.estado = ?');
-          queryParams.push('pendiente');
-          break;
-        case 'finalizado':
-          whereConditions.push('oa.estado = ?');
-          queryParams.push('finalizado');
-          break;
-        case 'procesando':
-          whereConditions.push('oa.estado = ?');
-          queryParams.push('procesando');
-          break;
-      }
+      whereConditions.push('oa.estado = ?');
+      queryParams.push(estado);
     }
 
-    // Filtro por tipo
     if (tipo && tipo !== 'todos') {
       whereConditions.push('a.TIPO = ?');
       queryParams.push(tipo);
     }
 
-    // Filtro por búsqueda
     if (buscar && buscar.length > 0) {
       const searchTerm = `%${buscar}%`;
-      whereConditions.push(`(
-        a.descripcion_practica LIKE ? OR 
-        p.Nombre_paciente LIKE ? OR 
-        p.Apellido_paciente LIKE ? OR 
-        p.DNI LIKE ?
-      )`);
+      whereConditions.push(`(a.descripcion_practica LIKE ? OR p.Nombre_paciente LIKE ? OR p.Apellido_paciente LIKE ? OR p.DNI LIKE ?)`);
       queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
-    // Filtros por fecha
-    if (fecha_desde && fecha_desde.length > 0) {
+    if (fecha_desde) {
       whereConditions.push('DATE(o.fecha_ingreso_orden) >= ?');
       queryParams.push(fecha_desde);
     }
 
-    if (fecha_hasta && fecha_hasta.length > 0) {
+    if (fecha_hasta) {
       whereConditions.push('DATE(o.fecha_ingreso_orden) <= ?');
       queryParams.push(fecha_hasta);
     }
 
     const whereClause = whereConditions.join(' AND ');
 
-    // ============================================
-    // QUERY PRINCIPAL AJUSTADA A TU BD
-    // ============================================
-
     const mainQuery = `
       SELECT 
-        oa.id_orden_analisis,
-        oa.codigo_practica,
-        oa.estado as analisis_estado,
-        oa.fecha_realizacion,
-        oa.valor_hallado,
-        oa.unidad_hallada,
+        oa.id_orden_analisis, oa.codigo_practica, oa.estado as analisis_estado,
+        oa.fecha_realizacion, oa.valor_hallado, oa.unidad_hallada,
         oa.observaciones as analisis_observaciones,
         COALESCE(a.descripcion_practica, 'Análisis no especificado') as descripcion_practica,
         COALESCE(a.TIPO, 'General') as tipo,
-        o.id_orden,
-        o.nro_orden,
-        o.fecha_ingreso_orden,
+        o.id_orden, o.nro_orden, o.fecha_ingreso_orden,
         COALESCE(o.urgente, 0) as urgente,
-        p.Nombre_paciente as nombre_paciente,
-        p.Apellido_paciente as apellido_paciente,
-        p.DNI as dni,
-        p.edad
+        p.Nombre_paciente as nombre_paciente, p.Apellido_paciente as apellido_paciente,
+        p.DNI as dni, p.edad
       FROM orden_analisis oa
       JOIN orden o ON oa.id_orden = o.id_orden
       JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
       LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
       WHERE ${whereClause}
-      ORDER BY o.fecha_ingreso_orden DESC, a.descripcion_practica ASC
+      ORDER BY o.fecha_ingreso_orden DESC
       LIMIT 500
     `;
 
-    console.log('🔍 Query ejecutándose:', mainQuery);
-    console.log('🔍 Parámetros:', queryParams);
-
     const [analisisRows]: [any[], any] = await pool.query(mainQuery, queryParams);
 
-    console.log('✅ Análisis encontrados:', analisisRows.length);
-
-    // ============================================
-    // QUERY DE ESTADÍSTICAS
-    // ============================================
-
-    const estadisticasQuery = `
-      SELECT 
-        COUNT(*) as total_analisis,
-        SUM(CASE WHEN oa.estado = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
-        SUM(CASE WHEN oa.estado = 'procesando' THEN 1 ELSE 0 END) as procesando,
-        SUM(CASE WHEN oa.estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
-        SUM(CASE WHEN oa.valor_hallado IS NOT NULL AND oa.valor_hallado != '' THEN 1 ELSE 0 END) as con_resultados
-      FROM orden_analisis oa
-      JOIN orden o ON oa.id_orden = o.id_orden
-      JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-      LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica
-      WHERE ${whereClause}
-    `;
-
-    const [estadisticasRows]: [any[], any] = await pool.query(estadisticasQuery, queryParams);
-    const estadisticas = estadisticasRows[0] || {
-      total_analisis: 0,
-      pendientes: 0,
-      procesando: 0,
-      finalizados: 0,
-      con_resultados: 0
-    };
-
-    console.log('📊 Estadísticas calculadas:', estadisticas);
-
-    // ============================================
-    // FORMATEAR RESPUESTA
-    // ============================================
-
-    const analisisFormateados = analisisRows.map((item: any) => {
-      return {
-        id: item.id_orden_analisis || Date.now() + Math.random(),
+    const analisisFormateados = analisisRows.map((item: any) => ({
+        id: item.id_orden_analisis,
         codigo_practica: item.codigo_practica,
         descripcion: item.descripcion_practica,
         tipo: item.tipo,
@@ -268,13 +176,10 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
         fecha_realizacion: item.fecha_realizacion,
         valor_hallado: item.valor_hallado,
         unidad_hallada: item.unidad_hallada,
-        valor_referencia: null, // Agregar si tienes tabla de valores de referencia
-        interpretacion: null, // Se puede calcular si tienes valores de referencia
         observaciones: item.analisis_observaciones,
-        tecnico_responsable: null, // Agregar si tienes este campo
         orden: {
           id: item.id_orden,
-          nro_orden: item.nro_orden || `ORD-${item.id_orden}`,
+          nro_orden: item.nro_orden,
           fecha_ingreso: item.fecha_ingreso_orden,
           urgente: item.urgente === 1,
           paciente: {
@@ -284,50 +189,17 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
             edad: item.edad
           }
         }
-      };
-    });
-
-    // ============================================
-    // RESPUESTA FINAL
-    // ============================================
-
-    console.log('✅ Análisis procesados y formateados:', analisisFormateados.length);
-    console.log('🧪 ==========================================');
+    }));
 
     return res.status(200).json({
       success: true,
       analisis: analisisFormateados,
-      total: analisisRows.length,
-      estadisticas: {
-        total_analisis: parseInt(estadisticas.total_analisis) || 0,
-        pendientes: parseInt(estadisticas.pendientes) || 0,
-        procesando: parseInt(estadisticas.procesando) || 0,
-        finalizados: parseInt(estadisticas.finalizados) || 0,
-        con_resultados: parseInt(estadisticas.con_resultados) || 0
-      },
-      filtros_aplicados: {
-        estado, tipo, buscar, fecha_desde, fecha_hasta
-      },
-      timestamp: new Date().toISOString()
+      total: analisisRows.length
     });
 
   } catch (error: any) {
-    console.error('💥 ==========================================');
-    console.error('💥 ERROR AL OBTENER ANÁLISIS');
-    console.error('💥 ==========================================');
-    console.error('💥 Error completo:', error);
-    console.error('💥 Stack:', error.stack);
-    console.error('💥 ==========================================');
-    
-    return res.status(500).json({ 
-      success: false,
-      message: 'Error interno del servidor al obtener análisis',
-      error: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        code: error.code,
-        sqlState: error.sqlState
-      } : 'Error interno del servidor'
-    });
+    console.error('💥 Error en getAnalisisMedico:', error.message);
+    return res.status(500).json({ success: false, message: 'Error al obtener análisis' });
   }
 };
 
@@ -335,45 +207,50 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
 // OBTENER TIPOS DE ANÁLISIS
 // ============================================
 
+
+// En el controlador de análisis del backend
+export const actualizarReferenciaCatalogo = async (req: Request, res: Response) => {
+    const { codigo_practica } = req.params;
+    const { REFERENCIA } = req.body;
+
+    try {
+        // Actualizamos el valor maestro en la tabla 'analisis'
+        await pool.query(
+            "UPDATE analisis SET REFERENCIA = ? WHERE codigo_practica = ?",
+            [REFERENCIA, codigo_practica]
+        );
+        return res.json({ success: true, message: 'Catálogo actualizado' });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+
 export const getTiposAnalisis = async (req: Request, res: Response) => {
   try {
-    console.log('📋 Obteniendo tipos de análisis disponibles...');
-
     const [tiposRows]: [any[], any] = await pool.query(
       `SELECT DISTINCT TIPO as tipo, COUNT(*) as cantidad
        FROM analisis 
        WHERE TIPO IS NOT NULL AND TIPO != ''
        GROUP BY TIPO
-       ORDER BY cantidad DESC, TIPO ASC`
+       ORDER BY cantidad DESC`
     );
-
-    console.log('✅ Tipos de análisis obtenidos:', tiposRows.length);
 
     return res.status(200).json({
       success: true,
-      tipos: tiposRows.map((tipo: any) => ({
-        tipo: tipo.tipo,
-        cantidad: tipo.cantidad
-      }))
+      tipos: tiposRows
     });
-
-  } catch (error: any) {
-    console.error('💥 ERROR al obtener tipos de análisis:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al obtener tipos de análisis'
-    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Error al obtener tipos' });
   }
 };
 
 // ============================================
-// OBTENER ANÁLISIS DISPONIBLES
+// OBTENER ANÁLISIS DISPONIBLES (Para el selector de Nueva Solicitud)
 // ============================================
-
 export const getAnalisisDisponibles = async (req: Request, res: Response) => {
   try {
-    console.log('📋 Obteniendo análisis disponibles...');
-
+    console.log('📋 Buscando análisis disponibles para solicitudes...');
     const [analisisRows]: [any[], any] = await pool.query(
       `SELECT 
         codigo_practica as codigo,
@@ -385,52 +262,30 @@ export const getAnalisisDisponibles = async (req: Request, res: Response) => {
        ORDER BY descripcion_practica ASC`
     );
 
-    console.log('✅ Análisis disponibles obtenidos:', analisisRows.length);
-
     return res.status(200).json({
       success: true,
-      analisis: analisisRows.map((analisis: any) => ({
-        codigo: analisis.codigo,
-        descripcion: analisis.descripcion,
-        tipo: analisis.tipo,
-        precio: analisis.precio || 0
-      }))
+      analisis: analisisRows
     });
-
-  } catch (error: any) {
-    console.error('💥 ERROR al obtener análisis disponibles:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al obtener análisis disponibles'
-    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Error al obtener análisis disponibles' });
   }
 };
 
-
-
-// Función para obtener los sub-análisis (hijos) de una práctica
+// ============================================
+// ESTRUCTURA DE COMPONENTES
+// ============================================
 export const getEstructuraAnalisis = async (req: Request, res: Response) => {
   const { codigo } = req.params;
   try {
-    const query = `
-      SELECT 
-        i.codigo_hijo, 
-        a.descripcion_practica, 
-        a.REFERENCIA, 
-        a.UNIDAD_BIOQUIMICA 
+    const [hijos]: any = await pool.query(`
+      SELECT i.codigo_hijo, a.descripcion_practica, a.REFERENCIA, a.UNIDAD_BIOQUIMICA 
       FROM incluye i
       JOIN analisis a ON i.codigo_hijo = a.codigo_practica
       WHERE i.codigo_padre = ?
-    `;
-    
-    const [hijos]: any = await pool.query(query, [codigo]);
+    `, [codigo]);
 
-    res.json({
-      success: true,
-      data: hijos
-    });
+    res.json({ success: true, data: hijos });
   } catch (error) {
-    console.error("Error al obtener estructura:", error);
     res.status(500).json({ success: false, message: "Error al obtener componentes" });
   }
 };

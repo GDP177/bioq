@@ -16,10 +16,12 @@ export default function GestionAnalisis() {
     const [loading, setLoading] = useState(true);
     const [filtro, setFiltro] = useState("");
     const [hijosVisibles, setHijosVisibles] = useState<Record<string, any[]>>({});
+    const [editando, setEditando] = useState<string | number | null>(null);
 
     const fetchCatalogo = async () => {
         setLoading(true);
         try {
+            // Ajustado a la ruta de tu controlador Admin
             const res = await axios.get('http://localhost:5000/api/analisis/admin/catalogo');
             if (res.data.success) {
                 setAnalisis(res.data.data);
@@ -54,134 +56,170 @@ export default function GestionAnalisis() {
         }
     };
 
-    // ✅ BUSCADOR CORREGIDO: Maneja códigos numéricos y evita el crash
+    // FUNCIÓN PARA ACTUALIZAR VALOR DE REFERENCIA
+    const handleUpdateReferencia = async (codigo: string | number, nuevaRef: string) => {
+        try {
+            await axios.put(`http://localhost:5000/api/admin/analisis/${codigo}`, {
+                REFERENCIA: nuevaRef
+            });
+            // Actualizar estado local para no recargar todo
+            setAnalisis(prev => prev.map(item => 
+                item.codigo_practica === codigo ? { ...item, REFERENCIA: nuevaRef } : item
+            ));
+            setEditando(null);
+        } catch (err) {
+            alert("Error al actualizar la referencia");
+        }
+    };
+
     const analisisFiltrados = analisis.filter(item => {
         const query = filtro.toLowerCase();
         const descripcion = item.descripcion_practica?.toLowerCase() || "";
-        const codigo = String(item.codigo_practica || ""); // Conversión segura a String
-        
+        const codigo = String(item.codigo_practica || "");
         return descripcion.includes(query) || codigo.includes(query);
     });
 
+    if (loading) return (
+        <MainLayout>
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+        </MainLayout>
+    );
+
     return (
         <MainLayout>
-            {/* ✅ CONTENEDOR DE ANCHO TOTAL */}
-            <div className="w-full min-h-screen bg-gray-50/30 overflow-x-hidden">
-                <div className="w-full px-4 sm:px-10 py-8">
-                    
-                    <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
+            <div className="w-full min-h-screen bg-slate-50/50 p-4 sm:p-8">
+                {/* Header Profesional */}
+                <div className="max-w-[1600px] mx-auto">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                         <div>
-                            <h2 className="text-4xl font-black text-indigo-950 uppercase tracking-tighter">
-                                Catálogo Técnico de Análisis
-                            </h2>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.3em] mt-1">
-                                Gestión Integral de Prácticas y Perfiles Bioquímicos
-                            </p>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Catálogo Maestro</h1>
+                            <p className="text-slate-500 font-medium text-sm">Configuración técnica de prácticas y rangos de referencia</p>
                         </div>
-                        <button className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-10 rounded-2xl shadow-2xl transition-all uppercase text-xs tracking-widest active:scale-95">
-                            + Registrar Nueva Práctica
+                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-200">
+                            + NUEVA PRÁCTICA
                         </button>
-                    </header>
+                    </div>
 
-                    {/* Buscador Ultra-Ancho */}
-                    <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 mb-10 flex items-center gap-6">
-                        <span className="text-3xl opacity-30 grayscale">🔍</span>
+                    {/* Buscador Estilizado */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-6 flex items-center">
+                        <div className="p-3 text-slate-400">🔍</div>
                         <input 
                             type="text" 
-                            placeholder="Buscar por código o descripción (Ej: 660005, Hemograma...)" 
-                            className="w-full bg-transparent border-none outline-none text-2xl font-bold text-gray-700 placeholder:text-gray-200"
+                            placeholder="Buscar por código o descripción..."
+                            className="w-full p-2 outline-none text-slate-700 font-medium"
                             value={filtro}
                             onChange={(e) => setFiltro(e.target.value)}
                         />
                     </div>
 
-                    {/* ✅ TABLA DE DATOS EXPANSIVA */}
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full table-auto border-collapse">
-                                <thead className="bg-indigo-950 text-white text-[11px] uppercase tracking-[0.2em] font-black">
-                                    <tr>
-                                        <th className="px-10 py-8 text-left min-w-[150px]">Código</th>
-                                        <th className="px-10 py-8 text-left min-w-[450px]">Determinación / Descripción Completa</th>
-                                        <th className="px-10 py-8 text-left min-w-[250px]">Valor Referencia</th>
-                                        <th className="px-10 py-8 text-left min-w-[150px]">Unidad</th>
-                                        <th className="px-10 py-8 text-center min-w-[150px]">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {analisisFiltrados.map((item) => (
-                                        <React.Fragment key={item.codigo_practica}>
-                                            <tr 
-                                                className={`group hover:bg-indigo-50/50 transition-all cursor-pointer ${hijosVisibles[String(item.codigo_practica)] ? 'bg-indigo-50/30' : ''}`}
-                                                onClick={() => toggleHijos(item.codigo_practica)}
-                                            >
-                                                <td className="px-10 py-8">
-                                                    <span className="font-black text-indigo-600 text-lg tracking-tighter">#{item.codigo_practica}</span>
-                                                </td>
-                                                <td className="px-10 py-8">
-                                                    <p className="font-bold text-gray-800 uppercase text-md leading-tight group-hover:text-indigo-800 transition-colors break-words">
-                                                        {item.descripcion_practica}
-                                                    </p>
+                    {/* Tabla Principal */}
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-slate-900 text-white text-[11px] uppercase tracking-widest">
+                                    <th className="px-6 py-5 text-left">Cód.</th>
+                                    <th className="px-6 py-5 text-left">Determinación</th>
+                                    <th className="px-6 py-5 text-left">Ref. Maestra (Click para editar)</th>
+                                    <th className="px-6 py-5 text-left">Unidad</th>
+                                    <th className="px-6 py-5 text-center">Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {analisisFiltrados.map((item) => (
+                                    <React.Fragment key={item.codigo_practica}>
+                                        <tr className="group hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-mono font-bold text-indigo-600 text-sm">#{item.codigo_practica}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800 uppercase text-sm leading-tight">{item.descripcion_practica}</span>
                                                     {item.cantidad_hijos > 0 && (
-                                                        <div className="mt-3 flex items-center gap-3">
-                                                            <span className="text-[9px] bg-indigo-600 text-white px-3 py-1 rounded-lg font-black uppercase tracking-widest">
-                                                                PERFIL COMPUESTO
-                                                            </span>
-                                                            <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">
-                                                                {hijosVisibles[String(item.codigo_practica)] ? '▼ Ocultar Componentes' : `▶ Ver ${item.cantidad_hijos} sub-análisis`}
-                                                            </span>
-                                                        </div>
+                                                        <button 
+                                                            onClick={() => toggleHijos(item.codigo_practica)}
+                                                            className="text-[10px] text-indigo-500 font-bold mt-1 hover:underline text-left uppercase tracking-tighter"
+                                                        >
+                                                            {hijosVisibles[String(item.codigo_practica)] ? '▼ Ocultar componentes' : `▶ Incluye ${item.cantidad_hijos} determinaciones`}
+                                                        </button>
                                                     )}
-                                                </td>
-                                                <td className="px-10 py-8">
-                                                    <span className="text-gray-500 font-medium italic text-sm">{item.REFERENCIA || 'N/A'}</span>
-                                                </td>
-                                                <td className="px-10 py-8">
-                                                    <span className="font-black text-gray-400 text-sm tracking-tighter">{item.UNIDAD_BIOQUIMICA || '-'}</span>
-                                                </td>
-                                                <td className="px-10 py-8 text-center">
-                                                    <span className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                                                        item.URGENCIA === 'U' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                    }`}>
-                                                        {item.URGENCIA === 'U' ? 'URGENTE' : 'RUTINA'}
-                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {editando === item.codigo_practica ? (
+                                                    <input 
+                                                        autoFocus
+                                                        className="w-full p-1 border-2 border-indigo-400 rounded bg-white outline-none text-sm"
+                                                        defaultValue={item.REFERENCIA}
+                                                        onBlur={(e) => handleUpdateReferencia(item.codigo_practica, e.target.value)}
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        onClick={() => setEditando(item.codigo_practica)}
+                                                        className="text-slate-500 italic text-sm cursor-pointer hover:bg-slate-100 p-1 rounded transition-all"
+                                                    >
+                                                        {item.REFERENCIA || 'Sin referencia'}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-400 font-bold text-xs uppercase">{item.UNIDAD_BIOQUIMICA || '-'}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${
+                                                    item.URGENCIA === 'U' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                }`}>
+                                                    {item.URGENCIA === 'U' ? 'URGENTE' : 'RUTINA'}
+                                                </span>
+                                            </td>
+                                        </tr>
+
+                                        {/* Sub-tabla de componentes */}
+                                        {hijosVisibles[String(item.codigo_practica)] && (
+                                            <tr>
+                                                <td colSpan={5} className="bg-slate-50/80 px-8 py-4">
+                                                    <div className="bg-white rounded-xl border border-indigo-100 shadow-inner overflow-hidden">
+                                                        <table className="w-full text-xs">
+                                                            <thead className="bg-indigo-50/50 text-indigo-900/50 uppercase font-black text-[9px]">
+                                                                <tr>
+                                                                    <th className="px-6 py-3 text-left">Cód. Hijo</th>
+                                                                    <th className="px-6 py-3 text-left">Componente</th>
+                                                                    <th className="px-6 py-3 text-left">Rango Técnico</th>
+                                                                    <th className="px-6 py-3 text-left">Unidad</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-50">
+                                                                {hijosVisibles[String(item.codigo_practica)].map((h, idx) => (
+                                                                    <tr key={idx} className="hover:bg-indigo-50/30">
+                                                                        <td className="px-6 py-3 font-bold text-indigo-400">#{h.codigo_hijo}</td>
+                                                                        <td className="px-6 py-3 font-bold text-slate-700 uppercase">{h.descripcion_practica}</td>
+                                                                        <td className="px-6 py-3">
+                                                                            {editando === `h-${h.codigo_hijo}` ? (
+                                                                                <input 
+                                                                                    autoFocus
+                                                                                    className="w-full p-1 border border-indigo-300 rounded outline-none"
+                                                                                    defaultValue={h.REFERENCIA}
+                                                                                    onBlur={(e) => handleUpdateReferencia(h.codigo_hijo, e.target.value)}
+                                                                                />
+                                                                            ) : (
+                                                                                <div 
+                                                                                    onClick={() => setEditando(`h-${h.codigo_hijo}`)}
+                                                                                    className="text-slate-400 italic cursor-pointer hover:text-indigo-500"
+                                                                                >
+                                                                                    {h.REFERENCIA || 'Definir'}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-6 py-3 font-bold text-slate-300">{h.UNIDAD_BIOQUIMICA || '-'}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </td>
                                             </tr>
-                                            
-                                            {/* ✅ ESTRUCTURA DE HIJOS (INCLUYE) */}
-                                            {hijosVisibles[String(item.codigo_practica)] && (
-                                                <tr>
-                                                    <td colSpan={5} className="bg-gray-100/30 p-0 border-y border-indigo-100">
-                                                        <div className="ml-32 my-10 mr-12 bg-white rounded-[2rem] shadow-inner border border-indigo-50 overflow-hidden">
-                                                            <table className="w-full table-auto">
-                                                                <thead className="bg-gray-50 text-indigo-900/50 text-[9px] uppercase font-black border-b border-gray-100">
-                                                                    <tr>
-                                                                        <th className="px-10 py-6 text-left">Sub-Código</th>
-                                                                        <th className="px-10 py-6 text-left">Determinación Componente</th>
-                                                                        <th className="px-10 py-6 text-left">Ref. Técnico</th>
-                                                                        <th className="px-10 py-6 text-left">Unidad</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-gray-50 text-xs">
-                                                                    {hijosVisibles[String(item.codigo_practica)].map((h, idx) => (
-                                                                        <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
-                                                                            <td className="px-10 py-7 font-bold text-indigo-400">#{h.codigo_hijo}</td>
-                                                                            <td className="px-10 py-7 font-black uppercase text-gray-700 tracking-tight">{h.descripcion_practica}</td>
-                                                                            <td className="px-10 py-7 text-gray-500 italic">{h.REFERENCIA || 'V.R. no especificado'}</td>
-                                                                            <td className="px-10 py-7 font-bold text-gray-400">{h.UNIDAD_BIOQUIMICA || '-'}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
