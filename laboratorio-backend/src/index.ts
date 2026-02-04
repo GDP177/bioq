@@ -175,11 +175,36 @@ app.get('/api/obras-sociales/todas', async (req, res) => { /* Lógica directa de
 
 app.get('/api/catalogo-analisis', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM analisis');
+        console.log('🧪 Solicitando catálogo de análisis...');
+        
+        // Usamos "AS" para renombrar las columnas al vuelo
+        const query = `
+            SELECT 
+                codigo_practica as id_analisis, 
+                descripcion_practica as nombre, 
+                codigo_practica as codigo, 
+                descripcion_modulo as categoria 
+            FROM analisis
+            LIMIT 1000
+        `;
+        
+        const [rows] = await pool.query(query);
         res.json({ success: true, analisis: rows });
-    } catch (error) { res.status(500).json({ success: false }); }
+    } catch (error) { 
+        console.error('❌ Error obteniendo análisis:', error);
+        res.status(500).json({ success: false }); 
+    }
 });
 
+app.get('/api/admin/medicos', async (req, res) => {
+    try {
+        // Busca usuarios que sean médicos
+        const [rows] = await pool.query("SELECT id_medico as id, nombre_medico as nombre, apellido_medico as apellido, especialidad FROM medico LIMIT 50");
+        res.json({ success: true, medicos: rows });
+    } catch (error) {
+        res.json({ success: true, medicos: [] }); // Devuelve vacío si falla, para no romper nada
+    }
+});
 
 // Para el detalle (Error image_e50b07)
 app.get('/api/orden/detalles/:id_orden', getOrdenDetalleFinal);

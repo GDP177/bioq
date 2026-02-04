@@ -3,15 +3,20 @@ import {
     registrarNuevoPaciente, 
     actualizarPaciente, 
     buscarPacientePorFicha,
-    buscarPacientesSugeridos, // Usaremos esta para la búsqueda en tiempo real
-    buscarObrasSociales
+    buscarPacientesSugeridos, 
+    buscarObrasSociales,
+    getAllPacientes // <--- 1. IMPORTANTE: Importar la nueva función
 } from '../controllers/paciente.controller';
 
 const router = Router();
 
 // ==========================================
-// 1. RUTAS ESPECÍFICAS (Orden importante)
+// RUTAS DE BÚSQUEDA Y LISTADO
 // ==========================================
+
+// 2. IMPORTANTE: Agregar esta ruta raíz que faltaba
+// Esta maneja GET /api/pacientes (gracias a index.ts)
+router.get('/', getAllPacientes); 
 
 // Búsqueda en tiempo real (dropdown del buscador)
 router.get('/buscar-por-dni/:dni', buscarPacientesSugeridos);
@@ -23,7 +28,7 @@ router.get('/ficha/:nro_ficha', buscarPacientePorFicha);
 router.get('/obras-sociales/:texto', buscarObrasSociales);
 
 // ==========================================
-// 2. RUTAS DE GESTIÓN (CRUD)
+// RUTAS DE GESTIÓN (CRUD)
 // ==========================================
 
 // Registrar nuevo paciente

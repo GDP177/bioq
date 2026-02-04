@@ -25,7 +25,7 @@ import NuevoPaciente from './pages/pacientes/NuevoPaciente'
 import PacienteRegistroExitoso from './pages/pacientes/PacienteRegistroExitoso'
 import EditarPaciente from './pages/pacientes/EditarPaciente'
 import HistorialPaciente from './pages/pacientes/HistorialPaciente'
-
+import NuevaOrdenAdmin from './pages/admin/NuevaOrden';
 
 
 import CargaResultados from "./pages/bioquimico/CargaResultados";
@@ -66,7 +66,7 @@ function App() {
             <Route path="/admin/pacientes" element={<GestionPacientesAdmin />} />
             // Dentro de tus Routes...
             <Route path="/admin/usuarios" element={<GestionUsuarios />} />
-
+            <Route path="/admin/nueva-orden" element={<NuevaOrdenAdmin />} />
             <Route path="/admin/analisis" element={<GestionAnalisis />} />  
 
             {/* --- RUTAS DEL MÉDICO --- */}

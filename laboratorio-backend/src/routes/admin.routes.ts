@@ -1,65 +1,50 @@
-// laboratorio-backend/src/routes/admin.routes.ts
+// src/routes/admin.routes.ts
 
 import { Router } from 'express';
-// Importamos el middleware de verificación de rol
 import { verificarRol } from '../middleware/auth.middleware'; 
 import { 
   getDashboardAdmin, 
-  getAllPacientesAdmin, 
   getAllUsuariosAdmin 
 } from '../controllers/admin.controller';
-// ✅ Importación crucial para corregir el ReferenceError
-import { getUsuarios, updateUsuario, createUsuario, resetPassword } from '../controllers/usuario.controller';
-
+import { 
+    getAllPacientes 
+} from '../controllers/paciente.controller'; // Importación corregida
+import { 
+    getUsuarios, 
+    updateUsuario, 
+    createUsuario, 
+    resetPassword 
+} from '../controllers/usuario.controller';
 import { getAllAnalisisAdmin } from '../controllers/analisis.controller';
-
-
 
 const router = Router();
 
 console.log('🔄 Cargando rutas de administrador...');
 
-// ==========================================================
-// MIDDLEWARE DE LOGGING (MOVIDO AL INICIO)
-// ==========================================================
-// Moverlo aquí arriba permite ver por qué fallan las peticiones 
-// antes de que el middleware de rol las bloquee.
+// Middleware de Logging
 router.use((req, res, next) => {
-  console.log(`👑 ${new Date().toISOString()} - [ADMIN-ROUTE-HIT] ${req.method} ${req.originalUrl}`);
-  console.log('──────────────────────────────');
+  console.log(`👑 [ADMIN] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// ==========================================================
-// APLICAR MIDDLEWARE DE SEGURIDAD A TODAS LAS RUTAS DE ADMIN
-// ==========================================================
-// Esta línea asegura que solo usuarios con el rol 'admin'
-// puedan acceder a CUALQUIER ruta definida en este archivo.
+// Middleware de Seguridad (Solo Admins)
 router.use(verificarRol(['admin']));
 
-
-// ============================================
-// RUTAS DEL DASHBOARD
-// ============================================
-// IMPORTANTE: El parámetro se llama :id_usuario. 
-// El frontend debe enviar un número limpio aquí.
+// --- DASHBOARD ---
 router.get('/dashboard/:id_usuario', getDashboardAdmin);
 
-// ============================================
-// RUTAS DE GESTIÓN DE PACIENTES
-// ============================================
-router.get('/pacientes', getAllPacientesAdmin);
+// --- GESTIÓN DE PACIENTES ---
+router.get('/pacientes', getAllPacientes);
 
-// ============================================
-// RUTAS DE GESTIÓN DE USUARIOS
-// ============================================
-router.get('/usuarios', getAllUsuariosAdmin);
-
-router.post('/usuarios/reset-password/:id', resetPassword);
+// --- GESTIÓN DE USUARIOS ---
+router.get('/usuarios', getAllUsuariosAdmin); 
 router.post('/usuarios', createUsuario);
 router.put('/usuarios/:id', updateUsuario);
+router.post('/usuarios/reset-password/:id', resetPassword);
 
+// --- GESTIÓN DE ANÁLISIS ---
+router.get('/analisis', getAllAnalisisAdmin);
 
-console.log('✅ Rutas de administrador cargadas y protegidas correctamente');
+console.log('✅ Rutas de administrador cargadas.');
 
 export default router;

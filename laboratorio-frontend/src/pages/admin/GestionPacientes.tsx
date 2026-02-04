@@ -100,8 +100,14 @@ export default function GestionPacientes() {
       params.set('pagina', paginaActual.toString());
       params.set('limite', '20');
 
+      // 🔴 ANTES (Error): Buscaba solo pacientes del médico logueado
+      // const response = await axios.get<PacientesResponse>(
+      //   `http://localhost:5000/api/medico/${medicoId}/pacientes?${params.toString()}`
+      // );
+
+      // 🟢 AHORA (Corregido): Busca en el endpoint general de pacientes (Admin)
       const response = await axios.get<PacientesResponse>(
-        `http://localhost:5000/api/medico/${medicoId}/pacientes?${params.toString()}`
+        `http://localhost:5000/api/pacientes?${params.toString()}`
       );
 
       if (response.data.success) {
@@ -165,10 +171,12 @@ export default function GestionPacientes() {
   };
 
   const navegarANuevaOrden = (paciente: Paciente) => {
+    // 1. Guardamos el paciente en memoria para recuperarlo en la siguiente pantalla
     sessionStorage.setItem('paciente_preseleccionado', JSON.stringify(paciente));
-    navigate('/medico/nueva-solicitud');
+    
+    // 2. Redirigimos a la pantalla de Nueva Orden del ADMINISTRADOR
+    navigate('/admin/nueva-orden'); 
   };
-
   const verHistorialCompleto = (paciente: Paciente) => {
     navigate(`/medico/paciente/${paciente.nro_ficha}/historial`);
   };
