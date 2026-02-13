@@ -1,492 +1,128 @@
-// src/pages/dashboard/BioquimicoDashboard.tsx - DASHBOARD BIOQUÍMICO FUNCIONAL
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
-interface BioquimicoData {
-  matricula: string;
-  nombre: string;
-  apellido: string;
-  email: string;
-  telefono?: string;
-  fecha_habilitacion?: string;
-  fecha_vencimiento_matricula?: string;
-}
-
-interface EstadisticasData {
-  total_ordenes: number;
-  ordenes_pendientes: number;
-  ordenes_proceso: number;
-  ordenes_completadas: number;
-  ordenes_hoy: number;
-}
-
-interface OrdenPendiente {
-  id: number;
-  nro_orden: string;
-  fecha_ingreso: string;
-  estado: string;
-  urgente: boolean;
-  paciente: {
-    nombre: string;
-    apellido: string;
-    dni: number;
-  };
-  total_analisis: number;
-}
-
-interface AnalisisPendiente {
-  id: number;
-  codigo_practica: string;
-  estado: string;
-  orden: {
-    id: number;
-    nro_orden: string;
-    urgente: boolean;
-  };
-  paciente: {
-    nombre: string;
-    apellido: string;
-  };
-}
-
-interface DashboardData {
-  success: boolean;
-  bioquimico: BioquimicoData;
-  estadisticas: EstadisticasData;
-  ordenes_pendientes: OrdenPendiente[];
-  analisis_pendientes: AnalisisPendiente[];
-  notificaciones: string[];
-  timestamp: string;
-}
+import { BeakerIcon, CheckCircleIcon, ClockIcon, PlayIcon } from "@heroicons/react/24/solid";
 
 export default function BioquimicoDashboard() {
   const navigate = useNavigate();
-  const [usuario, setUsuario] = useState<any>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    // Verificar si hay usuario logueado
-    const usuarioGuardado = localStorage.getItem("usuario");
-    if (!usuarioGuardado) {
-      navigate("/login");
-      return;
-    }
+    // Usar ID del usuario logueado
+    const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+    axios.get(`http://localhost:5000/api/bioquimico/dashboard/${user.matricula || '1234'}`)
+      .then(res => setData(res.data))
+      .catch(e => console.error(e));
+  }, []);
 
-    try {
-      const parsedUsuario = JSON.parse(usuarioGuardado);
-      if (parsedUsuario.rol !== 'bioquimico') {
-        console.error("❌ Usuario no es bioquímico:", parsedUsuario.rol);
-        navigate("/login");
-        return;
-      }
-      
-      setUsuario(parsedUsuario);
-      
-      // Cargar datos del dashboard
-      loadDashboardData(parsedUsuario.matricula || parsedUsuario.id);
-    } catch (error) {
-      console.error("❌ Error al parsear usuario:", error);
-      localStorage.removeItem("usuario");
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  const loadDashboardData = async (matricula: string) => {
-    try {
-      setLoading(true);
-      console.log("📊 Cargando dashboard bioquímico para matrícula:", matricula);
-      
-      const response = await axios.get<DashboardData>(
-        `http://localhost:5000/api/bioquimico/dashboard/${matricula}`
-      );
-
-      console.log("✅ Dashboard bioquímico cargado:", response.data);
-      setDashboardData(response.data);
-    } catch (error: any) {
-      console.error("❌ Error al cargar dashboard bioquímico:", error);
-      
-      if (error.response?.status === 404) {
-        setError("No se encontraron datos para este bioquímico. Verifique que el perfil esté completo.");
-      } else {
-        setError("Error al cargar los datos del dashboard");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("usuario");
-    navigate("/login");
-  };
-
-  const formatFecha = (fecha: string) => {
-    try {
-      return new Date(fecha).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch (error) {
-      console.warn("Error al formatear fecha:", fecha);
-      return 'Fecha inválida';
-    }
-  };
-
-  const getEstadoBadge = (estado: string | null | undefined, urgente: boolean = false) => {
-    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-    const urgenteClass = urgente ? "ring-2 ring-red-400" : "";
-    
-    const estadoNormalizado = (estado || 'desconocido').toLowerCase().trim();
-    
-    switch (estadoNormalizado) {
-      case 'pendiente':
-        return `${baseClasses} bg-yellow-100 text-yellow-800 ${urgenteClass}`;
-      case 'en_proceso':
-      case 'procesando':
-      case 'proceso':
-        return `${baseClasses} bg-blue-100 text-blue-800 ${urgenteClass}`;
-      case 'completado':
-      case 'finalizado':
-      case 'listo':
-        return `${baseClasses} bg-green-100 text-green-800 ${urgenteClass}`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800 ${urgenteClass}`;
-    }
-  };
-
-  const getEstadoTexto = (estado: string | null | undefined, urgente: boolean = false) => {
-    const estadoNormalizado = (estado || 'desconocido').toLowerCase().trim();
-    const urgentePrefix = urgente ? '🚨 ' : '';
-    
-    switch (estadoNormalizado) {
-      case 'pendiente':
-        return `${urgentePrefix}PENDIENTE`;
-      case 'en_proceso':
-      case 'procesando':
-      case 'proceso':
-        return `${urgentePrefix}EN PROCESO`;
-      case 'completado':
-      case 'finalizado':
-      case 'listo':
-        return `${urgentePrefix}COMPLETADO`;
-      default:
-        return `${urgentePrefix}ESTADO DESCONOCIDO`;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-green-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando dashboard bioquímico...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-green-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mr-2"
-          >
-            Reintentar
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!dashboardData) {
-    return (
-      <div className="min-h-screen bg-green-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🧬</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Bioquímico</h2>
-          <p className="text-gray-600">No hay datos disponibles</p>
-        </div>
-      </div>
-    );
-  }
+  if (!data) return <div className="p-10 text-center text-slate-400">Cargando área de trabajo...</div>;
 
   return (
-    <div className="min-h-screen bg-green-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                🧬 Dashboard Bioquímico
-              </h1>
-              <p className="text-gray-600">
-                Bienvenido/a, Bioq. {dashboardData.bioquimico.nombre} {dashboardData.bioquimico.apellido}
-              </p>
-              <p className="text-sm text-gray-500">
-                Matrícula: {dashboardData.bioquimico.matricula}
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Stats Cards - Órdenes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-
-              {/* Total Órdenes */}
-              <button
-                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/todas`)}
-                className="text-left"
-              >
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 text-3xl">📋</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Total Órdenes</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {dashboardData.estadisticas.total_ordenes || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Órdenes Pendientes */}
-              <button
-                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/pendientes`)}
-                className="text-left"
-              >
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 text-3xl">⏳</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Pendientes</p>
-                      <p className="text-2xl font-bold text-yellow-600">
-                        {dashboardData.estadisticas.ordenes_pendientes || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Órdenes Completadas */}
-              <button
-                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/completadas`)}
-                className="text-left"
-              >
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 text-3xl">✅</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Completadas</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {dashboardData.estadisticas.ordenes_completadas || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Órdenes de Hoy */}
-              <button
-                onClick={() => navigate(`/bioquimico/${usuario.matricula}/ordenes/hoy`)}
-                className="text-left"
-              >
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 text-3xl">📅</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Hoy</p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {dashboardData.estadisticas.ordenes_hoy || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-
-        {/* Content Grid */}
-
-        {/* Contenedor de Órdenes Pendientes modificado */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            📋 Órdenes Pendientes
-          </h3>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {dashboardData.ordenes_pendientes && dashboardData.ordenes_pendientes.length > 0 ? (
-              dashboardData.ordenes_pendientes.map((orden) => (
-                <div 
-                  key={orden.id} 
-                  // 🚩 ACCIÓN: Al hacer clic, navegamos a la pantalla de carga
-                  onClick={() => navigate(`/bioquimico/orden/${orden.id}/cargar`)}
-                  className={`p-3 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all transform hover:-translate-x-1
-                    ${orden.urgente 
-                      ? 'bg-red-50 border-red-500 shadow-sm' 
-                      : 'bg-gray-50 border-green-400'}`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className={`font-bold ${orden.urgente ? 'text-red-700' : 'text-gray-900'}`}>
-                        {orden.urgente && "🚨 "}{orden.nro_orden}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {orden.paciente.nombre} {orden.paciente.apellido}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        DNI: {orden.paciente.dni}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className={getEstadoBadge(orden.estado, orden.urgente)}>
-                        {getEstadoTexto(orden.estado, orden.urgente)}
-                      </span>
-                      <p className="text-xs text-gray-400 mt-2 italic">
-                        {formatFecha(orden.fecha_ingreso)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                    <span className="text-xs font-medium text-gray-500">
-                      🧪 {orden.total_analisis} análisis solicitados
-                    </span>
-                    <span className="text-xs text-blue-600 font-bold hover:underline">
-                      CARGAR RESULTADOS →
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">No hay órdenes pendientes</p>
-            )}
+        {/* HEADER CON SALUDO PERSONALIZADO */}
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-black text-slate-800">Hola, {data.bioquimico.nombre_bq} 👋</h1>
+            <p className="text-slate-500 font-medium">Aquí tienes el resumen de tu jornada laboral.</p>
           </div>
+          <button 
+            onClick={() => navigate('/bioquimico/ordenes-entrantes')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all flex items-center gap-2"
+          >
+            <PlayIcon className="w-5 h-5"/> Comenzar a Procesar
+          </button>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          
-          {/* Órdenes Pendientes */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📋 Órdenes Pendientes
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {dashboardData.ordenes_pendientes && dashboardData.ordenes_pendientes.length > 0 ? (
-                dashboardData.ordenes_pendientes.map((orden) => (
-                 <div 
-                    key={orden.id} 
-                    onClick={() => navigate(`/bioquimico/orden/${orden.id}/cargar`)} // <-- BOTÓN FUNCIONAL
-                    className={`p-3 bg-gray-50 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-shadow
-                      ${orden.urgente ? 'border-l-red-600 bg-red-50' : 'border-l-green-400'}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
+
+        {/* TARJETAS DE PROCESO (Estilo Kanban simplificado) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <WorkCard 
+            title="Pendientes de Carga" 
+            count={data.estadisticas.ordenes_pendientes} 
+            icon={<ClockIcon className="w-8 h-8 text-amber-500"/>} 
+            bg="bg-white" border="border-amber-100" 
+            onClick={() => navigate('/bioquimico/ordenes-entrantes')}
+          />
+          <WorkCard 
+            title="En Proceso Analítico" 
+            count={data.estadisticas.ordenes_proceso} 
+            icon={<BeakerIcon className="w-8 h-8 text-blue-500"/>} 
+            bg="bg-white" border="border-blue-100" 
+          />
+          <WorkCard 
+            title="Completadas Hoy" 
+            count={data.estadisticas.ordenes_completadas} 
+            icon={<CheckCircleIcon className="w-8 h-8 text-emerald-500"/>} 
+            bg="bg-emerald-50/50" border="border-emerald-100" 
+          />
+        </div>
+
+        {/* PRIORIDADES */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+              Prioridad Alta: Urgencias
+            </h2>
+            
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              {data.ordenes_pendientes.filter((o:any) => o.urgente === 1).length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  🎉 ¡No hay urgencias pendientes!
+                </div>
+              ) : (
+                data.ordenes_pendientes.filter((o:any) => o.urgente === 1).map((orden: any) => (
+                  <div key={orden.id} className="p-4 border-b border-slate-50 flex justify-between items-center hover:bg-red-50/30 transition-colors group">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-red-100 text-red-600 font-bold p-3 rounded-lg text-lg">!</div>
                       <div>
-                        <p className={`font-bold ${orden.urgente ? 'text-red-700' : 'text-gray-900'}`}>
-                          {orden.nro_orden} {orden.urgente && "🚨"}
-                        </p>
-                        {/* ... resto del contenido del paciente ... */}
+                        <p className="font-bold text-slate-800">{orden.paciente.apellido}, {orden.paciente.nombre}</p>
+                        <p className="text-xs text-slate-500">Orden #{orden.nro_orden} • {orden.total_analisis} determinaciones</p>
                       </div>
-                      {/* ... resto del badge de estado ... */}
                     </div>
+                    <button 
+                      onClick={() => navigate(`/bioquimico/orden/${orden.id}/cargar`)}
+                      className="text-xs font-bold bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm"
+                    >
+                      Cargar Ahora
+                    </button>
                   </div>
                 ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No hay órdenes pendientes</p>
               )}
             </div>
           </div>
 
-          {/* Análisis Pendientes */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              🧪 Análisis Pendientes
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {dashboardData.analisis_pendientes && dashboardData.analisis_pendientes.length > 0 ? (
-                dashboardData.analisis_pendientes.map((analisis) => (
-                  <div 
-                    key={analisis.id} 
-                    className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          Código: {analisis.codigo_practica}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {analisis.paciente.nombre} {analisis.paciente.apellido}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Orden: {analisis.orden.nro_orden}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className={getEstadoBadge(analisis.estado, analisis.orden.urgente)}>
-                          {getEstadoTexto(analisis.estado, analisis.orden.urgente)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No hay análisis pendientes</p>
-              )}
+          {/* ACCESOS RÁPIDOS */}
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Herramientas</h2>
+            <div className="grid grid-cols-1 gap-3">
+              <button onClick={() => navigate('/admin/analisis')} className="p-4 bg-white border border-slate-200 rounded-xl text-left hover:border-indigo-300 hover:shadow-md transition-all group">
+                <span className="text-indigo-600 font-bold block group-hover:text-indigo-700">📖 Catálogo de Análisis</span>
+                <span className="text-xs text-slate-400">Consultar códigos y valores ref.</span>
+              </button>
+              <button className="p-4 bg-white border border-slate-200 rounded-xl text-left hover:border-indigo-300 hover:shadow-md transition-all group">
+                <span className="text-indigo-600 font-bold block group-hover:text-indigo-700">📊 Reportes Mensuales</span>
+                <span className="text-xs text-slate-400">Ver estadísticas de producción.</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Notificaciones */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            🔔 Notificaciones
-          </h3>
-          <div className="space-y-3">
-            {dashboardData.notificaciones && dashboardData.notificaciones.length > 0 ? (
-              dashboardData.notificaciones.map((notificacion, index) => (
-                <div key={index} className="p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                  <p className="text-sm text-gray-700">{notificacion || 'Notificación sin contenido'}</p>
-                </div>
-              ))
-            ) : (
-              <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-gray-400">
-                <p className="text-sm text-gray-500">No hay notificaciones nuevas</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Timestamp */}
-        <div className="mt-8 text-center text-xs text-gray-500">
-          Última actualización: {dashboardData.timestamp ? formatFecha(dashboardData.timestamp) : 'Fecha no disponible'}
-        </div>
       </div>
     </div>
   );
 }
+
+const WorkCard = ({ title, count, icon, bg, border, onClick }: any) => (
+  <div onClick={onClick} className={`${bg} border ${border} p-6 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition-all flex items-center justify-between`}>
+    <div>
+      <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
+      <p className="text-4xl font-black text-slate-800">{count}</p>
+    </div>
+    <div className="opacity-80">{icon}</div>
+  </div>
+);

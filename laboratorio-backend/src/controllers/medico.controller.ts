@@ -1,12 +1,8 @@
-// src/controllers/medico.controller.ts - CORREGIDO PARA TU ESTRUCTURA DE BD
+// src/controllers/medico.controller.ts
 
 import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 import bcrypt from 'bcrypt';
-
-
-
-
 
 // ============================================
 // OBTENER DETALLE DE UNA ORDEN (PARA EL MÉDICO)
@@ -17,7 +13,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
     try {
         console.log(`👨‍⚕️ Médico consultando detalle orden #${id_orden}`);
 
-        // 1. Obtener cabecera de la orden y datos del paciente
+        // 1. Obtener cabecera de la orden, datos del paciente Y DATOS DEL MÉDICO (NUEVO JOIN)
         const [ordenRows]: any = await pool.query(
             `SELECT 
                 o.id_orden, 
@@ -25,15 +21,22 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
                 o.fecha_ingreso_orden, 
                 o.estado, 
                 o.urgente,
+                o.requiere_ayuno,
                 o.observaciones as observaciones_medico,
+                p.nro_ficha,
                 p.Nombre_paciente, 
                 p.Apellido_paciente, 
                 p.DNI, 
                 p.edad, 
                 p.mutual,
-                p.sexo
+                p.sexo,
+                p.nro_afiliado,
+                m.nombre_medico,
+                m.apellido_medico,
+                m.matricula_medica
              FROM orden o
              JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+             LEFT JOIN medico m ON o.id_medico_solicitante = m.id_medico
              WHERE o.id_orden = ?`,
             [id_orden]
         );
@@ -49,8 +52,8 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
             SELECT 
                 oa.id_orden_analisis,
                 oa.codigo_practica,
-                -- 👇 ESTO ES LO IMPORTANTE: Traemos la descripción del catálogo
                 a.descripcion_practica,
+                a.TIPO as tipo,
                 oa.estado,
                 oa.valor_hallado,
                 oa.unidad_hallada,
@@ -67,8 +70,8 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
         const analisisFormateados = analisisRows.map((a: any) => ({
             id: a.id_orden_analisis,
             codigo: a.codigo_practica,
-            // ✅ Si existe descripcion_practica la usamos, si no, mostramos el código
             descripcion: a.descripcion_practica || `Práctica ${a.codigo_practica}`,
+            tipo: a.tipo || "General",
             estado: a.estado,
             resultado: a.valor_hallado || "-",
             unidad: a.unidad_hallada || "",
@@ -84,14 +87,22 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
                 fecha: orden.fecha_ingreso_orden,
                 estado: orden.estado,
                 urgente: orden.urgente === 1,
+                requiere_ayuno: orden.requiere_ayuno === 1,
                 observaciones: orden.observaciones_medico,
                 paciente: {
+                    nro_ficha: orden.nro_ficha,
                     nombre: orden.Nombre_paciente,
                     apellido: orden.Apellido_paciente,
                     dni: orden.DNI,
                     edad: orden.edad,
                     mutual: orden.mutual,
-                    sexo: orden.sexo
+                    sexo: orden.sexo,
+                    nro_afiliado: orden.nro_afiliado
+                },
+                medico_solicitante: {
+                    nombre: orden.nombre_medico || "Médico",
+                    apellido: orden.apellido_medico || "No Asignado",
+                    matricula: orden.matricula_medica || "S/M"
                 },
                 analisis: analisisFormateados
             }
@@ -104,44 +115,164 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// Crear solicitudad medica
+// Crear solicitudad medica - CORREGIDA Y ROBUSTA
 // ============================================
 export const crearSolicitudMedica = async (req: Request, res: Response) => {
-    const { id_medico } = req.params;
-    const { nro_ficha_paciente, analisis_solicitados, urgente, requiere_ayuno, observaciones, instrucciones_paciente } = req.body;
+    let id_medico = req.params.id_medico || req.params.id;
     
+    const { 
+        nro_ficha_paciente, 
+        analisis_solicitados, 
+        urgente, 
+        requiere_ayuno, 
+        observaciones, 
+        instrucciones_paciente,
+        email_usuario 
+    } = req.body;
+    
+    console.log("🔍 DEBUG BACKEND - Crear Solicitud:");
+    console.log("   👉 Params recibidos:", req.params);
+    console.log("   👉 Body recibido:", req.body);
+    console.log("   👉 ID inicial detectado:", id_medico);
+
     const connection = await pool.getConnection();
     try {
+        if (email_usuario) {
+            const [medicoRows]: any = await connection.query(
+                `SELECT id_medico FROM medico WHERE email = ? AND (activo = 1 OR activo IS NULL)`,
+                [email_usuario]
+            );
+
+            if (medicoRows.length > 0) {
+                const idReal = medicoRows[0].id_medico;
+                if (id_medico && parseInt(id_medico.toString()) !== idReal) {
+                    console.warn(`⚠️ ALERTA DE SEGURIDAD: ID URL (${id_medico}) distinto a ID Email (${idReal}). Usando ID Email.`);
+                }
+                id_medico = idReal;
+                console.log(`✅ Identidad validada por email. Usando ID Médico: ${id_medico}`);
+            } else {
+                console.warn(`⚠️ El email ${email_usuario} no se encontró en la tabla de médicos.`);
+            }
+        }
+
+        if (!id_medico || id_medico === 'undefined' || id_medico === 'null') {
+             console.error("❌ ERROR: No se pudo determinar el ID del médico.");
+             return res.status(400).json({ 
+                success: false, 
+                message: 'Error de identificación: No se recibió un ID de médico válido. Verifique su sesión.' 
+            });
+        }
+
         await connection.beginTransaction();
 
-        // 1. Insertar en tabla 'ordenes'
         const nro_orden = `ORD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        
         const [result]: any = await connection.query(
-            `INSERT INTO ordenes (nro_orden, urgente, id_medico_solicitante, fecha_ingreso_orden, nro_ficha_paciente, estado, observaciones, requiere_ayuno, instrucciones_paciente) 
+            `INSERT INTO orden (nro_orden, urgente, id_medico_solicitante, fecha_ingreso_orden, nro_ficha_paciente, estado, observaciones, requiere_ayuno, instrucciones_paciente) 
              VALUES (?, ?, ?, NOW(), ?, 'pendiente', ?, ?, ?)`,
             [nro_orden, urgente ? 1 : 0, id_medico, nro_ficha_paciente, observaciones, requiere_ayuno ? 1 : 0, instrucciones_paciente]
         );
 
         const id_orden = result.insertId;
 
-        // 2. Insertar cada análisis en 'orden_analisis'
-        for (const codigo_practica of analisis_solicitados) {
-            await connection.query(
-                `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
-                 VALUES (?, ?, 'pendiente', NOW())`,
-                [id_orden, codigo_practica]
-            );
+        if (analisis_solicitados && analisis_solicitados.length > 0) {
+            for (const codigo_practica of analisis_solicitados) {
+                await connection.query(
+                    `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
+                     VALUES (?, ?, 'pendiente', NOW())`,
+                    [id_orden, codigo_practica]
+                );
+            }
         }
 
         await connection.commit();
+        console.log(`🎉 Orden creada con éxito: #${id_orden}`);
         res.json({ success: true, orden_id: id_orden, nro_orden });
+
     } catch (error: any) {
         await connection.rollback();
+        console.error("💥 Error crítico al crear solicitud:", error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         connection.release();
     }
 };
+
+// ============================================
+// NUEVO: MODIFICAR SOLICITUD MÉDICA
+// ============================================
+export const modificarSolicitudMedica = async (req: Request, res: Response) => {
+    const { id_orden } = req.params;
+    const { 
+        analisis_solicitados, // Array de códigos de prácticas
+        urgente, 
+        requiere_ayuno, 
+        observaciones, 
+        instrucciones_paciente 
+    } = req.body;
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        console.log(`📝 Modificando orden #${id_orden}...`);
+
+        // 1. Verificar que la orden exista y esté en estado 'pendiente'
+        const [ordenCheck]: any = await connection.query(
+            `SELECT estado FROM orden WHERE id_orden = ?`, 
+            [id_orden]
+        );
+
+        if (ordenCheck.length === 0) {
+            return res.status(404).json({ success: false, message: 'Orden no encontrada' });
+        }
+
+        if (ordenCheck[0].estado !== 'pendiente') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Solo se pueden modificar órdenes que estén en estado pendiente.' 
+            });
+        }
+
+        // 2. Actualizar cabecera de la orden
+        await connection.query(
+            `UPDATE orden 
+             SET urgente = ?, requiere_ayuno = ?, observaciones = ?, instrucciones_paciente = ? 
+             WHERE id_orden = ?`,
+            [urgente ? 1 : 0, requiere_ayuno ? 1 : 0, observaciones, instrucciones_paciente, id_orden]
+        );
+
+        // 3. Actualizar análisis (Estrategia: Borrar los actuales en estado pendiente y reinsertar)
+        if (analisis_solicitados && analisis_solicitados.length > 0) {
+            // Borramos los análisis asociados a esta orden
+            await connection.query(
+                `DELETE FROM orden_analisis WHERE id_orden = ?`, 
+                [id_orden]
+            );
+
+            // Insertamos los nuevos seleccionados
+            for (const codigo_practica of analisis_solicitados) {
+                await connection.query(
+                    `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
+                     VALUES (?, ?, 'pendiente', NOW())`,
+                    [id_orden, codigo_practica]
+                );
+            }
+        }
+
+        await connection.commit();
+        console.log(`✅ Orden #${id_orden} modificada exitosamente.`);
+        res.json({ success: true, message: 'Orden actualizada correctamente' });
+
+    } catch (error: any) {
+        await connection.rollback();
+        console.error("💥 Error al modificar la orden:", error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        connection.release();
+    }
+};
+
 // ============================================
 // LOGIN MÉDICO - RESPETANDO TU ESTRUCTURA REAL
 // ============================================
@@ -151,7 +282,6 @@ export const loginMedico = async (req: Request, res: Response) => {
   try {
     console.log('🚀 LOGIN MÉDICO - Email:', email);
 
-    // Validaciones básicas
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -159,7 +289,6 @@ export const loginMedico = async (req: Request, res: Response) => {
       });
     }
 
-    // Query usando TUS nombres reales de columnas
     const query = `
       SELECT 
         u.id_usuario,
@@ -184,25 +313,22 @@ export const loginMedico = async (req: Request, res: Response) => {
     
     if (rows.length === 0) {
       return res.status(401).json({ 
-        success: false,
+        success: false, 
         message: 'Correo no registrado o usuario inactivo' 
       });
     }
 
     const usuario = rows[0];
     
-    // Verificar contraseña
     const isValidPassword = await bcrypt.compare(password, usuario.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ 
-        success: false,
+        success: false, 
         message: 'Contraseña incorrecta' 
       });
     }
 
-    // VERIFICAR SI TIENE PERFIL COMPLETO
     if (!usuario.id_medico) {
-      // NO tiene perfil completo - primera vez
       return res.status(200).json({
         success: true,
         message: 'Login exitoso - Perfil incompleto',
@@ -215,7 +341,6 @@ export const loginMedico = async (req: Request, res: Response) => {
         }
       });
     } else {
-      // SÍ tiene perfil completo - acceso normal
       const usuarioData = {
         id: usuario.id_medico,
         id_usuario: usuario.id_usuario,
@@ -232,14 +357,14 @@ export const loginMedico = async (req: Request, res: Response) => {
         success: true,
         message: 'Login exitoso',
         requiere_completar_perfil: false,
-        medico: usuarioData  // Mantener 'medico' para compatibilidad
+        medico: usuarioData
       });
     }
 
   } catch (error: any) {
     console.error('💥 ERROR EN LOGIN MÉDICO:', error);
     return res.status(500).json({ 
-      success: false,
+      success: false, 
       message: 'Error del servidor'
     });
   }
@@ -256,12 +381,11 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 
     if (!id_medico || isNaN(id_medico)) {
       return res.status(400).json({ 
-        success: false,
+        success: false, 
         message: 'ID de médico inválido' 
       });
     }
 
-    // 1. OBTENER DATOS DEL MÉDICO - USANDO TUS COLUMNAS REALES
     const [medicoRows]: any = await pool.query(
       `SELECT 
         m.id_medico,
@@ -279,15 +403,13 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 
     if (medicoRows.length === 0) {
       return res.status(404).json({ 
-        success: false,
+        success: false, 
         message: 'Médico no encontrado' 
       });
     }
 
     const medico = medicoRows[0];
-    console.log('✅ Médico encontrado:', medico.nombre_medico, medico.apellido_medico);
-
-    // 2. ESTADÍSTICAS DE ÓRDENES - USANDO TU ESTRUCTURA
+    
     const [ordenesRows]: any = await pool.query(
       `SELECT 
         COUNT(*) as total_ordenes,
@@ -299,7 +421,6 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 
     const estadisticasOrdenes = ordenesRows[0] || { total_ordenes: 0, urgentes: 0 };
 
-    // 3. ÓRDENES RECIENTES - USANDO TUS NOMBRES DE COLUMNAS
     const [ordenesRecientesRows]: any = await pool.query(
       `SELECT 
         o.id_orden,
@@ -318,7 +439,6 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
       [id_medico]
     );
 
-    // 4. PACIENTES ÚNICOS - USANDO TUS NOMBRES DE COLUMNAS
     const [pacientesRows]: any = await pool.query(
       `SELECT DISTINCT
         p.nro_ficha,
@@ -341,18 +461,14 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
       [id_medico]
     );
 
-    // 5. GENERAR NOTIFICACIONES
     const notificaciones = [];
-    
     if ((estadisticasOrdenes.urgentes || 0) > 0) {
       notificaciones.push(`⚠️ Tienes ${estadisticasOrdenes.urgentes} orden(es) urgente(s)`);
     }
-    
     if (notificaciones.length === 0) {
       notificaciones.push('🎉 ¡Todo al día! No hay notificaciones pendientes');
     }
 
-    // 6. CONSTRUIR RESPUESTA
     const dashboardData = {
       success: true,
       medico: {
@@ -396,18 +512,17 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
         ultima_orden: paciente.ultima_orden,
         total_ordenes: parseInt(paciente.total_ordenes)
       })),
-      analisis_frecuentes: [], // Vacío por ahora para evitar errores
+      analisis_frecuentes: [],
       notificaciones,
       timestamp: new Date().toISOString()
     };
 
-    console.log('✅ Dashboard generado exitosamente');
     return res.status(200).json(dashboardData);
 
   } catch (error: any) {
     console.error("💥 ERROR EN DASHBOARD:", error);
     return res.status(500).json({ 
-      success: false,
+      success: false, 
       message: "Error al obtener dashboard",
       error: process.env.NODE_ENV === 'development' ? error?.toString() : undefined
     });
@@ -415,7 +530,7 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// COMPLETAR PERFIL MÉDICO - USANDO TU ESTRUCTURA
+// COMPLETAR PERFIL MÉDICO - CORREGIDO CON DIAGNÓSTICO DETALLADO 🔥
 // ============================================
 export const completarPerfilMedico = async (req: Request, res: Response) => {
   const { 
@@ -430,9 +545,6 @@ export const completarPerfilMedico = async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    console.log('📝 COMPLETANDO PERFIL MÉDICO para usuario ID:', id_usuario);
-
-    // Validaciones básicas
     if (!id_usuario || !nombre_medico || !apellido_medico || !dni_medico) {
       return res.status(400).json({
         success: false,
@@ -440,48 +552,38 @@ export const completarPerfilMedico = async (req: Request, res: Response) => {
       });
     }
 
-    // Verificar que el usuario existe y es médico
+    // 1. Verificar Usuario
     const [userRows]: any = await pool.query(
       'SELECT id_usuario, rol FROM usuarios WHERE id_usuario = ? AND rol = "medico" AND activo = 1',
       [id_usuario]
     );
+    if (userRows.length === 0) return res.status(404).json({ success: false, message: 'Usuario no encontrado o no es médico' });
 
-    if (userRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado o no es médico'
-      });
-    }
-
-    // Verificar que no existe ya un perfil
+    // 2. Verificar que no tenga ya perfil
     const [existingRows]: any = await pool.query(
       'SELECT id_medico FROM medico WHERE id_usuario = ?',
       [id_usuario]
     );
+    if (existingRows.length > 0) return res.status(409).json({ success: false, message: 'El perfil médico ya existe para este usuario' });
 
-    if (existingRows.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'El perfil médico ya existe para este usuario'
-      });
-    }
-
-    // Verificar que DNI no esté duplicado
-    if (dni_medico) {
+    // 3. Verificación Previa de DNI y Matrícula (Opcional, la BD es la autoridad final)
+    if (dni_medico || matricula_medica) {
       const [duplicateRows]: any = await pool.query(
-        'SELECT id_medico FROM medico WHERE dni_medico = ?',
-        [dni_medico]
+        'SELECT dni_medico, matricula_medica FROM medico WHERE dni_medico = ? OR matricula_medica = ?',
+        [dni_medico, matricula_medica]
       );
 
       if (duplicateRows.length > 0) {
-        return res.status(409).json({
-          success: false,
-          message: 'DNI ya registrado para otro médico'
-        });
+        const esDni = duplicateRows.some((r: any) => r.dni_medico == dni_medico);
+        const esMatricula = duplicateRows.some((r: any) => r.matricula_medica == matricula_medica);
+
+        if (esDni && esMatricula) return res.status(409).json({ success: false, message: 'El DNI y la Matrícula ya están registrados.' });
+        if (esDni) return res.status(409).json({ success: false, message: `El DNI ${dni_medico} ya está registrado.` });
+        if (esMatricula) return res.status(409).json({ success: false, message: `La matrícula ${matricula_medica} ya está registrada por otro profesional.` });
       }
     }
 
-    // Insertar perfil médico - USANDO TUS COLUMNAS REALES
+    // 4. INSERTAR (Aquí es donde suele saltar el error del Email duplicado)
     const [result]: any = await pool.query(
       `INSERT INTO medico (
         id_usuario,
@@ -512,28 +614,16 @@ export const completarPerfilMedico = async (req: Request, res: Response) => {
     );
 
     const id_medico = result.insertId;
-    console.log('✅ Perfil médico creado con ID:', id_medico);
 
-    // Obtener perfil completo para la respuesta
     const [newMedicoRows]: any = await pool.query(
       `SELECT 
-        m.id_medico,
-        m.nombre_medico,
-        m.apellido_medico,
-        m.dni_medico,
-        m.matricula_medica,
-        m.especialidad,
-        m.telefono,
-        m.direccion,
-        m.email,
-        u.username,
-        u.rol
+        m.id_medico, m.nombre_medico, m.apellido_medico, m.dni_medico, m.matricula_medica,
+        m.especialidad, m.telefono, m.direccion, m.email, u.rol
        FROM medico m
        JOIN usuarios u ON m.id_usuario = u.id_usuario
        WHERE m.id_medico = ?`,
       [id_medico]
     );
-
     const medico = newMedicoRows[0];
 
     return res.status(201).json({
@@ -555,18 +645,25 @@ export const completarPerfilMedico = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('💥 ERROR AL COMPLETAR PERFIL MÉDICO:', error);
-    
+    console.error("💥 ERROR SQL AL GUARDAR MÉDICO:", error); 
+
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({
-        success: false,
-        message: 'DNI o matrícula ya registrados'
+      const mensajeSql = error.sqlMessage || "";
+      let culpable = "un dato desconocido";
+      
+      // Lógica de detección precisa del campo duplicado
+      if (mensajeSql.includes('email')) culpable = "el EMAIL";
+      else if (mensajeSql.includes('dni')) culpable = "el DNI";
+      else if (mensajeSql.includes('matricula')) culpable = "la MATRÍCULA";
+      else if (mensajeSql.includes('telefono')) culpable = "el TELÉFONO";
+      else if (mensajeSql.includes('PRIMARY')) culpable = "este USUARIO (ID ya tiene perfil)";
+
+      return res.status(409).json({ 
+        success: false, 
+        message: `Error: Ya existe un médico registrado con ${culpable}.` 
       });
     }
 
-    return res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    return res.status(500).json({ success: false, message: `Error interno: ${error.message}` });
   }
 };

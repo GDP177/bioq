@@ -1,165 +1,70 @@
-// src/pages/dashboard/AdminDashboard.tsx
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { MainLayout } from "../../components/layout/MainLayout";
-
-// --- INTERFACES ---
-interface AdminData {
-  id: number;
-  username: string;
-  email: string;
-  rol: string;
-}
-
-interface MetricasGenerales {
-  ordenes_hoy: number;
-  total_pacientes: number;
-  total_medicos: number;
-  total_usuarios: number;
-}
-
-interface OrdenReciente {
-  id: number;
-  nro_orden: string;
-  fecha_ingreso: string;
-  estado: string;
-  paciente: { nombre: string; apellido: string; dni: string };
-  medico: { nombre: string; apellido: string };
-}
-
-interface DashboardData {
-  success: boolean;
-  administrador: AdminData;
-  metricas_generales: MetricasGenerales;
-  ordenes_recientes: OrdenReciente[];
-  notificaciones: string[];
-}
+import { 
+  UsersIcon, ClipboardDocumentListIcon, CurrencyDollarIcon, 
+  ExclamationTriangleIcon, ChartBarIcon, ClockIcon 
+} from "@heroicons/react/24/outline";
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const [usuario, setUsuario] = useState<any>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    const usuarioGuardado = localStorage.getItem("usuario");
-    if (!usuarioGuardado) {
-      navigate("/login");
-      return;
-    }
+    // Usamos un ID fijo o lo sacamos del localStorage
+    const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+    axios.get(`http://localhost:5000/api/admin/dashboard/${user.id || 1}`)
+      .then(res => setStats(res.data))
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
 
-    try {
-      const parsedUsuario = JSON.parse(usuarioGuardado);
-      if (parsedUsuario.rol !== 'admin') {
-        navigate("/login");
-        return;
-      }
-      setUsuario(parsedUsuario);
-      const adminId = parsedUsuario.id || parsedUsuario.id_usuario;
-      
-      if (!adminId) {
-        setError("Sesión inválida.");
-        setLoading(false);
-        return;
-      }
-
-      loadDashboardData(adminId);
-    } catch (err) {
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  const loadDashboardData = async (adminId: any) => {
-    try {
-      setLoading(true);
-      const cleanId = String(adminId).replace(/[^0-9]/g, '');
-      const response = await axios.get<DashboardData>(
-        `http://localhost:5000/api/admin/dashboard/${cleanId}`
-      );
-      setDashboardData(response.data);
-    } catch (err: any) {
-      setError("No se pudieron obtener las métricas globales.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-    </div>
-  );
+  if (loading) return <div className="p-10 text-center animate-pulse text-indigo-600 font-bold">Cargando Panel de Control...</div>;
 
   return (
-    <MainLayout>
-      <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Cabecera */}
-        <header className="mb-8 text-center">
-          <h2 className="text-3xl font-black text-indigo-950 tracking-tight uppercase">
-            Control Central
-          </h2>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-            Panel de supervisión global • {new Date().toLocaleDateString('es-AR')}
-          </p>
-        </header>
-
-        {/* Métricas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: "Órdenes Hoy", val: dashboardData?.metricas_generales.ordenes_hoy, icon: "📋", color: "border-blue-500", text: "text-blue-600" },
-            { label: "Pacientes Totales", val: dashboardData?.metricas_generales.total_pacientes, icon: "👥", color: "border-green-500", text: "text-green-600" },
-            { label: "Médicos Activos", val: dashboardData?.metricas_generales.total_medicos, icon: "👨‍⚕️", color: "border-purple-500", text: "text-purple-600" },
-            { label: "Usuarios Sistema", val: dashboardData?.metricas_generales.total_usuarios, icon: "🔑", color: "border-indigo-500", text: "text-indigo-600" }
-          ].map((item, idx) => (
-            <div key={idx} className={`bg-white p-6 rounded-2xl shadow-sm border-l-4 ${item.color} flex justify-between items-center transition-transform hover:scale-[1.02]`}>
-              <div>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">{item.label}</p>
-                <p className={`text-3xl font-black ${item.text}`}>{item.val || 0}</p>
-              </div>
-              <span className="text-3xl opacity-20">{item.icon}</span>
-            </div>
-          ))}
+        {/* ENCABEZADO */}
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Panel de Control</h1>
+          <p className="text-slate-500">Visión global del laboratorio y métricas de rendimiento.</p>
         </div>
 
-        {/* Área Principal: Órdenes y Alertas */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* TARJETAS PRINCIPALES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard title="Órdenes Hoy" value={stats?.metricas_generales?.ordenes_hoy || 0} icon={<ClockIcon className="w-6 h-6 text-blue-600"/>} color="bg-blue-50 border-blue-200" />
+          <StatCard title="Pacientes Totales" value={stats?.metricas_generales?.total_pacientes || 0} icon={<UsersIcon className="w-6 h-6 text-indigo-600"/>} color="bg-indigo-50 border-indigo-200" />
+          <StatCard title="Pendientes" value={stats?.estadisticas_ordenes?.pendientes || 0} icon={<ExclamationTriangleIcon className="w-6 h-6 text-amber-600"/>} color="bg-amber-50 border-amber-200" />
+          <StatCard title="Finalizadas (Mes)" value={stats?.facturacion?.ordenes_finalizadas || 0} icon={<ClipboardDocumentListIcon className="w-6 h-6 text-emerald-600"/>} color="bg-emerald-50 border-emerald-200" />
+        </div>
+
+        {/* SECCIÓN DIVIDIDA */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Monitor de Órdenes Recientes - Ocupa 3 columnas para mayor visibilidad */}
-          <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 flex items-center gap-2">
-              <span className="text-indigo-600 font-bold">📑</span>
-              <h3 className="font-black text-sm text-gray-700 uppercase tracking-tight">Órdenes Recientes en Red</h3>
+          {/* TABLA DE ACTIVIDAD RECIENTE */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <ChartBarIcon className="w-5 h-5 text-slate-400"/> Actividad Reciente
+              </h3>
+              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">En tiempo real</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-gray-50/50 text-[10px] uppercase font-black text-gray-400">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
                   <tr>
-                    <th className="p-4">Orden</th>
-                    <th className="p-4">Paciente</th>
-                    <th className="p-4">Médico</th>
-                    <th className="p-4">Estado</th>
+                    <th className="px-6 py-3">Orden</th>
+                    <th className="px-6 py-3">Paciente</th>
+                    <th className="px-6 py-3 text-center">Estado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 text-sm">
-                  {dashboardData?.ordenes_recientes.map(orden => (
-                    <tr key={orden.id} className="hover:bg-indigo-50/30 transition duration-75">
-                      <td className="p-4 font-bold text-indigo-900">{orden.nro_orden}</td>
-                      <td className="p-4">
-                        <p className="font-bold text-gray-800 uppercase text-xs">{orden.paciente.apellido}, {orden.paciente.nombre}</p>
-                        <p className="text-[10px] text-gray-400">DNI: {orden.paciente.dni}</p>
-                      </td>
-                      <td className="p-4 text-xs font-bold text-gray-500 italic">Dr. {orden.medico.apellido}</td>
-                      <td className="p-4">
-                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase ${
-                          orden.estado === 'pendiente' ? 'bg-amber-100 text-amber-700' :
-                          orden.estado === 'finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {orden.estado}
-                        </span>
+                <tbody className="divide-y divide-slate-100">
+                  {stats?.ordenes_recientes?.slice(0, 7).map((orden: any) => (
+                    <tr key={orden.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-3 font-bold text-slate-700">{orden.nro_orden}</td>
+                      <td className="px-6 py-3 text-slate-600">{orden.paciente.apellido}, {orden.paciente.nombre}</td>
+                      <td className="px-6 py-3 text-center">
+                        <Badge status={orden.estado} />
                       </td>
                     </tr>
                   ))}
@@ -168,24 +73,55 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Columna de Alertas - Ocupa 1 columna */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-black text-xs text-gray-700 mb-4 uppercase tracking-widest flex items-center gap-2">
-                <span className="animate-pulse">🔔</span> Alertas Críticas
-              </h3>
+          {/* ALERTAS Y ACCIONES */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <h3 className="font-bold text-slate-800 mb-4">📢 Notificaciones del Sistema</h3>
               <div className="space-y-3">
-                {dashboardData?.notificaciones.map((notif, i) => (
-                  <div key={i} className="p-4 bg-indigo-50/50 rounded-xl border-l-4 border-indigo-400 text-[11px] text-indigo-900 font-bold leading-relaxed">
+                {stats?.notificaciones?.map((notif: string, i: number) => (
+                  <div key={i} className="text-sm p-3 bg-slate-50 rounded-lg border border-slate-100 text-slate-600 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
                     {notif}
                   </div>
                 ))}
               </div>
             </div>
+
+            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-2xl shadow-lg p-6 text-white">
+              <h3 className="font-bold text-lg mb-2">Facturación Estimada</h3>
+              <p className="text-slate-300 text-sm mb-4">Órdenes procesadas este mes</p>
+              <div className="text-3xl font-black">{stats?.facturacion?.ordenes_facturables || 0}</div>
+              <div className="mt-4 w-full bg-white/20 rounded-full h-1.5">
+                <div className="bg-emerald-400 h-1.5 rounded-full" style={{ width: `${stats?.facturacion?.porcentaje_finalizacion || 0}%` }}></div>
+              </div>
+              <p className="text-[10px] text-right mt-1 text-emerald-300">{stats?.facturacion?.porcentaje_finalizacion}% Completado</p>
+            </div>
           </div>
 
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 }
+
+// COMPONENTES AUXILIARES
+const StatCard = ({ title, value, icon, color }: any) => (
+  <div className={`p-6 rounded-2xl border ${color} shadow-sm transition-transform hover:scale-[1.02]`}>
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1 text-slate-600">{title}</p>
+        <h2 className="text-3xl font-black text-slate-800">{value}</h2>
+      </div>
+      <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
+    </div>
+  </div>
+);
+
+const Badge = ({ status }: { status: string }) => {
+  const styles: any = {
+    pendiente: "bg-amber-100 text-amber-700 border-amber-200",
+    en_proceso: "bg-blue-100 text-blue-700 border-blue-200",
+    finalizado: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  };
+  return <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${styles[status] || 'bg-gray-100'}`}>{status?.replace('_', ' ')}</span>;
+};

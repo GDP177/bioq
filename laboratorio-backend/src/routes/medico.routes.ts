@@ -5,7 +5,9 @@ import {
     loginMedico, 
     getDashboardMedico, 
     completarPerfilMedico,
-    getOrdenDetalle // 👈 AHORA LO IMPORTAMOS DESDE AQUÍ (donde está el fix)
+    getOrdenDetalle, 
+    crearSolicitudMedica,
+    modificarSolicitudMedica // ✅ NUEVO: Importamos la función para modificar
 } from '../controllers/medico.controller';
 
 import { 
@@ -59,12 +61,14 @@ router.get('/dashboard/:id_medico', getDashboardMedico);
 // ============================================
 router.get('/:id_medico/ordenes', getOrdenesMedico);
 
-// ✅ RUTA DE CREACIÓN (Coincide con NuevaSolicitud.tsx)
-router.post('/:id_medico/nueva-solicitud', crearNuevaOrden); 
+// ✅ RUTA DE CREACIÓN (Corregida en el paso anterior)
+router.post('/:id_medico/nueva-solicitud', crearSolicitudMedica); 
 
-// ✅ RUTA DE DETALLE (Usando el controlador corregido que trae nombres)
+// ✅ RUTA DE DETALLE (Para cargar la vista con todos los datos)
 router.get('/orden/:id_orden', getOrdenDetalle); 
-// (Nota: Eliminé la ruta duplicada /:id_medico/orden/:id_orden para evitar confusión)
+
+// ✅ RUTA DE MODIFICACIÓN (NUEVA: Para editar la orden enviada)
+router.put('/orden/:id_orden', modificarSolicitudMedica);
 
 // ============================================
 // RUTAS DE ANÁLISIS

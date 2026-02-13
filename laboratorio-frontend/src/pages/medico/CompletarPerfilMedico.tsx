@@ -38,6 +38,7 @@ const CompletarPerfilMedico: React.FC = () => {
     if (usuarioData) {
       try {
         const parsedUser = JSON.parse(usuarioData);
+        // Permitimos acceso si es médico, aunque no tenga el perfil completo aún
         if (parsedUser.rol === 'medico') {
           setUsuario(parsedUser);
         } else {
@@ -56,67 +57,37 @@ const CompletarPerfilMedico: React.FC = () => {
   }, [navigate]);
 
   const especialidades = [
-    'Medicina General',
-    'Medicina Interna',
-    'Cardiología',
-    'Neurología',
-    'Pediatría',
-    'Ginecología y Obstetricia',
-    'Traumatología',
-    'Dermatología',
-    'Psiquiatría',
-    'Radiología',
-    'Anestesiología',
-    'Cirugía General',
-    'Urología',
-    'Oftalmología',
-    'Otorrinolaringología',
-    'Oncología',
-    'Endocrinología',
-    'Gastroenterología',
-    'Nefrología',
-    'Reumatología',
-    'Otra'
+    'Medicina General', 'Medicina Interna', 'Cardiología', 'Neurología', 'Pediatría',
+    'Ginecología y Obstetricia', 'Traumatología', 'Dermatología', 'Psiquiatría',
+    'Radiología', 'Anestesiología', 'Cirugía General', 'Urología', 'Oftalmología',
+    'Otorrinolaringología', 'Oncología', 'Endocrinología', 'Gastroenterología',
+    'Nefrología', 'Reumatología', 'Otra'
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
+    setFormData(prev => ({ ...prev, [name]: value }));
     // Limpiar error del campo cuando se modifica
     if (errors[name as keyof PerfilData]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+      setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<PerfilData> = {};
-
-    if (!formData.nombre_medico.trim()) {
-      newErrors.nombre_medico = 'El nombre es requerido';
-    }
-
-    if (!formData.apellido_medico.trim()) {
-      newErrors.apellido_medico = 'El apellido es requerido';
-    }
-
+    if (!formData.nombre_medico.trim()) newErrors.nombre_medico = 'El nombre es requerido';
+    if (!formData.apellido_medico.trim()) newErrors.apellido_medico = 'El apellido es requerido';
+    
     if (!formData.dni_medico.trim()) {
       newErrors.dni_medico = 'El DNI es requerido';
     } else if (!/^\d{7,8}$/.test(formData.dni_medico)) {
-      newErrors.dni_medico = 'El DNI debe tener 7 u 8 dígitos';
+      newErrors.dni_medico = 'El DNI debe tener 7 u 8 dígitos numéricos';
     }
 
-    if (!formData.matricula_medica.trim()) {
-      newErrors.matricula_medica = 'La matrícula médica es requerida';
-    }
-
-    if (formData.telefono && !/^[\+]?[\d\s\-\(\)]+$/.test(formData.telefono)) {
+    if (!formData.matricula_medica.trim()) newErrors.matricula_medica = 'La matrícula es requerida';
+    
+    // Validación básica de teléfono (opcional pero recomendada)
+    if (formData.telefono && !/^[\d\s\+\-\(\)]+$/.test(formData.telefono)) {
       newErrors.telefono = 'Formato de teléfono inválido';
     }
 
@@ -128,7 +99,7 @@ const CompletarPerfilMedico: React.FC = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      setMessage('Por favor corrija los errores antes de continuar');
+      setMessage('Por favor corrija los errores marcados en rojo.');
       setIsSuccess(false);
       return;
     }
@@ -137,11 +108,11 @@ const CompletarPerfilMedico: React.FC = () => {
     setMessage(null);
 
     try {
+      console.log("📤 Enviando datos:", { id_usuario: usuario.id_usuario, ...formData });
+
       const response = await fetch('http://localhost:5000/api/medico/completar-perfil', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id_usuario: usuario.id_usuario,
           ...formData
@@ -150,272 +121,195 @@ const CompletarPerfilMedico: React.FC = () => {
 
       const data = await response.json();
 
+      // 🔥 MANEJO DE ERRORES MEJORADO: Leemos el mensaje del backend incluso si falla
       if (!response.ok) {
-        throw new Error(data.message || `Error ${response.status}`);
+        // Si es error 409 (Conflicto), el backend nos dice exactamente qué está duplicado
+        throw new Error(data.message || `Error del servidor (${response.status})`);
       }
 
       if (data.success) {
-        setMessage('Perfil completado exitosamente');
+        setMessage('✅ Perfil creado con éxito. Accediendo...');
         setIsSuccess(true);
         
-        // Guardar datos del médico en localStorage
+        // Guardar datos completos del médico en localStorage
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         
-        console.log('✅ Perfil médico completado, redirigiendo al dashboard...');
+        // Disparar evento para actualizar Sidebar inmediatamente
+        window.dispatchEvent(new Event('storage'));
         
-        // Redirigir al dashboard médico después de 2 segundos
         setTimeout(() => {
-          // Navegar al dashboard médico
           navigate('/medico/dashboard');
-        }, 2000);
+        }, 1500);
       } else {
-        throw new Error(data.message || 'Error desconocido');
+        throw new Error(data.message || 'La operación no se pudo completar.');
       }
 
     } catch (error: any) {
-      console.error('Error al completar perfil:', error);
-      setMessage(`Error: ${error.message}`);
+      console.error('❌ Error al completar perfil:', error);
+      // Mostramos el mensaje específico que viene del backend (ej: "DNI ya registrado")
+      setMessage(error.message);
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Mostrar loading mientras carga el usuario
   if (isLoadingUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando perfil...</p>
-        </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600"></div>
       </div>
     );
   }
 
-  // Si no hay usuario válido, no renderizar nada (ya se redirigió)
-  if (!usuario) {
-    return null;
-  }
+  if (!usuario) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-              <span className="text-white text-2xl">👨‍⚕️</span>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900">Completar Perfil Médico</h2>
-            <p className="mt-2 text-gray-600">
-              Bienvenido/a <strong>{usuario.username}</strong>. Complete sus datos profesionales para acceder al sistema.
-            </p>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        {/* Encabezado */}
+        <div className="bg-blue-600 p-8 text-center">
+          <div className="mx-auto h-16 w-16 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
+            <span className="text-3xl">👨‍⚕️</span>
           </div>
+          <h2 className="text-3xl font-bold text-white">Completar Perfil</h2>
+          <p className="mt-2 text-blue-100">
+            Hola <strong>{usuario.username}</strong>, necesitamos algunos datos profesionales para habilitar tu cuenta.
+          </p>
+        </div>
 
-          {/* Mensaje de estado */}
+        <div className="p-8">
+          {/* Mensaje de Alerta */}
           {message && (
-            <div className={`mb-6 p-4 rounded-lg text-center font-medium ${
-              isSuccess 
-                ? 'bg-green-50 text-green-800 border border-green-200' 
-                : 'bg-red-50 text-red-800 border border-red-200'
+            <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 text-sm font-bold ${
+              isSuccess ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
             }`}>
+              <span>{isSuccess ? '🎉' : '⚠️'}</span>
               {message}
-              {isSuccess && (
-                <div className="mt-2 text-sm text-green-600">
-                  Redirigiendo al dashboard médico...
-                </div>
-              )}
             </div>
           )}
 
-          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Datos Personales */}
+            
+            {/* Fila 1: Nombre y Apellido */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="nombre_medico" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre *
-                </label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nombre</label>
                 <input
-                  id="nombre_medico"
                   name="nombre_medico"
                   type="text"
-                  required
                   value={formData.nombre_medico}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.nombre_medico ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Nombre"
-                  disabled={isLoading}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all ${errors.nombre_medico ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-200'}`}
+                  placeholder="Ej. Juan"
                 />
-                {errors.nombre_medico && (
-                  <p className="mt-1 text-sm text-red-600">{errors.nombre_medico}</p>
-                )}
+                {errors.nombre_medico && <p className="mt-1 text-xs text-red-500 font-bold">{errors.nombre_medico}</p>}
               </div>
-
               <div>
-                <label htmlFor="apellido_medico" className="block text-sm font-medium text-gray-700 mb-2">
-                  Apellido *
-                </label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Apellido</label>
                 <input
-                  id="apellido_medico"
                   name="apellido_medico"
                   type="text"
-                  required
                   value={formData.apellido_medico}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.apellido_medico ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Apellido"
-                  disabled={isLoading}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all ${errors.apellido_medico ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-200'}`}
+                  placeholder="Ej. Pérez"
                 />
-                {errors.apellido_medico && (
-                  <p className="mt-1 text-sm text-red-600">{errors.apellido_medico}</p>
-                )}
+                {errors.apellido_medico && <p className="mt-1 text-xs text-red-500 font-bold">{errors.apellido_medico}</p>}
               </div>
             </div>
 
-            {/* DNI y Matrícula */}
+            {/* Fila 2: Identificación */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="dni_medico" className="block text-sm font-medium text-gray-700 mb-2">
-                  DNI *
-                </label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">DNI (Sin puntos)</label>
                 <input
-                  id="dni_medico"
                   name="dni_medico"
                   type="text"
-                  required
+                  maxLength={8}
                   value={formData.dni_medico}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.dni_medico ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="12345678"
-                  disabled={isLoading}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all ${errors.dni_medico ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-200'}`}
+                  placeholder="Ej. 30123456"
                 />
-                {errors.dni_medico && (
-                  <p className="mt-1 text-sm text-red-600">{errors.dni_medico}</p>
-                )}
+                {errors.dni_medico && <p className="mt-1 text-xs text-red-500 font-bold">{errors.dni_medico}</p>}
               </div>
-
               <div>
-                <label htmlFor="matricula_medica" className="block text-sm font-medium text-gray-700 mb-2">
-                  Matrícula Médica *
-                </label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Matrícula Profesional</label>
                 <input
-                  id="matricula_medica"
                   name="matricula_medica"
                   type="text"
-                  required
                   value={formData.matricula_medica}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.matricula_medica ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="MP 12345"
-                  disabled={isLoading}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all ${errors.matricula_medico ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-200'}`}
+                  placeholder="Ej. MP-9988"
                 />
-                {errors.matricula_medica && (
-                  <p className="mt-1 text-sm text-red-600">{errors.matricula_medica}</p>
-                )}
+                {errors.matricula_medica && <p className="mt-1 text-xs text-red-500 font-bold">{errors.matricula_medica}</p>}
               </div>
             </div>
 
             {/* Especialidad */}
             <div>
-              <label htmlFor="especialidad" className="block text-sm font-medium text-gray-700 mb-2">
-                Especialidad
-              </label>
-              <select
-                id="especialidad"
-                name="especialidad"
-                value={formData.especialidad}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isLoading}
-              >
-                <option value="">Seleccionar especialidad</option>
-                {especialidades.map((esp) => (
-                  <option key={esp} value={esp}>
-                    {esp}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Especialidad</label>
+              <div className="relative">
+                <select
+                  name="especialidad"
+                  value={formData.especialidad}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg appearance-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                >
+                  <option value="">Seleccione una opción...</option>
+                  {especialidades.map((esp) => (
+                    <option key={esp} value={esp}>{esp}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">▼</div>
+              </div>
             </div>
 
-            {/* Contacto */}
-            <div>
-              <label htmlFor="telefono" className="block text-sm font-medium text-gray-700 mb-2">
-                Teléfono
-              </label>
-              <input
-                id="telefono"
-                name="telefono"
-                type="tel"
-                value={formData.telefono}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.telefono ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="+54 9 11 1234-5678"
-                disabled={isLoading}
-              />
-              {errors.telefono && (
-                <p className="mt-1 text-sm text-red-600">{errors.telefono}</p>
-              )}
+            {/* Datos de Contacto (Opcionales visualmente, pero buenos de tener) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Teléfono</label>
+                  <input
+                    name="telefono"
+                    type="tel"
+                    value={formData.telefono}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="+54 ..."
+                  />
+                  {errors.telefono && <p className="mt-1 text-xs text-red-500 font-bold">{errors.telefono}</p>}
+               </div>
+               <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Dirección del Consultorio</label>
+                  <input
+                    name="direccion"
+                    type="text"
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Calle, Altura, Ciudad"
+                  />
+               </div>
             </div>
 
-            {/* Dirección */}
-            <div>
-              <label htmlFor="direccion" className="block text-sm font-medium text-gray-700 mb-2">
-                Dirección
-              </label>
-              <textarea
-                id="direccion"
-                name="direccion"
-                rows={3}
-                value={formData.direccion}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Dirección completa"
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Botón de envío */}
             <button
               type="submit"
               disabled={isLoading || isSuccess}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-                isLoading || isSuccess
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-              } text-white`}
+              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 ${
+                isLoading ? 'bg-gray-400 cursor-wait' : isSuccess ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/30'
+              }`}
             >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Guardando...
-                </div>
-              ) : isSuccess ? (
-                '✅ Perfil Completado'
-              ) : (
-                'Completar Perfil'
-              )}
+              {isLoading ? 'Guardando información...' : isSuccess ? '¡Listo! Redirigiendo...' : 'Guardar y Finalizar'}
             </button>
-          </form>
 
-          {/* Footer */}
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>* Campos obligatorios</p>
-            <p className="mt-2">
-              Una vez completado el perfil, tendrá acceso completo al sistema de laboratorio.
-            </p>
-          </div>
+          </form>
+          
+          <p className="mt-6 text-center text-xs text-gray-400">
+            * Sus datos serán utilizados únicamente para la validación de órdenes médicas.
+          </p>
         </div>
       </div>
     </div>

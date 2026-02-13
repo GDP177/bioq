@@ -1,228 +1,223 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { MainLayout } from '../../components/layout/MainLayout';
+import { useState, useEffect } from "react";
+import axios from "axios";
 
-interface Analisis {
-    codigo_practica: string | number;
-    descripcion_practica: string;
-    REFERENCIA: string;
-    UNIDAD_BIOQUIMICA: string;
-    URGENCIA: string;
-    cantidad_hijos: number;
+// Componentes UI reutilizables
+const Button = ({ onClick, children, className, variant = 'primary' }: any) => (
+  <button 
+    onClick={onClick} 
+    className={`px-4 py-2 rounded-md font-bold transition-all shadow-sm ${className} ${variant === 'ghost' ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+  >
+    {children}
+  </button>
+);
+
+const Input = ({ value, onChange, placeholder, type = "text", className }: any) => (
+  <input
+    type={type}
+    value={value || ""}
+    onChange={onChange}
+    placeholder={placeholder}
+    className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none ${className}`}
+  />
+);
+
+// Interfaz adaptada a la Base de Datos real
+interface Practica {
+  codigo_practica: number;
+  descripcion_practica: string;
+  codigo_modulo: number;
+  descripcion_modulo: string;
+  inicio_vigencia: string;
+  HONORARIOS: number;
+  GASTOS: number;
+  TIPO: string;
+  URGENCIA: string; // 'U' o null/vacío
+  REFERENCIA: string;
+  UNIDAD_BIOQUIMICA: string;
+  FRECUENCIA: string;
+  valor_referencia_rango: string;
 }
 
 export default function GestionAnalisis() {
-    const [analisis, setAnalisis] = useState<Analisis[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [filtro, setFiltro] = useState("");
-    const [hijosVisibles, setHijosVisibles] = useState<Record<string, any[]>>({});
-    const [editando, setEditando] = useState<string | number | null>(null);
+  const [practicas, setPracticas] = useState<Practica[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [editando, setEditando] = useState<number | null>(null);
+  const [formEdicion, setFormEdicion] = useState<Partial<Practica>>({});
 
-    const fetchCatalogo = async () => {
-        setLoading(true);
-        try {
-            // Ajustado a la ruta de tu controlador Admin
-            const res = await axios.get('http://localhost:5000/api/analisis/admin/catalogo');
-            if (res.data.success) {
-                setAnalisis(res.data.data);
-            }
-        } catch (err) {
-            console.error("Error al cargar el catálogo:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    cargarCatalogo();
+  }, []);
 
-    useEffect(() => {
-        fetchCatalogo();
-    }, []);
+  const cargarCatalogo = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Cargando catálogo completo...');
+      // Llamamos a la ruta de admin que trae todas las columnas
+      const response = await axios.get('http://localhost:5000/api/analisis/admin/catalogo');
+      if (response.data.success) {
+        setPracticas(response.data.data);
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar catálogo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const toggleHijos = async (codigo: string | number) => {
-        const codigoStr = String(codigo);
-        if (hijosVisibles[codigoStr]) {
-            const copia = { ...hijosVisibles };
-            delete copia[codigoStr];
-            setHijosVisibles(copia);
-            return;
-        }
+  const iniciarEdicion = (practica: Practica) => {
+    setEditando(practica.codigo_practica);
+    setFormEdicion({ ...practica });
+  };
 
-        try {
-            const res = await axios.get(`http://localhost:5000/api/analisis/estructura/${codigoStr}`);
-            if (res.data.success) {
-                setHijosVisibles({ ...hijosVisibles, [codigoStr]: res.data.data });
-            }
-        } catch (err) {
-            console.error("Error al cargar sub-análisis:", err);
-        }
-    };
+  const cancelarEdicion = () => {
+    setEditando(null);
+    setFormEdicion({});
+  };
 
-    // FUNCIÓN PARA ACTUALIZAR VALOR DE REFERENCIA
-    const handleUpdateReferencia = async (codigo: string | number, nuevaRef: string) => {
-        try {
-            await axios.put(`http://localhost:5000/api/admin/analisis/${codigo}`, {
-                REFERENCIA: nuevaRef
-            });
-            // Actualizar estado local para no recargar todo
-            setAnalisis(prev => prev.map(item => 
-                item.codigo_practica === codigo ? { ...item, REFERENCIA: nuevaRef } : item
-            ));
-            setEditando(null);
-        } catch (err) {
-            alert("Error al actualizar la referencia");
-        }
-    };
+  const guardarCambios = async (codigo: number) => {
+    try {
+      console.log('💾 Guardando cambios:', formEdicion);
+      const response = await axios.put(`http://localhost:5000/api/analisis/${codigo}`, formEdicion);
 
-    const analisisFiltrados = analisis.filter(item => {
-        const query = filtro.toLowerCase();
-        const descripcion = item.descripcion_practica?.toLowerCase() || "";
-        const codigo = String(item.codigo_practica || "");
-        return descripcion.includes(query) || codigo.includes(query);
-    });
+      if (response.data.success) {
+        setPracticas(prev => prev.map(p => p.codigo_practica === codigo ? { ...p, ...formEdicion } : p));
+        setEditando(null);
+        console.log('✅ Editado con éxito');
+      }
+    } catch (error) {
+      console.error('❌ Error guardando:', error);
+      alert("No se pudo guardar los cambios.");
+    }
+  };
 
-    if (loading) return (
-        <MainLayout>
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
-        </MainLayout>
-    );
+  const practicasFiltradas = practicas.filter(p => 
+    p.descripcion_practica?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    p.codigo_practica?.toString().includes(busqueda)
+  );
 
-    return (
-        <MainLayout>
-            <div className="w-full min-h-screen bg-slate-50/50 p-4 sm:p-8">
-                {/* Header Profesional */}
-                <div className="max-w-[1600px] mx-auto">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                        <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Catálogo Maestro</h1>
-                            <p className="text-slate-500 font-medium text-sm">Configuración técnica de prácticas y rangos de referencia</p>
+  const Money = ({ val }: { val: number }) => (
+    <span className="font-mono">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val || 0)}</span>
+  );
+
+  if (loading) return <div className="p-10 text-center text-gray-500">Cargando catálogo...</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-[1920px] mx-auto">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Catálogo Maestro de Análisis</h1>
+          <Button>+ Nueva Práctica</Button>
+        </header>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+          <input 
+            type="text" 
+            placeholder="🔍 Buscar práctica..." 
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-xs">
+            <thead className="bg-gray-800 text-white">
+              <tr>
+                <th className="px-3 py-3 text-left font-bold uppercase w-20">Cód.</th>
+                <th className="px-3 py-3 text-left font-bold uppercase w-1/4">Determinación</th>
+                <th className="px-3 py-3 text-left font-bold uppercase">Módulo</th>
+                <th className="px-3 py-3 text-left font-bold uppercase w-24">Unidad</th>
+                <th className="px-3 py-3 text-left font-bold uppercase w-1/6">Referencia</th>
+                <th className="px-3 py-3 text-right font-bold uppercase w-24">Honorarios</th>
+                <th className="px-3 py-3 text-right font-bold uppercase w-24">Gastos</th>
+                <th className="px-3 py-3 text-center font-bold uppercase w-20">Tipo</th>
+                <th className="px-3 py-3 text-center font-bold uppercase w-24">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {practicasFiltradas.map((p) => {
+                const isEditing = editando === p.codigo_practica;
+                return (
+                  <tr key={p.codigo_practica} className={`hover:bg-blue-50 transition-colors ${isEditing ? 'bg-blue-50' : ''}`}>
+                    
+                    {/* Código */}
+                    <td className="px-3 py-3 font-mono font-bold text-blue-600">{p.codigo_practica}</td>
+
+                    {/* Descripción */}
+                    <td className="px-3 py-3 font-medium text-gray-900">
+                      {isEditing ? (
+                        <Input value={formEdicion.descripcion_practica} onChange={(e: any) => setFormEdicion({...formEdicion, descripcion_practica: e.target.value})} />
+                      ) : (
+                        <>
+                          {p.descripcion_practica}
+                          {p.URGENCIA === 'U' && <span className="ml-2 text-[9px] bg-red-100 text-red-600 px-1 rounded border border-red-200">URG</span>}
+                        </>
+                      )}
+                    </td>
+
+                    {/* Módulo */}
+                    <td className="px-3 py-3 text-gray-500">{p.descripcion_modulo}</td>
+
+                    {/* Unidad (Editable) */}
+                    <td className="px-3 py-3">
+                      {isEditing ? (
+                        <Input value={formEdicion.UNIDAD_BIOQUIMICA} onChange={(e: any) => setFormEdicion({...formEdicion, UNIDAD_BIOQUIMICA: e.target.value})} />
+                      ) : (
+                        <span className="font-bold text-gray-700">{p.UNIDAD_BIOQUIMICA}</span>
+                      )}
+                    </td>
+
+                    {/* Referencia (Editable) */}
+                    <td className="px-3 py-3">
+                      {isEditing ? (
+                        <Input value={formEdicion.REFERENCIA} onChange={(e: any) => setFormEdicion({...formEdicion, REFERENCIA: e.target.value})} />
+                      ) : (
+                        <span className="text-gray-600 italic">{p.REFERENCIA}</span>
+                      )}
+                    </td>
+
+                    {/* Honorarios (Editable) */}
+                    <td className="px-3 py-3 text-right">
+                      {isEditing ? (
+                        <Input type="number" value={formEdicion.HONORARIOS} onChange={(e: any) => setFormEdicion({...formEdicion, HONORARIOS: parseFloat(e.target.value)})} className="text-right" />
+                      ) : (
+                        <Money val={p.HONORARIOS} />
+                      )}
+                    </td>
+
+                    {/* Gastos (Editable) */}
+                    <td className="px-3 py-3 text-right">
+                      {isEditing ? (
+                        <Input type="number" value={formEdicion.GASTOS} onChange={(e: any) => setFormEdicion({...formEdicion, GASTOS: parseFloat(e.target.value)})} className="text-right" />
+                      ) : (
+                        <span className="text-gray-400"><Money val={p.GASTOS} /></span>
+                      )}
+                    </td>
+
+                    {/* Tipo */}
+                    <td className="px-3 py-3 text-center">
+                      <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[9px] uppercase font-bold">{p.TIPO}</span>
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="px-3 py-3 text-center">
+                      {isEditing ? (
+                        <div className="flex gap-2 justify-center">
+                          <button onClick={() => guardarCambios(p.codigo_practica)} className="text-green-600 hover:text-green-800 text-lg">💾</button>
+                          <button onClick={cancelarEdicion} className="text-red-600 hover:text-red-800 text-lg">❌</button>
                         </div>
-                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-200">
-                            + NUEVA PRÁCTICA
-                        </button>
-                    </div>
-
-                    {/* Buscador Estilizado */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-6 flex items-center">
-                        <div className="p-3 text-slate-400">🔍</div>
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por código o descripción..."
-                            className="w-full p-2 outline-none text-slate-700 font-medium"
-                            value={filtro}
-                            onChange={(e) => setFiltro(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Tabla Principal */}
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-slate-900 text-white text-[11px] uppercase tracking-widest">
-                                    <th className="px-6 py-5 text-left">Cód.</th>
-                                    <th className="px-6 py-5 text-left">Determinación</th>
-                                    <th className="px-6 py-5 text-left">Ref. Maestra (Click para editar)</th>
-                                    <th className="px-6 py-5 text-left">Unidad</th>
-                                    <th className="px-6 py-5 text-center">Tipo</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {analisisFiltrados.map((item) => (
-                                    <React.Fragment key={item.codigo_practica}>
-                                        <tr className="group hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 font-mono font-bold text-indigo-600 text-sm">#{item.codigo_practica}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 uppercase text-sm leading-tight">{item.descripcion_practica}</span>
-                                                    {item.cantidad_hijos > 0 && (
-                                                        <button 
-                                                            onClick={() => toggleHijos(item.codigo_practica)}
-                                                            className="text-[10px] text-indigo-500 font-bold mt-1 hover:underline text-left uppercase tracking-tighter"
-                                                        >
-                                                            {hijosVisibles[String(item.codigo_practica)] ? '▼ Ocultar componentes' : `▶ Incluye ${item.cantidad_hijos} determinaciones`}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {editando === item.codigo_practica ? (
-                                                    <input 
-                                                        autoFocus
-                                                        className="w-full p-1 border-2 border-indigo-400 rounded bg-white outline-none text-sm"
-                                                        defaultValue={item.REFERENCIA}
-                                                        onBlur={(e) => handleUpdateReferencia(item.codigo_practica, e.target.value)}
-                                                    />
-                                                ) : (
-                                                    <div 
-                                                        onClick={() => setEditando(item.codigo_practica)}
-                                                        className="text-slate-500 italic text-sm cursor-pointer hover:bg-slate-100 p-1 rounded transition-all"
-                                                    >
-                                                        {item.REFERENCIA || 'Sin referencia'}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-400 font-bold text-xs uppercase">{item.UNIDAD_BIOQUIMICA || '-'}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${
-                                                    item.URGENCIA === 'U' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                }`}>
-                                                    {item.URGENCIA === 'U' ? 'URGENTE' : 'RUTINA'}
-                                                </span>
-                                            </td>
-                                        </tr>
-
-                                        {/* Sub-tabla de componentes */}
-                                        {hijosVisibles[String(item.codigo_practica)] && (
-                                            <tr>
-                                                <td colSpan={5} className="bg-slate-50/80 px-8 py-4">
-                                                    <div className="bg-white rounded-xl border border-indigo-100 shadow-inner overflow-hidden">
-                                                        <table className="w-full text-xs">
-                                                            <thead className="bg-indigo-50/50 text-indigo-900/50 uppercase font-black text-[9px]">
-                                                                <tr>
-                                                                    <th className="px-6 py-3 text-left">Cód. Hijo</th>
-                                                                    <th className="px-6 py-3 text-left">Componente</th>
-                                                                    <th className="px-6 py-3 text-left">Rango Técnico</th>
-                                                                    <th className="px-6 py-3 text-left">Unidad</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-slate-50">
-                                                                {hijosVisibles[String(item.codigo_practica)].map((h, idx) => (
-                                                                    <tr key={idx} className="hover:bg-indigo-50/30">
-                                                                        <td className="px-6 py-3 font-bold text-indigo-400">#{h.codigo_hijo}</td>
-                                                                        <td className="px-6 py-3 font-bold text-slate-700 uppercase">{h.descripcion_practica}</td>
-                                                                        <td className="px-6 py-3">
-                                                                            {editando === `h-${h.codigo_hijo}` ? (
-                                                                                <input 
-                                                                                    autoFocus
-                                                                                    className="w-full p-1 border border-indigo-300 rounded outline-none"
-                                                                                    defaultValue={h.REFERENCIA}
-                                                                                    onBlur={(e) => handleUpdateReferencia(h.codigo_hijo, e.target.value)}
-                                                                                />
-                                                                            ) : (
-                                                                                <div 
-                                                                                    onClick={() => setEditando(`h-${h.codigo_hijo}`)}
-                                                                                    className="text-slate-400 italic cursor-pointer hover:text-indigo-500"
-                                                                                >
-                                                                                    {h.REFERENCIA || 'Definir'}
-                                                                                </div>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className="px-6 py-3 font-bold text-slate-300">{h.UNIDAD_BIOQUIMICA || '-'}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </MainLayout>
-    );
+                      ) : (
+                        <button onClick={() => iniciarEdicion(p)} className="text-blue-600 hover:text-blue-800 text-lg">✏️</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }

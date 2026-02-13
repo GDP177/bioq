@@ -27,7 +27,7 @@ import {
 import { getDashboardBioquimico } from './controllers/bioquimico.controller';
 import { getHistorialPaciente, getAnalisisDetalladoPorOrden } from './controllers/historial.controller';
 import { pool } from './routes/db';
-import { getOrdenDetalleFinal } from './controllers/orden.controller';
+
 import { buscarPacientePorDNI } from './controllers/nuevas-funcionalidades.controller';
 
 dotenv.config();
@@ -48,6 +48,9 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
+app.use('/api/ordenes', ordenRoutes);
 
 // Middleware de logging para depuración de rutas [Importante para ver por qué falla el 404]
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -207,7 +210,6 @@ app.get('/api/admin/medicos', async (req, res) => {
 });
 
 // Para el detalle (Error image_e50b07)
-app.get('/api/orden/detalles/:id_orden', getOrdenDetalleFinal);
 
 // Para registrar pacientes (Error image_d9bc6d)
 app.post('/api/pacientes', registrarNuevoPaciente);

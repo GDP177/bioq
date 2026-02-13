@@ -11,7 +11,7 @@ export function Sidebar() {
   const location = useLocation();
   
   const usuarioJson = localStorage.getItem("usuario");
-  // ✅ Validación robusta del objeto usuario para evitar errores de renderizado
+  // Validación robusta del objeto usuario para evitar errores de renderizado
   const usuario = usuarioJson ? JSON.parse(usuarioJson) : { username: "Invitado", rol: "invitado" };
 
   const menuConfig = {
@@ -30,7 +30,8 @@ export function Sidebar() {
     ],
     bioquimico: [
       { label: "Panel Central", path: "/bioquimico/dashboard", icon: <BeakerIcon className="w-5 h-5" /> },
-      { label: "Órdenes Entrantes", path: "/bioquimico/ordenes", icon: <InboxStackIcon className="w-5 h-5" /> },
+      // 🔥 CORRECCIÓN AQUÍ: Cambiamos "/bioquimico/ordenes" por "/bioquimico/ordenes-entrantes"
+      { label: "Órdenes Entrantes", path: "/bioquimico/ordenes-entrantes", icon: <InboxStackIcon className="w-5 h-5" /> },
       { label: "Consulta Técnicas", path: "/admin/analisis", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
       { label: "Reportes", path: "/medico/reportes", icon: <ChartBarIcon className="w-5 h-5" /> },
     ]
@@ -52,7 +53,7 @@ export function Sidebar() {
             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">
               {usuario?.rol || "SIN ROL"}
             </p>
-            {/* ✅ CORRECCIÓN CLAVE: Agregamos '?' para evitar el error si username no existe */}
+            {/* Agregamos '?' para evitar el error si username no existe */}
             <p className="text-sm font-bold truncate uppercase">
               {usuario?.username || "Usuario"}
             </p>

@@ -1,22 +1,34 @@
-// C:\Users\che-g\Desktop\BQ\laboratorio-backend\src\routes\orden.routes.ts
+// src/routes/orden.routes.ts
 
 import { Router } from 'express';
-import { 
-    getCatalogo, 
-    registrarOrden,
-    getOrdenesMedico,
-    getOrdenDetalle
-} from '../controllers/orden.controller';
+import ordenController from '../controllers/orden.controller';
 
 const router = Router();
 
-// ✅ CAMBIO: Ruta neutral accesible para el Médico
-// Al no tener el prefijo /admin, no chocará con el middleware de administrador
-router.get('/catalogo-analisis', getCatalogo); 
+// ==========================================
+// 1. RUTAS ESTÁTICAS (VAN PRIMERO)
+// ==========================================
 
-// Gestión de órdenes (donde el médico inserta en la tabla 'orden' y 'orden_analisis')
-router.post('/medico/:id/nueva-solicitud', registrarOrden);
-router.get('/medico/:id_medico/ordenes', getOrdenesMedico);
-router.get('/medico/:id_medico/orden/:id_orden', getOrdenDetalle);
+// Catálogo
+router.get('/catalogo', ordenController.getCatalogo);
+
+// ✅ ESTA RUTA DEBE IR ANTES QUE /:id_orden
+// Si la pones después, el sistema cree que "pendientes" es un ID y falla.
+router.get('/pendientes', ordenController.getOrdenesPendientes);
+
+
+// ==========================================
+// 2. RUTAS DINÁMICAS (VAN DESPUÉS)
+// ==========================================
+
+// Crear Orden
+router.post('/', ordenController.crearNuevaOrden);
+
+// Listado Médico
+router.get('/medico/:id_medico', ordenController.getOrdenesMedico);
+router.put('/:id_orden/finalizar', ordenController.finalizarOrden);
+router.put('/:id_orden/analisis/:codigo_practica', ordenController.guardarResultadoAnalisis);
+// Detalle de Orden (Captura cualquier ID, por eso va al final)
+router.get('/:id_orden', ordenController.getOrdenDetalle);
 
 export default router;

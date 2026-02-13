@@ -2,49 +2,85 @@
 
 import { Request, Response } from 'express';
 import { pool } from '../routes/db'; 
+import { executePaginatedQuery } from '../utils/queryHelpers';
 
 // ============================================
-// 1. FUNCIONES AUXILIARES
+// 1. FUNCIONES DE ADMINISTRADOR (GESTIÓN DE CATÁLOGO)
 // ============================================
 
-const getStringParam = (param: any): string => {
-  if (typeof param === 'string') return param.trim();
-  if (Array.isArray(param) && param.length > 0) return String(param[0]).trim();
-  return '';
-};
-
-// ============================================
-// 2. FUNCIONES DE ADMINISTRADOR (GESTIÓN DE CATÁLOGO)
-// ============================================
-
-// Listar todos los análisis para el Dashboard de Admin
 export const getAllAnalisisAdmin = async (req: Request, res: Response) => {
-  try {
-    const [rows]: any = await pool.query(`
-      SELECT 
-        a.codigo_practica, 
-        a.descripcion_practica, 
-        a.REFERENCIA,
-        a.UNIDAD_BIOQUIMICA,
-        a.TIPO, 
-        a.URGENCIA,
-        a.HONORARIOS,
-        -- Contamos si es padre (tiene hijos en tabla incluye)
-        (SELECT COUNT(*) FROM incluye WHERE codigo_padre = a.codigo_practica) as cantidad_hijos,
-        -- Vemos si es hijo (tiene un padre en tabla incluye)
-        (SELECT codigo_padre FROM incluye WHERE codigo_hijo = a.codigo_practica LIMIT 1) as codigo_padre
-      FROM analisis a
-      ORDER BY a.descripcion_practica ASC
-    `);
+    try {
+        const baseQuery = `
+            SELECT 
+                a.codigo_practica, 
+                a.descripcion_practica, 
+                a.codigo_modulo,
+                a.descripcion_modulo,
+                a.inicio_vigencia,
+                a.REFERENCIA,
+                a.UNIDAD_BIOQUIMICA,
+                a.TIPO, 
+                a.URGENCIA,
+                a.FRECUENCIA,
+                a.valor_referencia_rango,
+                a.HONORARIOS,
+                a.GASTOS,
+                (SELECT COUNT(*) FROM incluye WHERE codigo_padre = a.codigo_practica) as cantidad_hijos
+            FROM analisis a
+        `;
 
-    return res.status(200).json({ success: true, data: rows });
-  } catch (error: any) {
-    console.error("Error getAllAnalisisAdmin:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
-  }
+        const result = await executePaginatedQuery({
+            baseQuery,
+            countQuery: "SELECT COUNT(*) as total FROM analisis a",
+            defaultTable: 'analisis',
+            searchColumns: ['a.descripcion_practica', 'a.codigo_practica', 'a.descripcion_modulo'],
+            queryParams: req.query,
+            whereConditions: [],
+            orderByClause: 'ORDER BY a.descripcion_practica ASC' 
+        });
+
+        const analisisFormateados = result.data.map((item: any) => ({
+            ...item,
+            precio_base: item.HONORARIOS || 0,
+            unidad: item.UNIDAD_BIOQUIMICA || "",
+            referencia: item.REFERENCIA || "",
+            es_paquete: (item.cantidad_hijos || 0) > 0 // Flag para saber si tiene hijos
+        }));
+
+        return res.json({
+            success: true,
+            data: analisisFormateados,
+            meta: result.meta
+        });
+
+    } catch (error: any) {
+        console.error("Error getAllAnalisisAdmin:", error.message);
+        return res.status(500).json({ success: false, message: error.message });
+    }
 };
 
-// Crear o Editar Análisis (Con soporte para Jerarquía/Hijos)
+// ✅ NUEVA FUNCIÓN: Permite editar cualquier campo de la tabla (Soluciona el error de edición)
+export const updateAnalisis = async (req: Request, res: Response) => {
+    const { codigo } = req.params;
+    const { descripcion_practica, UNIDAD_BIOQUIMICA, REFERENCIA, HONORARIOS, GASTOS, TIPO, FRECUENCIA, URGENCIA } = req.body;
+
+    try {
+        await pool.query(`
+            UPDATE analisis SET 
+                descripcion_practica = ?, UNIDAD_BIOQUIMICA = ?, REFERENCIA = ?,
+                HONORARIOS = ?, GASTOS = ?, TIPO = ?, FRECUENCIA = ?, URGENCIA = ?
+            WHERE codigo_practica = ?
+        `, [descripcion_practica, UNIDAD_BIOQUIMICA, REFERENCIA, HONORARIOS, GASTOS, TIPO, FRECUENCIA, URGENCIA, codigo]);
+
+        res.json({ success: true, message: 'Actualizado correctamente' });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: "Error al actualizar" });
+    }
+};
+
+// ... (MANTENER EL RESTO DE TUS FUNCIONES IGUAL: guardarAnalisis, getAnalisisMedico, etc.)
+// Asegúrate de exportar la nueva función al final del archivo:
+
 export const guardarAnalisis = async (req: Request, res: Response) => {
   const { 
     codigo_practica, descripcion_practica, referencia, 
@@ -55,7 +91,7 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
   try {
     await connection.beginTransaction();
 
-    // 1. Insertar o Actualizar Análisis (Tabla Principal)
+    // 1. Guardar Análisis Padre
     await connection.query(`
       INSERT INTO analisis (
         codigo_practica, descripcion_practica, REFERENCIA, 
@@ -69,18 +105,25 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
         URGENCIA = VALUES(URGENCIA)
     `, [codigo_practica, descripcion_practica.toUpperCase(), referencia, unidad_bioquimica, codigo_modulo || 1, urgencia || 'N']);
 
-    // 2. Gestionar Jerarquía (Tabla 'incluye')
-    
-    // Primero: Eliminamos relaciones anteriores donde este análisis sea padre
+    // 2. Guardar Relaciones (Hijos) en tabla 'incluye'
     await connection.query("DELETE FROM incluye WHERE codigo_padre = ?", [codigo_practica]);
 
-    // Segundo: Insertamos los nuevos hijos si existen
     if (hijos && Array.isArray(hijos) && hijos.length > 0) {
-      const values = hijos.map((hijoCod: any) => [
-        codigo_practica, 
-        hijoCod, 
-        `Componente de ${descripcion_practica.toUpperCase()}`
-      ]);
+      // Obtenemos los nombres de los hijos para armar la descripción (como en tu imagen)
+      const placeholders = hijos.map(() => '?').join(',');
+      const [infoHijos]: [any[], any] = await connection.query(
+          `SELECT codigo_practica, descripcion_practica FROM analisis WHERE codigo_practica IN (${placeholders})`,
+          hijos
+      );
+      
+      const mapaNombres = new Map(infoHijos.map(h => [h.codigo_practica, h.descripcion_practica]));
+
+      const values = hijos.map((hijoCod: any) => {
+          const nombreHijo = mapaNombres.get(hijoCod) || 'Análisis';
+          // Generamos descripción estilo: "Hemograma incluye recuento de glóbulos rojos"
+          const descripcionRelacion = `${descripcion_practica} incluye ${nombreHijo}`;
+          return [codigo_practica, hijoCod, descripcionRelacion];
+      });
       
       await connection.query(
         "INSERT INTO incluye (codigo_padre, codigo_hijo, descripcion) VALUES ?", 
@@ -100,23 +143,17 @@ export const guardarAnalisis = async (req: Request, res: Response) => {
   }
 };
 
-// Actualizar solo el Valor de Referencia (Edición Rápida)
 export const actualizarReferenciaCatalogo = async (req: Request, res: Response) => {
     const { codigo_practica } = req.params;
     const { REFERENCIA } = req.body;
-
     try {
-        await pool.query(
-            "UPDATE analisis SET REFERENCIA = ? WHERE codigo_practica = ?",
-            [REFERENCIA, codigo_practica]
-        );
+        await pool.query("UPDATE analisis SET REFERENCIA = ? WHERE codigo_practica = ?", [REFERENCIA, codigo_practica]);
         return res.json({ success: true, message: 'Referencia actualizada' });
     } catch (error: any) {
         return res.status(500).json({ success: false, error: error.message });
     }
 };
 
-// Obtener estructura de componentes (Hijos de un análisis - Uso interno)
 export const getEstructuraAnalisis = async (req: Request, res: Response) => {
   const { codigo } = req.params;
   try {
@@ -126,16 +163,17 @@ export const getEstructuraAnalisis = async (req: Request, res: Response) => {
       JOIN analisis a ON i.codigo_hijo = a.codigo_practica
       WHERE i.codigo_padre = ?
     `, [codigo]);
-
     res.json({ success: true, data: hijos });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error al obtener componentes" });
   }
 };
 
-// ============================================
-// 3. FUNCIONES DE MÉDICO (CONSULTAS)
-// ============================================
+const getStringParam = (param: any): string => {
+    if (typeof param === 'string') return param.trim();
+    if (Array.isArray(param) && param.length > 0) return String(param[0]).trim();
+    return '';
+};
 
 export const getAnalisisMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
@@ -216,10 +254,6 @@ export const getAnalisisMedico = async (req: Request, res: Response) => {
   }
 };
 
-// ============================================
-// 4. FUNCIONES COMPARTIDAS / UTILIDADES
-// ============================================
-
 export const getTiposAnalisis = async (req: Request, res: Response) => {
   try {
     const [rows]: [any[], any] = await pool.query(
@@ -241,7 +275,7 @@ export const getAnalisisDisponibles = async (req: Request, res: Response) => {
         codigo_practica as codigo,
         descripcion_practica as descripcion,
         TIPO as tipo,
-        HONORARIOS as precio
+        HONORARIOS as precio_base
        FROM analisis 
        WHERE descripcion_practica IS NOT NULL
        ORDER BY descripcion_practica ASC`
@@ -252,24 +286,24 @@ export const getAnalisisDisponibles = async (req: Request, res: Response) => {
   }
 };
 
-// ============================================
-// 5. SELECTOR DE ANÁLISIS (Para Nueva Orden - Frontend)
-// ============================================
-
-// ✅ Obtiene el catálogo formateado para el componente <AnalysisSelector />
 export const getCatalogoAnalisis = async (req: Request, res: Response) => {
+    const idObraSocial = req.query.id_obra_social ? parseInt(req.query.id_obra_social as string) : null;
+
     try {
-        // Usamos alias (AS) para que el Frontend reciba: id_analisis, nombre, codigo
         const query = `
             SELECT 
-                codigo_practica as id_analisis, 
-                descripcion_practica as nombre, 
-                codigo_practica as codigo, 
-                descripcion_modulo as categoria 
-            FROM analisis
+                a.codigo_practica as id_analisis, 
+                a.descripcion_practica as nombre, 
+                a.codigo_practica as codigo, 
+                a.descripcion_modulo as categoria,
+                COALESCE(n.precio, a.HONORARIOS) as precio_estimado,
+                CASE WHEN n.precio IS NOT NULL THEN 'Nomenclador' ELSE 'Base' END as origen_precio
+            FROM analisis a
+            LEFT JOIN nomenclador n ON a.codigo_practica = n.codigo_practica AND n.id_obra_social = ?
             LIMIT 2000
         `;
-        const [rows] = await pool.query(query);
+        
+        const [rows] = await pool.query(query, [idObraSocial]);
         res.json({ success: true, analisis: rows });
     } catch (error) { 
         console.error('❌ Error obteniendo análisis:', error);
@@ -277,7 +311,6 @@ export const getCatalogoAnalisis = async (req: Request, res: Response) => {
     }
 };
 
-// ✅ Obtiene los hijos de un análisis (si es un paquete)
 export const getHijosAnalisis = async (req: Request, res: Response) => {
     const { codigo } = req.params;
     try {
@@ -298,16 +331,18 @@ export const getHijosAnalisis = async (req: Request, res: Response) => {
     }
 };
 
-// Exportar objeto por defecto
+// Exportamos TODAS las funciones, incluyendo la nueva updateAnalisis
 export default {
     getAllAnalisisAdmin,
     guardarAnalisis,
+    updateAnalisis,
+    actualizarReferenciaCatalogo,
+    getEstructuraAnalisis,
+     // <--- IMPORTANTE
     getAnalisisMedico,
     getTiposAnalisis,
     getAnalisisDisponibles,
-    actualizarReferenciaCatalogo,
-    getEstructuraAnalisis,
-    // Nuevas funciones exportadas
+    
     getCatalogoAnalisis,
     getHijosAnalisis
 };

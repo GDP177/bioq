@@ -10,13 +10,13 @@ import OrdenDetalle from './pages/medico/OrdenDetalle'
 import NuevaSolicitud from './pages/medico/NuevaSolicitud'
 import GestionPacientes from './pages/medico/GestionPacientes'
 import GestionPacientesAdmin from './pages/admin/GestionPacientes'
-//import GestionAnalisis from './pages/medico/GestionAnalisis'
 import RegisterForm from './pages/login/RegisterForm'
 import CompletarPerfilMedico from './pages/medico/CompletarPerfilMedico';
 import CompletarPerfilBioquimico from './pages/bioquimico/CompletarPerfilBioquimico';
 import OrdenesFiltradas from './pages/ordenes/OrdenesFiltradas';
-import BioquimicoOrdenDetalle from '@/pages/bioquimico/OrdenDetalle';
-import GestionAnalisis from './pages/admin/GestionAnalisis'; // ✅ Importa tu nueva página
+import BioquimicoOrdenDetalle from './pages/bioquimico/OrdenDetalle';
+import GestionAnalisis from './pages/admin/GestionAnalisis'; 
+
 // Layout y Sidebar
 import { MainLayout } from './components/layout/MainLayout'
 
@@ -27,13 +27,12 @@ import EditarPaciente from './pages/pacientes/EditarPaciente'
 import HistorialPaciente from './pages/pacientes/HistorialPaciente'
 import NuevaOrdenAdmin from './pages/admin/NuevaOrden';
 
-
+// ✅ CORRECCIÓN CLAVE: El import de OrdenesEntrantes debe apuntar a la carpeta del bioquímico
+import OrdenesEntrantes from './pages/bioquimico/OrdenesEntrantes'; 
 import CargaResultados from "./pages/bioquimico/CargaResultados";
 
-
-//paginas usuarios
-import GestionUsuarios from './pages/admin/GestionUsuarios'; // ✅ Verifica que esta ruta sea la correcta
-
+// Páginas usuarios
+import GestionUsuarios from './pages/admin/GestionUsuarios'; 
 
 import './App.css'
 
@@ -51,7 +50,6 @@ function App() {
 
           {/* ========================================= */}
           {/* RUTAS PROTEGIDAS (CON SIDEBAR FIJO) */}
-          {/* El MainLayout contiene el Sidebar y el Outlet para el contenido central */}
           {/* ========================================= */}
           <Route element={<MainLayout><Outlet /></MainLayout>}>
             
@@ -64,7 +62,6 @@ function App() {
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/dashboard/admin/:id" element={<AdminDashboard />} />    
             <Route path="/admin/pacientes" element={<GestionPacientesAdmin />} />
-            // Dentro de tus Routes...
             <Route path="/admin/usuarios" element={<GestionUsuarios />} />
             <Route path="/admin/nueva-orden" element={<NuevaOrdenAdmin />} />
             <Route path="/admin/analisis" element={<GestionAnalisis />} />  
@@ -82,7 +79,6 @@ function App() {
             <Route path="/medico/paciente/:nro_ficha/historial" element={<HistorialPaciente />} />
             <Route path="/medico/analisis" element={<GestionAnalisis />} />
             
-            {/* Rutas futuras Médico */}
             <Route path="/medico/resultados" element={<div className="p-8">Módulo Resultados</div>} />
             <Route path="/medico/reportes" element={<div className="p-8">Módulo Reportes</div>} />
 
@@ -92,7 +88,11 @@ function App() {
             <Route path="/dashboard/bioquimico/:matricula" element={<BioquimicoDashboard />} />
             <Route path="/bioquimico/:matricula/ordenes/:tipo" element={<OrdenesFiltradas />} />
             <Route path="/orden/:id" element={<BioquimicoOrdenDetalle />} />
+            
+            {/* ✅ Asegúrate de que las rutas del bioquímico sean estas: */}
+            <Route path="/bioquimico/ordenes-entrantes" element={<OrdenesEntrantes />} />
             <Route path="/bioquimico/orden/:id_orden/cargar" element={<CargaResultados />} />
+            
           </Route>
 
           {/* --- RUTAS DE COMPATIBILIDAD --- */}

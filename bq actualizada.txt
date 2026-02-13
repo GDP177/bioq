@@ -1,0 +1,309 @@
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+CREATE TABLE `analisis` (
+  `codigo_modulo` int(11) DEFAULT NULL,
+  `descripcion_modulo` varchar(100) DEFAULT NULL,
+  `codigo_practica` int(11) NOT NULL,
+  `descripcion_practica` varchar(500) DEFAULT NULL,
+  `inicio_vigencia` varchar(45) DEFAULT NULL,
+  `HONORARIOS` double DEFAULT NULL,
+  `GASTOS` double DEFAULT NULL,
+  `TIPO` varchar(45) DEFAULT NULL,
+  `URGENCIA` varchar(5) DEFAULT NULL,
+  `REFERENCIA` varchar(10) DEFAULT NULL,
+  `UNIDAD_BIOQUIMICA` decimal(6,1) DEFAULT NULL,
+  `FRECUENCIA` varchar(5) DEFAULT NULL,
+  `valor_referencia_rango` varchar(255) DEFAULT 'Ver protocolo'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `auditoria` (
+  `id_auditoria` int(11) NOT NULL,
+  `tabla` varchar(50) NOT NULL,
+  `id_registro` int(11) NOT NULL,
+  `accion` enum('INSERT','UPDATE','DELETE') NOT NULL,
+  `campo_modificado` varchar(50) DEFAULT NULL,
+  `valor_anterior` text DEFAULT NULL,
+  `valor_nuevo` text DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ip_address` varchar(45) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `bioquimico` (
+  `matricula_profesional` varchar(50) NOT NULL,
+  `nombre_bq` varchar(100) NOT NULL,
+  `apellido_bq` varchar(100) NOT NULL,
+  `dni_bioquimico` int(11) NOT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `activo` tinyint(1) DEFAULT 1,
+  `fecha_habilitacion` date DEFAULT NULL,
+  `fecha_vencimiento_matricula` date DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `configuracion` (
+  `id_config` int(11) NOT NULL,
+  `clave` varchar(50) NOT NULL,
+  `valor` text NOT NULL,
+  `descripcion` varchar(200) DEFAULT NULL,
+  `tipo` enum('string','number','boolean','json') DEFAULT 'string',
+  `categoria` varchar(50) DEFAULT 'general',
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `incluye` (
+  `codigo_padre` int(11) NOT NULL,
+  `codigo_hijo` int(11) NOT NULL,
+  `descripcion` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `medico` (
+  `id_medico` int(11) NOT NULL,
+  `nombre_medico` varchar(100) NOT NULL,
+  `apellido_medico` varchar(100) NOT NULL,
+  `dni_medico` int(11) NOT NULL,
+  `matricula_medica` varchar(50) NOT NULL,
+  `especialidad` varchar(100) DEFAULT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `activo` tinyint(1) DEFAULT 1,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `nomenclador` (
+  `id_obra_social` int(11) NOT NULL,
+  `codigo_practica` int(11) NOT NULL,
+  `precio` decimal(10,2) DEFAULT NULL,
+  `fecha_actualizacion` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `obra_social` (
+  `id_obra_social` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `cuit` varchar(20) DEFAULT NULL,
+  `activo` tinyint(4) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `orden` (
+  `id_orden` int(11) NOT NULL,
+  `nro_orden` varchar(50) NOT NULL,
+  `urgente` tinyint(1) DEFAULT 0,
+  `id_medico_solicitante` int(11) NOT NULL,
+  `matricula_bq_efectua` varchar(50) DEFAULT NULL,
+  `fecha_ingreso_orden` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_toma_muestra` timestamp NULL DEFAULT NULL,
+  `fecha_procesamiento` timestamp NULL DEFAULT NULL,
+  `fecha_finalizacion` timestamp NULL DEFAULT NULL,
+  `nro_ficha_paciente` int(11) NOT NULL,
+  `estado` enum('pendiente','en_proceso','finalizada','cancelada') DEFAULT 'pendiente',
+  `observaciones` text DEFAULT NULL,
+  `requiere_ayuno` tinyint(1) DEFAULT 0,
+  `instrucciones_paciente` text DEFAULT NULL,
+  `costo_total` decimal(10,2) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `orden_analisis` (
+  `id_orden_analisis` int(11) NOT NULL,
+  `id_orden` int(11) NOT NULL,
+  `codigo_practica` int(11) NOT NULL,
+  `fecha_realizacion` timestamp NULL DEFAULT NULL,
+  `valor_hallado` varchar(100) DEFAULT NULL,
+  `unidad_hallada` varchar(20) DEFAULT NULL,
+  `valor_referencia_aplicado` varchar(200) DEFAULT NULL,
+  `interpretacion` enum('normal','alto','bajo','critico','indeterminado') DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `estado` enum('pendiente','procesando','finalizado','cancelado') DEFAULT 'pendiente',
+  `tecnico_responsable` varchar(100) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `paciente` (
+  `nro_ficha` int(11) NOT NULL,
+  `nombre_paciente` varchar(100) NOT NULL,
+  `apellido_paciente` varchar(100) NOT NULL,
+  `fecha_alta` date DEFAULT NULL,
+  `fecha_nacimiento` date NOT NULL,
+  `edad` int(11) DEFAULT NULL,
+  `sexo` enum('M','F','O') NOT NULL,
+  `estado` varchar(45) DEFAULT 'activo',
+  `mutual` varchar(100) NOT NULL,
+  `id_obra_social` int(11) DEFAULT NULL,
+  `nro_afiliado` varchar(50) DEFAULT NULL,
+  `grupo_sanguineo` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
+  `dni` int(11) NOT NULL,
+  `cp` int(11) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `contacto_emergencia` varchar(100) DEFAULT NULL,
+  `telefono_emergencia` varchar(20) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DELIMITER $$
+CREATE TRIGGER `tr_paciente_edad_insert` BEFORE INSERT ON `paciente` FOR EACH ROW BEGIN
+    SET NEW.edad = TIMESTAMPDIFF(YEAR, NEW.fecha_nacimiento, CURDATE());
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `tr_paciente_edad_update` BEFORE UPDATE ON `paciente` FOR EACH ROW BEGIN
+    IF OLD.fecha_nacimiento != NEW.fecha_nacimiento THEN
+        SET NEW.edad = TIMESTAMPDIFF(YEAR, NEW.fecha_nacimiento, CURDATE());
+    END IF;
+END
+$$
+DELIMITER ;
+
+CREATE TABLE `sesiones` (
+  `id_sesion` varchar(255) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `fecha_inicio` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_expiracion` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `activa` tinyint(1) DEFAULT 1,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `tokens` (
+  `id_token` int(11) NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `tipo` enum('password_reset','email_verification','api_access') NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `fecha_expiracion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `usado` tinyint(1) DEFAULT 0,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `usuarios` (
+  `id_usuario` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `rol` enum('admin','bioquimico','medico') NOT NULL,
+  `activo` tinyint(1) DEFAULT 1,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `ultimo_acceso` datetime DEFAULT NULL,
+  `intentos_fallidos` int(11) DEFAULT 0,
+  `bloqueado_hasta` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `valor_referencia` (
+  `id_valor_ref` int(11) NOT NULL,
+  `codigo_practica` int(11) NOT NULL,
+  `valor_minimo` decimal(15,4) DEFAULT NULL,
+  `valor_maximo` decimal(15,4) DEFAULT NULL,
+  `valor_texto` varchar(100) DEFAULT NULL COMMENT 'Para valores cualitativos',
+  `unidad` varchar(20) DEFAULT NULL,
+  `sexo` enum('M','F','A') DEFAULT 'A' COMMENT 'M=Masculino, F=Femenino, A=Ambos',
+  `edad_minima` int(11) DEFAULT 0,
+  `edad_maxima` int(11) DEFAULT 120,
+  `condicion_especial` varchar(100) DEFAULT NULL COMMENT 'Embarazo, post-menopausia, etc.',
+  `activo` tinyint(1) DEFAULT 1,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_modificacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `v_ordenes_completas` (
+`id_orden` int(11)
+,`nro_orden` varchar(50)
+,`fecha_ingreso_orden` timestamp
+,`estado` enum('pendiente','en_proceso','finalizada','cancelada')
+,`urgente` tinyint(1)
+,`paciente_completo` varchar(202)
+,`paciente_dni` int(11)
+,`edad` int(11)
+,`sexo` enum('M','F','O')
+,`medico_completo` varchar(202)
+,`matricula_medica` varchar(50)
+,`bioquimico_completo` varchar(202)
+,`cantidad_analisis` bigint(21)
+,`costo_total` decimal(10,2)
+);
+DROP TABLE IF EXISTS `v_ordenes_completas`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_ordenes_completas`  AS SELECT `o`.`id_orden` AS `id_orden`, `o`.`nro_orden` AS `nro_orden`, `o`.`fecha_ingreso_orden` AS `fecha_ingreso_orden`, `o`.`estado` AS `estado`, `o`.`urgente` AS `urgente`, concat(`p`.`apellido_paciente`,', ',`p`.`nombre_paciente`) AS `paciente_completo`, `p`.`dni` AS `paciente_dni`, `p`.`edad` AS `edad`, `p`.`sexo` AS `sexo`, concat(`m`.`apellido_medico`,', ',`m`.`nombre_medico`) AS `medico_completo`, `m`.`matricula_medica` AS `matricula_medica`, concat(`b`.`apellido_bq`,', ',`b`.`nombre_bq`) AS `bioquimico_completo`, count(`oa`.`id_orden_analisis`) AS `cantidad_analisis`, `o`.`costo_total` AS `costo_total` FROM ((((`orden` `o` join `paciente` `p` on(`o`.`nro_ficha_paciente` = `p`.`nro_ficha`)) join `medico` `m` on(`o`.`id_medico_solicitante` = `m`.`id_medico`)) left join `bioquimico` `b` on(`o`.`matricula_bq_efectua` = `b`.`matricula_profesional`)) left join `orden_analisis` `oa` on(`o`.`id_orden` = `oa`.`id_orden`)) GROUP BY `o`.`id_orden` ;
+
+
+ALTER TABLE `analisis`
+  ADD PRIMARY KEY (`codigo_practica`);
+
+ALTER TABLE `auditoria`
+  ADD PRIMARY KEY (`id_auditoria`),
+  ADD KEY `idx_tabla_registro` (`tabla`,`id_registro`),
+  ADD KEY `idx_fecha` (`fecha_modificacion`),
+  ADD KEY `idx_usuario` (`id_usuario`);
+
+ALTER TABLE `bioquimico`
+  ADD PRIMARY KEY (`matricula_profesional`),
+  ADD UNIQUE KEY `dni_bioquimico_UNIQUE` (`dni_bioquimico`),
+  ADD KEY `idx_apellido_nombre` (`apellido_bq`,`nombre_bq`),
+  ADD KEY `idx_activo` (`activo`),
+  ADD KEY `id_usuario_idx` (`id_usuario`);
+
+ALTER TABLE `configuracion`
+  ADD PRIMARY KEY (`id_config`),
+  ADD UNIQUE KEY `clave_UNIQUE` (`clave`),
+  ADD KEY `idx_categoria` (`categoria`);
+
+ALTER TABLE `incluye`
+  ADD KEY `idx_codigo_padre` (`codigo_padre`),
+  ADD KEY `idx_codigo_hijo` (`codigo_hijo`);
+
+ALTER TABLE `medico`
+  ADD PRIMARY KEY (`id_medico`),
+  ADD UNIQUE KEY `dni_medico_UNIQUE` (`dni_medico`),
+  ADD UNIQUE KEY `matricula_medica_UNIQUE` (`matricula_medica`),
+  ADD KEY `idx_apellido_nombre` (`apellido_medico`,`nombre_medico`),
+  ADD KEY `idx_activo` (`activo`),
+  ADD KEY `id_usuario_idx` (`id_usuario`);
+
+ALTER TABLE `nomenclador`
+  ADD PRIMARY KEY (`id_obra_social`,`codigo_practica`),
+  ADD KEY `codigo_practica` (`codigo_practica`);
+
+ALTER TABLE `obra_social`
+  ADD PRIMARY KEY (`id_obra_social`),
+  ADD UNIQUE KEY `nombre` (`nombre`);
+
+ALTER TABLE `orden`
+  ADD PRIMARY KEY (`id_orden`),
+  ADD UNIQUE KEY `nro_orden_UNIQUE` (`nro_orden`),
+  ADD KEY `id_medico_solicitante_idx` (`id_medico_solicitante`),
+  ADD KEY `matricula_bq_efectua_idx` (`matricula_bq_efectua`),
+  ADD KEY `nro_ficha_paciente_idx` (`nro_ficha_paciente`),
+  ADD KEY `idx_fecha_ingreso` (`fecha_ingreso_orden`),
+  ADD KEY `idx_estado` (`estado`),
+  ADD KEY `idx_urgente` (`urgente`),
+  ADD KEY `idx_paciente_fecha` (`nro_ficha_paciente`,`fecha_ingreso_orden`),
+  ADD KEY `idx_medico_fecha` (`id_medico_solicitante`,`fecha_ingreso_orden`);
+
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id_usuario`);
+
+
+ALTER TABLE `obra_social`
+  MODIFY `id_obra_social` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `orden`
+  MODIFY `id_orden` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `usuarios`
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT;
+
+
+ALTER TABLE `nomenclador`
+  ADD CONSTRAINT `nomenclador_ibfk_1` FOREIGN KEY (`id_obra_social`) REFERENCES `obra_social` (`id_obra_social`),
+  ADD CONSTRAINT `nomenclador_ibfk_2` FOREIGN KEY (`codigo_practica`) REFERENCES `analisis` (`codigo_practica`);
