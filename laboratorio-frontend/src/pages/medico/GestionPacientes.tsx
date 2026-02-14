@@ -1,9 +1,9 @@
-// src/pages/admin/GestionPacientes.tsx
+// src/pages/medico/GestionPacientes.tsx
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { MainLayout } from "../../components/layout/MainLayout"; // Ajusta según tu layout
+import { MainLayout } from "../../components/layout/MainLayout"; 
 
 // ==========================================
 // INTERFACES
@@ -126,7 +126,7 @@ export default function GestionPacientes() {
     
     // 2. Navegamos a la pantalla de creación
     // Asegúrate que esta ruta coincida con la de tu router para 'NuevaOrden.tsx'
-    navigate('/admin/nueva-orden'); 
+    navigate('/medico/nueva-solicitud'); // ✅ CORREGIDO: Apuntar a la ruta de médico existente
   };
 
   const limpiarFiltros = () => {
@@ -143,7 +143,8 @@ export default function GestionPacientes() {
                 <h1 className="text-2xl font-bold text-gray-800">👥 Gestión de Pacientes</h1>
                 <p className="text-sm text-gray-500">Base de datos general de pacientes</p>
             </div>
-            <button onClick={() => navigate('/admin/pacientes/nuevo')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all">
+            {/* ✅ CORREGIDO: Ruta actualizada a la que SÍ existe en App.tsx */}
+            <button onClick={() => navigate('/medico/paciente/nuevo')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all">
                 + Registrar Paciente
             </button>
         </div>
@@ -239,7 +240,7 @@ export default function GestionPacientes() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex justify-center items-center gap-2">
                               <button 
-                                onClick={() => navigate(`/admin/pacientes/${paciente.nro_ficha}`)}
+                                onClick={() => navigate(`/medico/paciente/${paciente.nro_ficha}/editar`)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-bold border border-blue-200 hover:bg-blue-50 px-3 py-1 rounded transition-colors"
                               >
                                 Ver Ficha

@@ -1,3 +1,5 @@
+// src/pages/medico/NuevaSolicitud.tsx
+
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios, { AxiosError } from "axios";
@@ -222,6 +224,29 @@ export default function NuevaSolicitud() {
     setStep(2);
     setError("");
   };
+
+  // ✅ NUEVO: EFECTO PARA DETECTAR PACIENTE PRE-SELECCIONADO
+  // Esto lee lo que guardamos en GestionPacientes.tsx antes de navegar
+  useEffect(() => {
+    const preseleccionado = sessionStorage.getItem('paciente_preseleccionado');
+    
+    if (preseleccionado) {
+        try {
+            const paciente = JSON.parse(preseleccionado);
+            if (paciente && paciente.dni) {
+                console.log("📥 Paciente preseleccionado cargado:", paciente);
+                
+                // Cargamos los datos y avanzamos al paso 2
+                seleccionarPaciente(paciente);
+                
+                // Limpiamos la memoria para que si recarga la página, empiece de cero (opcional)
+                sessionStorage.removeItem('paciente_preseleccionado');
+            }
+        } catch (e) {
+            console.error("Error al leer paciente preseleccionado:", e);
+        }
+    }
+  }, []); // Se ejecuta solo una vez al montar el componente
 
   const buscarPacientePorDNICompleto = async () => {
     if (!dniBusqueda.trim()) {

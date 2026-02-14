@@ -195,7 +195,8 @@ export default function OrdenesLista() {
                 <p className="text-xs text-gray-500">Gestión detallada de análisis solicitados</p>
               </div>
             </div>
-            <button onClick={() => navigate('/medico/solicitud-nueva')} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-bold shadow-md transition-all flex items-center gap-2">
+            {/* ✅ CORREGIDO: Ruta actualizada a /medico/nueva-solicitud */}
+            <button onClick={() => navigate('/medico/nueva-solicitud')} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-bold shadow-md transition-all flex items-center gap-2">
               <span>+</span> Nueva Orden
             </button>
           </div>

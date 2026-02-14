@@ -318,7 +318,8 @@ export default function EditarPaciente(): JSX.Element {
       console.log('🔍 Cargando datos del paciente con ficha:', nroFicha);
       
       const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/paciente/buscar/ficha/${nroFicha}`);
+      // ✅ CORREGIDO: Ruta actualizada a /medico/paciente/ficha/...
+      const response = await fetch(`${apiUrl}/medico/paciente/ficha/${nroFicha}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -401,7 +402,8 @@ export default function EditarPaciente(): JSX.Element {
 
     try {
       const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/obras-sociales/buscar/${encodeURIComponent(texto)}`);
+      // ✅ CORREGIDO: Ruta actualizada con prefijo /medico
+      const response = await fetch(`${apiUrl}/medico/obras-sociales/buscar/${encodeURIComponent(texto)}`);
       const data = await response.json();
       
       if (data.success && data.obras_sociales) {
@@ -587,7 +589,8 @@ export default function EditarPaciente(): JSX.Element {
       delete (datosEnvio as any).mutual_personalizada;
 
       const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/paciente/actualizar/${nroFicha}`, {
+      // ✅ CORREGIDO: Ruta actualizada con prefijo /medico
+      const response = await fetch(`${apiUrl}/medico/paciente/actualizar/${nroFicha}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

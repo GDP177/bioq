@@ -1,3 +1,5 @@
+// laboratorio-frontend/src/pages/bioquimico/OrdenesEntrantes.tsx
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -21,7 +23,7 @@ const Badge = ({ children, variant = 'default' }: any) => {
 };
 
 // ==========================================
-// INTERFAZ
+// INTERFAZ (Alineada con la respuesta del Backend)
 // ==========================================
 interface OrdenEntrante {
   id_orden: number;
@@ -29,13 +31,16 @@ interface OrdenEntrante {
   fecha_ingreso_orden: string;
   estado: string;
   urgente: number;
+  // Campos del paciente
   nombre_paciente: string;
   apellido_paciente: string;
   dni: number;
   edad: number;
   mutual: string;
+  // Campos del médico
   nombre_medico: string;
   apellido_medico: string;
+  // Contadores
   total_analisis: number;
   analisis_listos: number;
 }
@@ -49,7 +54,7 @@ export default function OrdenesEntrantes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Estados de la Interfaz (Pestañas y Buscador)
+  // Estados de la Interfaz
   const [tabActiva, setTabActiva] = useState<'pendientes' | 'completadas'>('pendientes');
   const [busqueda, setBusqueda] = useState("");
 
@@ -57,25 +62,25 @@ export default function OrdenesEntrantes() {
     cargarOrdenes();
   }, []);
 
-  // Motor de Filtrado en Tiempo Real
+  // Motor de Filtrado
   useEffect(() => {
     let resultado = [...ordenesOriginales];
 
-    // 1. Filtrar por Pestaña (Pendientes vs Finalizadas)
+    // 1. Filtrar por Pestaña
     if (tabActiva === 'pendientes') {
       resultado = resultado.filter(o => o.estado === 'pendiente' || o.estado === 'en_proceso');
     } else {
       resultado = resultado.filter(o => o.estado === 'finalizado');
     }
 
-    // 2. Filtrar por Buscador (DNI, Orden o Nombre)
+    // 2. Filtrar por Buscador
     if (busqueda.trim() !== "") {
       const b = busqueda.toLowerCase();
       resultado = resultado.filter(o => 
-        o.nro_orden.toLowerCase().includes(b) ||
-        o.dni.toString().includes(b) ||
-        o.nombre_paciente.toLowerCase().includes(b) ||
-        o.apellido_paciente.toLowerCase().includes(b)
+        (o.nro_orden || "").toLowerCase().includes(b) ||
+        (o.dni || "").toString().includes(b) ||
+        (o.nombre_paciente || "").toLowerCase().includes(b) ||
+        (o.apellido_paciente || "").toLowerCase().includes(b)
       );
     }
 
@@ -87,8 +92,7 @@ export default function OrdenesEntrantes() {
       setLoading(true);
       setError("");
       
-      // Agregamos un Timeout de 5 seg. Si el backend se cuelga, cortamos la petición y mostramos error.
-      const response = await axios.get('http://localhost:5000/api/ordenes/pendientes', { timeout: 5000 });
+      const response = await axios.get('http://localhost:5000/api/bioquimico/ordenes-entrantes', { timeout: 5000 });
       
       if (response.data.success) {
         setOrdenesOriginales(response.data.ordenes);
@@ -97,19 +101,26 @@ export default function OrdenesEntrantes() {
       }
     } catch (err: any) {
       console.error('❌ Error de conexión:', err);
-      if (err.code === 'ECONNABORTED') {
-        setError("El servidor tardó demasiado en responder (Timeout). Revisa la terminal del backend.");
+      // Fallback para desarrollo si la ruta nueva falla, intentar la vieja
+      if (err.response && err.response.status === 404) {
+          try {
+             const retry = await axios.get('http://localhost:5000/api/ordenes/pendientes');
+             if(retry.data.success) setOrdenesOriginales(retry.data.ordenes);
+          } catch(e) { setError("No se pudo conectar con el servidor."); }
       } else {
-        setError("No se pudo conectar con el servidor backend.");
+          setError("No se pudo conectar con el servidor.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const formatFecha = (f: string) => new Date(f).toLocaleString('es-AR', { 
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-  });
+  const formatFecha = (f: string) => {
+      if(!f) return "--/--";
+      return new Date(f).toLocaleString('es-AR', { 
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+      });
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
@@ -139,10 +150,9 @@ export default function OrdenesEntrantes() {
           </div>
         )}
 
-        {/* CONTROLES: PESTAÑAS Y BUSCADOR */}
+        {/* CONTROLES */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
           
-          {/* Pestañas (Tabs) */}
           <div className="flex border-b border-gray-200 bg-gray-50/50">
             <button 
               onClick={() => setTabActiva('pendientes')}
@@ -158,13 +168,12 @@ export default function OrdenesEntrantes() {
             </button>
           </div>
 
-          {/* Buscador */}
           <div className="p-4 bg-white">
             <div className="relative">
               <span className="absolute left-4 top-3 text-lg">🔍</span>
               <input 
                 type="text" 
-                placeholder="Buscar por DNI del paciente, N° de Orden o Apellido..." 
+                placeholder="Buscar por DNI, Orden o Apellido..." 
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-12 pr-4 py-3 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -173,10 +182,9 @@ export default function OrdenesEntrantes() {
           </div>
         </div>
 
-        {/* LISTA DE ÓRDENES */}
+        {/* LISTA */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           
-          {/* Encabezados de Tabla */}
           <div className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-gray-100 bg-gray-50/80">
             <div className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Detalle Orden</div>
             <div className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Paciente</div>
@@ -185,20 +193,20 @@ export default function OrdenesEntrantes() {
             <div className="text-[10px] font-black text-gray-500 uppercase tracking-wider text-right">Acción</div>
           </div>
 
-          {/* Filas */}
           <div className="divide-y divide-gray-100">
             {ordenesFiltradas.length === 0 ? (
               <div className="p-16 text-center">
                 <p className="text-4xl mb-2">{tabActiva === 'pendientes' ? '🎉' : '📂'}</p>
                 <p className="text-gray-500 font-bold">
-                  {busqueda ? "No se encontraron resultados para tu búsqueda." : 
-                    (tabActiva === 'pendientes' ? "No hay órdenes pendientes. ¡Todo al día!" : "Aún no hay órdenes finalizadas.")}
+                  {busqueda ? "No se encontraron resultados." : 
+                    (tabActiva === 'pendientes' ? "No hay órdenes pendientes." : "Aún no hay órdenes finalizadas.")}
                 </p>
               </div>
             ) : (
               ordenesFiltradas.map((orden) => {
-                const porcentaje = orden.total_analisis > 0 
-                  ? Math.round((orden.analisis_listos / orden.total_analisis) * 100) : 0;
+                const total = orden.total_analisis || 0;
+                const listos = orden.analisis_listos || 0;
+                const porcentaje = total > 0 ? Math.round((listos / total) * 100) : 0;
 
                 return (
                   <div key={orden.id_orden} className="grid grid-cols-5 gap-4 px-6 py-5 items-center hover:bg-blue-50/30 transition-colors group">
@@ -206,11 +214,13 @@ export default function OrdenesEntrantes() {
                     {/* COL 1: ORDEN */}
                     <div>
                       <p className="font-black text-blue-900 text-sm tracking-tight flex items-center gap-2">
-                        {orden.nro_orden}
+                        {orden.nro_orden || `ORD-${orden.id_orden}`}
                         {orden.urgente === 1 && <span title="URGENTE" className="text-red-500 animate-pulse">🚨</span>}
                       </p>
                       <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">📅 {formatFecha(orden.fecha_ingreso_orden)}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 italic">Dr. {orden.apellido_medico}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 italic">
+                        Dr. {orden.apellido_medico || "S/D"}
+                      </p>
                     </div>
 
                     {/* COL 2: PACIENTE */}
@@ -224,13 +234,13 @@ export default function OrdenesEntrantes() {
 
                     {/* COL 3: ESTADO */}
                     <div className="text-center">
-                      <Badge variant={orden.estado}>{orden.estado.replace('_', ' ')}</Badge>
+                      <Badge variant={orden.estado}>{orden.estado?.replace('_', ' ') || "PENDIENTE"}</Badge>
                     </div>
 
                     {/* COL 4: PROGRESO */}
                     <div className="px-4">
                       <div className="flex justify-between items-end mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase">{orden.analisis_listos}/{orden.total_analisis}</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">{listos}/{total}</span>
                         <span className={`text-xs font-black ${porcentaje === 100 ? 'text-green-600' : 'text-blue-600'}`}>{porcentaje}%</span>
                       </div>
                       <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
@@ -250,7 +260,7 @@ export default function OrdenesEntrantes() {
                             ? 'bg-blue-600 text-white hover:bg-blue-700' 
                             : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:text-blue-600'}`}
                       >
-                        {tabActiva === 'pendientes' ? '🧪 Cargar Resultados' : '👁️ Ver Ficha'}
+                        {tabActiva === 'pendientes' ? '🧪 Cargar' : '👁️ Ver'}
                       </button>
                     </div>
 
