@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 import bcrypt from 'bcrypt';
 
-// Obtener usuarios - Clave 'usuarios' para el frontend
+// Obtener usuarios
 export const getUsuarios = async (req: Request, res: Response) => {
     try {
         const [rows]: any = await pool.query("SELECT id_usuario, username, email, rol, activo FROM usuarios ORDER BY id_usuario DESC");
@@ -12,7 +12,7 @@ export const getUsuarios = async (req: Request, res: Response) => {
     }
 };
 
-// Restablecer contraseña a clave genérica
+// Restablecer contraseña
 export const resetPassword = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
@@ -24,46 +24,79 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-// Crear usuario manual
+// ==========================================
+// CREAR USUARIO (CON TRANSACCIÓN PARA MÉDICO)
+// ==========================================
 export const createUsuario = async (req: Request, res: Response) => {
     const { username, email, rol, password } = req.body;
+    
+    // Usamos una conexión dedicada para manejar la transacción de forma segura
+    const connection = await pool.getConnection();
+
     try {
+        await connection.beginTransaction(); // Inicia la transacción
+
+        console.log(`📝 Creando usuario: ${username} (${rol})`);
+
+        // 1. Insertar el Usuario
         const hash = await bcrypt.hash(password || '123456', 10);
-        
-        // ✅ IMPORTANTE: No incluimos id_usuario en las columnas ni en los valores
-        const query = `
+        const queryUser = `
             INSERT INTO usuarios (username, email, password_hash, rol, activo, fecha_creacion) 
             VALUES (?, ?, ?, ?, 1, NOW())
         `;
+        const [resultUser]: any = await connection.query(queryUser, [username, email, hash, rol]);
+        const newUserId = resultUser.insertId;
+
+        // 2. Si es Médico, crear INMEDIATAMENTE la entrada en tabla medico
+        // Esto evita problemas de IDs desincronizados luego.
+        if (rol === 'medico') {
+            console.log(`🔗 Vinculando perfil médico vacío para usuario ID: ${newUserId}`);
+            const queryMedico = `
+                INSERT INTO medico (id_usuario, email, activo, fecha_creacion) 
+                VALUES (?, ?, 1, NOW())
+            `;
+            await connection.query(queryMedico, [newUserId, email]);
+        }
+
+        await connection.commit(); // Confirmar cambios en DB
         
-        await pool.query(query, [username, email, hash, rol]);
-        
-        res.json({ success: true, message: "Usuario creado correctamente" });
+        console.log("✅ Usuario creado exitosamente.");
+        res.json({ 
+            success: true, 
+            message: "Usuario creado correctamente",
+            id_usuario: newUserId 
+        });
+
     } catch (error: any) {
-        console.error("Error al crear usuario:", error.message);
+        await connection.rollback(); // Si falla, deshacer todo
+        console.error("❌ Error al crear usuario (Rollback):", error.message);
+        
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, message: "El usuario o el email ya están registrados." });
+        }
+
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        connection.release(); // Liberar conexión
     }
 };
 
-// Actualizar usuario - Aquí estaba el Error 500
+// Actualizar usuario
 export const updateUsuario = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { username, email, rol, activo } = req.body;
     
     try {
-        // ✅ Aseguramos que el ID y el estado sean números puros
         const idNumerico = parseInt(id);
         const estadoBinario = Number(activo) === 1 ? 1 : 0;
 
-        // ✅ La consulta debe ser un UPDATE específico por ID
-        const [result]: any = await pool.query(
+        await pool.query(
             "UPDATE usuarios SET username = ?, email = ?, rol = ?, activo = ? WHERE id_usuario = ?",
             [username, email, rol, estadoBinario, idNumerico]
         );
 
         res.json({ success: true, message: "Perfil actualizado correctamente" });
     } catch (error: any) {
-        // Si sale "Duplicate entry", la DB sigue creyendo que 'activo' es PK
         console.error("Error SQL:", error.message);
         res.status(500).json({ success: false, message: "Error de base de datos: " + error.message });
     }

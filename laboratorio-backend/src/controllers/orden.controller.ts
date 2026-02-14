@@ -308,23 +308,45 @@ export const guardarResultadoAnalisis = async (req: Request, res: Response) => {
     const { valor_hallado, unidad, observaciones } = req.body;
 
     try {
-        await pool.query(`
-            UPDATE orden_analisis 
-            SET valor_hallado = ?, 
-                unidad_hallada = ?, 
-                observaciones = ?, 
-                estado = 'finalizado', 
-                fecha_realizacion = NOW()
-            WHERE id_orden = ? AND codigo_practica = ?
-        `, [valor_hallado, unidad, observaciones, id_orden, codigo_practica]);
+        console.log(`💾 Guardando resultado | Orden: ${id_orden} | Práctica: ${codigo_practica}`);
+
+        // 1. Verificar si el análisis (o sub-análisis) ya existe en la tabla orden_analisis
+        const [existe]: [any[], any] = await pool.query(
+            "SELECT id_orden_analisis FROM orden_analisis WHERE id_orden = ? AND codigo_practica = ?",
+            [id_orden, codigo_practica]
+        );
+
+        if (existe.length > 0) {
+            // A. Si existe, ACTUALIZAMOS (Lógica original)
+            await pool.query(`
+                UPDATE orden_analisis 
+                SET valor_hallado = ?, 
+                    unidad_hallada = ?, 
+                    observaciones = ?, 
+                    estado = 'finalizado', 
+                    fecha_realizacion = NOW()
+                WHERE id_orden = ? AND codigo_practica = ?
+            `, [valor_hallado, unidad, observaciones, id_orden, codigo_practica]);
+            
+            console.log('✅ Registro actualizado correctamente.');
+
+        } else {
+            // B. Si NO existe (es un sub-análisis nuevo), INSERTAMOS
+            console.log('✨ Creando registro para sub-análisis...');
+            await pool.query(`
+                INSERT INTO orden_analisis 
+                (id_orden, codigo_practica, valor_hallado, unidad_hallada, observaciones, estado, fecha_realizacion, fecha_creacion)
+                VALUES (?, ?, ?, ?, ?, 'finalizado', NOW(), NOW())
+            `, [id_orden, codigo_practica, valor_hallado, unidad, observaciones]);
+        }
 
         res.json({ success: true, message: 'Resultado guardado correctamente' });
+
     } catch (error: any) {
         console.error('❌ Error al guardar resultado:', error.message);
-        res.status(500).json({ success: false, message: 'Error interno' });
+        res.status(500).json({ success: false, message: 'Error interno al guardar' });
     }
 };
-
 export default { 
     getCatalogo, 
     crearNuevaOrden, 

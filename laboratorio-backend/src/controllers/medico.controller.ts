@@ -13,7 +13,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
     try {
         console.log(`👨‍⚕️ Médico consultando detalle orden #${id_orden}`);
 
-        // 1. Obtener cabecera de la orden, datos del paciente Y DATOS DEL MÉDICO (NUEVO JOIN)
+        // 1. Obtener cabecera de la orden, datos del paciente Y DATOS DEL MÉDICO
         const [ordenRows]: any = await pool.query(
             `SELECT 
                 o.id_orden, 
@@ -47,7 +47,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
 
         const orden = ordenRows[0];
 
-        // 2. Obtener análisis con el NOMBRE REAL (JOIN con tabla analisis)
+        // 2. Obtener análisis con el NOMBRE REAL
         const [analisisRows]: any = await pool.query(`
             SELECT 
                 oa.id_orden_analisis,
@@ -115,7 +115,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// Crear solicitudad medica - CORREGIDA Y ROBUSTA
+// Crear solicitudad medica
 // ============================================
 export const crearSolicitudMedica = async (req: Request, res: Response) => {
     let id_medico = req.params.id_medico || req.params.id;
@@ -132,8 +132,6 @@ export const crearSolicitudMedica = async (req: Request, res: Response) => {
     
     console.log("🔍 DEBUG BACKEND - Crear Solicitud:");
     console.log("   👉 Params recibidos:", req.params);
-    console.log("   👉 Body recibido:", req.body);
-    console.log("   👉 ID inicial detectado:", id_medico);
 
     const connection = await pool.getConnection();
     try {
@@ -145,9 +143,6 @@ export const crearSolicitudMedica = async (req: Request, res: Response) => {
 
             if (medicoRows.length > 0) {
                 const idReal = medicoRows[0].id_medico;
-                if (id_medico && parseInt(id_medico.toString()) !== idReal) {
-                    console.warn(`⚠️ ALERTA DE SEGURIDAD: ID URL (${id_medico}) distinto a ID Email (${idReal}). Usando ID Email.`);
-                }
                 id_medico = idReal;
                 console.log(`✅ Identidad validada por email. Usando ID Médico: ${id_medico}`);
             } else {
@@ -156,7 +151,6 @@ export const crearSolicitudMedica = async (req: Request, res: Response) => {
         }
 
         if (!id_medico || id_medico === 'undefined' || id_medico === 'null') {
-             console.error("❌ ERROR: No se pudo determinar el ID del médico.");
              return res.status(400).json({ 
                 success: false, 
                 message: 'Error de identificación: No se recibió un ID de médico válido. Verifique su sesión.' 
@@ -199,12 +193,12 @@ export const crearSolicitudMedica = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// NUEVO: MODIFICAR SOLICITUD MÉDICA
+// MODIFICAR SOLICITUD MÉDICA
 // ============================================
 export const modificarSolicitudMedica = async (req: Request, res: Response) => {
     const { id_orden } = req.params;
     const { 
-        analisis_solicitados, // Array de códigos de prácticas
+        analisis_solicitados,
         urgente, 
         requiere_ayuno, 
         observaciones, 
@@ -217,7 +211,6 @@ export const modificarSolicitudMedica = async (req: Request, res: Response) => {
 
         console.log(`📝 Modificando orden #${id_orden}...`);
 
-        // 1. Verificar que la orden exista y esté en estado 'pendiente'
         const [ordenCheck]: any = await connection.query(
             `SELECT estado FROM orden WHERE id_orden = ?`, 
             [id_orden]
@@ -234,7 +227,6 @@ export const modificarSolicitudMedica = async (req: Request, res: Response) => {
             });
         }
 
-        // 2. Actualizar cabecera de la orden
         await connection.query(
             `UPDATE orden 
              SET urgente = ?, requiere_ayuno = ?, observaciones = ?, instrucciones_paciente = ? 
@@ -242,15 +234,12 @@ export const modificarSolicitudMedica = async (req: Request, res: Response) => {
             [urgente ? 1 : 0, requiere_ayuno ? 1 : 0, observaciones, instrucciones_paciente, id_orden]
         );
 
-        // 3. Actualizar análisis (Estrategia: Borrar los actuales en estado pendiente y reinsertar)
         if (analisis_solicitados && analisis_solicitados.length > 0) {
-            // Borramos los análisis asociados a esta orden
             await connection.query(
                 `DELETE FROM orden_analisis WHERE id_orden = ?`, 
                 [id_orden]
             );
 
-            // Insertamos los nuevos seleccionados
             for (const codigo_practica of analisis_solicitados) {
                 await connection.query(
                     `INSERT INTO orden_analisis (id_orden, codigo_practica, estado, fecha_creacion) 
@@ -261,7 +250,6 @@ export const modificarSolicitudMedica = async (req: Request, res: Response) => {
         }
 
         await connection.commit();
-        console.log(`✅ Orden #${id_orden} modificada exitosamente.`);
         res.json({ success: true, message: 'Orden actualizada correctamente' });
 
     } catch (error: any) {
@@ -274,7 +262,7 @@ export const modificarSolicitudMedica = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// LOGIN MÉDICO - RESPETANDO TU ESTRUCTURA REAL
+// LOGIN MÉDICO
 // ============================================
 export const loginMedico = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -283,26 +271,14 @@ export const loginMedico = async (req: Request, res: Response) => {
     console.log('🚀 LOGIN MÉDICO - Email:', email);
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email y contraseña son requeridos'
-      });
+      return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
     }
 
     const query = `
       SELECT 
-        u.id_usuario,
-        u.email,
-        u.password_hash,
-        u.rol,
-        u.username,
-        m.id_medico,
-        m.nombre_medico,
-        m.apellido_medico,
-        m.especialidad,
-        m.matricula_medica,
-        m.telefono,
-        m.email as medico_email
+        u.id_usuario, u.email, u.password_hash, u.rol, u.username,
+        m.id_medico, m.nombre_medico, m.apellido_medico, m.especialidad,
+        m.matricula_medica, m.telefono, m.email as medico_email
       FROM usuarios u
       LEFT JOIN medico m ON u.id_usuario = m.id_usuario
       WHERE u.email = ? AND u.activo = 1
@@ -312,23 +288,18 @@ export const loginMedico = async (req: Request, res: Response) => {
     const [rows]: any = await pool.query(query, [email]);
     
     if (rows.length === 0) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Correo no registrado o usuario inactivo' 
-      });
+      return res.status(401).json({ success: false, message: 'Correo no registrado o usuario inactivo' });
     }
 
     const usuario = rows[0];
     
     const isValidPassword = await bcrypt.compare(password, usuario.password_hash);
     if (!isValidPassword) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Contraseña incorrecta' 
-      });
+      return res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
     }
 
     if (!usuario.id_medico) {
+      // Si entra aquí, es porque creó el usuario pero NO se creó la ficha en 'medico'
       return res.status(200).json({
         success: true,
         message: 'Login exitoso - Perfil incompleto',
@@ -341,6 +312,7 @@ export const loginMedico = async (req: Request, res: Response) => {
         }
       });
     } else {
+      // Login completo
       const usuarioData = {
         id: usuario.id_medico,
         id_usuario: usuario.id_usuario,
@@ -363,15 +335,12 @@ export const loginMedico = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error('💥 ERROR EN LOGIN MÉDICO:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor'
-    });
+    return res.status(500).json({ success: false, message: 'Error del servidor' });
   }
 };
 
 // ============================================
-// DASHBOARD MÉDICO - CORREGIDO PARA TU BD
+// DASHBOARD MÉDICO
 // ============================================
 export const getDashboardMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
@@ -380,42 +349,23 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
     console.log('📊 DASHBOARD MÉDICO - ID:', id_medico);
 
     if (!id_medico || isNaN(id_medico)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ID de médico inválido' 
-      });
+      return res.status(400).json({ success: false, message: 'ID de médico inválido' });
     }
 
     const [medicoRows]: any = await pool.query(
-      `SELECT 
-        m.id_medico,
-        m.nombre_medico, 
-        m.apellido_medico,
-        m.email,
-        m.especialidad,
-        m.matricula_medica,
-        m.telefono,
-        m.activo
-       FROM medico m 
-       WHERE m.id_medico = ? AND (m.activo IS NULL OR m.activo = 1)`, 
+      `SELECT * FROM medico WHERE id_medico = ? AND (activo IS NULL OR activo = 1)`, 
       [id_medico]
     );
 
     if (medicoRows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Médico no encontrado' 
-      });
+      return res.status(404).json({ success: false, message: 'Médico no encontrado' });
     }
 
     const medico = medicoRows[0];
     
     const [ordenesRows]: any = await pool.query(
-      `SELECT 
-        COUNT(*) as total_ordenes,
-        SUM(CASE WHEN urgente = 1 THEN 1 ELSE 0 END) as urgentes
-       FROM orden 
-       WHERE id_medico_solicitante = ?`,
+      `SELECT COUNT(*) as total_ordenes, SUM(CASE WHEN urgente = 1 THEN 1 ELSE 0 END) as urgentes
+       FROM orden WHERE id_medico_solicitante = ?`,
       [id_medico]
     );
 
@@ -423,49 +373,31 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 
     const [ordenesRecientesRows]: any = await pool.query(
       `SELECT 
-        o.id_orden,
-        o.fecha_ingreso_orden,
-        o.urgente,
-        p.Nombre_paciente,
-        p.Apellido_paciente,
-        p.DNI,
-        p.mutual,
-        p.edad
+        o.id_orden, o.fecha_ingreso_orden, o.urgente,
+        p.Nombre_paciente, p.Apellido_paciente, p.DNI, p.mutual, p.edad
        FROM orden o
        JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
        WHERE o.id_medico_solicitante = ?
-       ORDER BY o.fecha_ingreso_orden DESC
-       LIMIT 10`,
+       ORDER BY o.fecha_ingreso_orden DESC LIMIT 10`,
       [id_medico]
     );
 
     const [pacientesRows]: any = await pool.query(
       `SELECT DISTINCT
-        p.nro_ficha,
-        p.Nombre_paciente,
-        p.Apellido_paciente,
-        p.DNI,
-        p.edad,
-        p.sexo,
-        p.mutual,
-        p.telefono,
-        MAX(o.fecha_ingreso_orden) as ultima_orden,
-        COUNT(o.id_orden) as total_ordenes
+        p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, p.DNI, p.edad, p.sexo, p.mutual, p.telefono,
+        MAX(o.fecha_ingreso_orden) as ultima_orden, COUNT(o.id_orden) as total_ordenes
        FROM paciente p
        JOIN orden o ON p.nro_ficha = o.nro_ficha_paciente
        WHERE o.id_medico_solicitante = ?
-       GROUP BY p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, 
-                p.DNI, p.edad, p.sexo, p.mutual, p.telefono
-       ORDER BY MAX(o.fecha_ingreso_orden) DESC
-       LIMIT 8`,
+       GROUP BY p.nro_ficha, p.Nombre_paciente, p.Apellido_paciente, p.DNI, p.edad, p.sexo, p.mutual, p.telefono
+       ORDER BY MAX(o.fecha_ingreso_orden) DESC LIMIT 8`,
       [id_medico]
     );
 
     const notificaciones = [];
     if ((estadisticasOrdenes.urgentes || 0) > 0) {
       notificaciones.push(`⚠️ Tienes ${estadisticasOrdenes.urgentes} orden(es) urgente(s)`);
-    }
-    if (notificaciones.length === 0) {
+    } else {
       notificaciones.push('🎉 ¡Todo al día! No hay notificaciones pendientes');
     }
 
@@ -521,71 +453,15 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error("💥 ERROR EN DASHBOARD:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Error al obtener dashboard",
-      error: process.env.NODE_ENV === 'development' ? error?.toString() : undefined
-    });
+    return res.status(500).json({ success: false, message: "Error al obtener dashboard" });
   }
 };
 
 // ============================================
-// COMPLETAR PERFIL MÉDICO - CORREGIDO CON DIAGNÓSTICO DETALLADO 🔥
+// COMPLETAR PERFIL MÉDICO - ✅ CORREGIDO Y BLINDADO
 // ============================================
 export const completarPerfilMedico = async (req: Request, res: Response) => {
-  const { 
-    id_usuario,
-    nombre_medico,
-    apellido_medico,
-    dni_medico,
-    matricula_medica,
-    especialidad,
-    telefono,
-    direccion 
-  } = req.body;
-
-  try {
-    if (!id_usuario || !nombre_medico || !apellido_medico || !dni_medico) {
-      return res.status(400).json({
-        success: false,
-        message: 'Faltan datos obligatorios: nombre, apellido y DNI son requeridos'
-      });
-    }
-
-    // 1. Verificar Usuario
-    const [userRows]: any = await pool.query(
-      'SELECT id_usuario, rol FROM usuarios WHERE id_usuario = ? AND rol = "medico" AND activo = 1',
-      [id_usuario]
-    );
-    if (userRows.length === 0) return res.status(404).json({ success: false, message: 'Usuario no encontrado o no es médico' });
-
-    // 2. Verificar que no tenga ya perfil
-    const [existingRows]: any = await pool.query(
-      'SELECT id_medico FROM medico WHERE id_usuario = ?',
-      [id_usuario]
-    );
-    if (existingRows.length > 0) return res.status(409).json({ success: false, message: 'El perfil médico ya existe para este usuario' });
-
-    // 3. Verificación Previa de DNI y Matrícula (Opcional, la BD es la autoridad final)
-    if (dni_medico || matricula_medica) {
-      const [duplicateRows]: any = await pool.query(
-        'SELECT dni_medico, matricula_medica FROM medico WHERE dni_medico = ? OR matricula_medica = ?',
-        [dni_medico, matricula_medica]
-      );
-
-      if (duplicateRows.length > 0) {
-        const esDni = duplicateRows.some((r: any) => r.dni_medico == dni_medico);
-        const esMatricula = duplicateRows.some((r: any) => r.matricula_medica == matricula_medica);
-
-        if (esDni && esMatricula) return res.status(409).json({ success: false, message: 'El DNI y la Matrícula ya están registrados.' });
-        if (esDni) return res.status(409).json({ success: false, message: `El DNI ${dni_medico} ya está registrado.` });
-        if (esMatricula) return res.status(409).json({ success: false, message: `La matrícula ${matricula_medica} ya está registrada por otro profesional.` });
-      }
-    }
-
-    // 4. INSERTAR (Aquí es donde suele saltar el error del Email duplicado)
-    const [result]: any = await pool.query(
-      `INSERT INTO medico (
+    const { 
         id_usuario,
         nombre_medico,
         apellido_medico,
@@ -593,77 +469,148 @@ export const completarPerfilMedico = async (req: Request, res: Response) => {
         matricula_medica,
         especialidad,
         telefono,
-        direccion,
-        email,
-        activo,
-        fecha_creacion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 
-        (SELECT email FROM usuarios WHERE id_usuario = ?), 
-        1, NOW())`,
-      [
-        id_usuario,
-        nombre_medico,
-        apellido_medico,
-        dni_medico,
-        matricula_medica || null,
-        especialidad || null,
-        telefono || null,
-        direccion || null,
-        id_usuario
-      ]
-    );
+        direccion 
+    } = req.body;
 
-    const id_medico = result.insertId;
+    try {
+        console.log("📝 Intentando completar perfil médico para usuario ID:", id_usuario);
 
-    const [newMedicoRows]: any = await pool.query(
-      `SELECT 
-        m.id_medico, m.nombre_medico, m.apellido_medico, m.dni_medico, m.matricula_medica,
-        m.especialidad, m.telefono, m.direccion, m.email, u.rol
-       FROM medico m
-       JOIN usuarios u ON m.id_usuario = u.id_usuario
-       WHERE m.id_medico = ?`,
-      [id_medico]
-    );
-    const medico = newMedicoRows[0];
+        if (!id_usuario || !nombre_medico || !apellido_medico || !dni_medico || !matricula_medica) {
+            return res.status(400).json({ success: false, message: 'Faltan datos obligatorios.' });
+        }
 
-    return res.status(201).json({
-      success: true,
-      message: 'Perfil médico completado exitosamente',
-      usuario: {
-        id: medico.id_medico,
-        id_usuario: id_usuario,
-        nombre: medico.nombre_medico,
-        apellido: medico.apellido_medico,
-        email: medico.email,
-        dni: medico.dni_medico,
-        matricula: medico.matricula_medica,
-        especialidad: medico.especialidad,
-        telefono: medico.telefono,
-        direccion: medico.direccion,
-        rol: medico.rol
-      }
-    });
+        // 1. Obtener el EMAIL del usuario actual (necesario para validación)
+        const [userRows]: any = await pool.query('SELECT email FROM usuarios WHERE id_usuario = ?', [id_usuario]);
+        if (userRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        }
+        const userEmail = userRows[0].email;
 
-  } catch (error: any) {
-    console.error("💥 ERROR SQL AL GUARDAR MÉDICO:", error); 
+        // 2. Buscamos si existe un registro en tabla 'medico' vinculado a este usuario
+        const [medicoRows]: any = await pool.query(
+            'SELECT id_medico FROM medico WHERE id_usuario = ?',
+            [id_usuario]
+        );
 
-    if (error.code === 'ER_DUP_ENTRY') {
-      const mensajeSql = error.sqlMessage || "";
-      let culpable = "un dato desconocido";
-      
-      // Lógica de detección precisa del campo duplicado
-      if (mensajeSql.includes('email')) culpable = "el EMAIL";
-      else if (mensajeSql.includes('dni')) culpable = "el DNI";
-      else if (mensajeSql.includes('matricula')) culpable = "la MATRÍCULA";
-      else if (mensajeSql.includes('telefono')) culpable = "el TELÉFONO";
-      else if (mensajeSql.includes('PRIMARY')) culpable = "este USUARIO (ID ya tiene perfil)";
+        let id_medico_final;
 
-      return res.status(409).json({ 
-        success: false, 
-        message: `Error: Ya existe un médico registrado con ${culpable}.` 
-      });
+        if (medicoRows.length > 0) {
+            // === CASO A: ACTUALIZAR (El registro ya existe) ===
+            const id_medico_existente = medicoRows[0].id_medico;
+            console.log(`✅ Registro médico encontrado (ID: ${id_medico_existente}). Actualizando datos...`);
+
+            // Validación de Duplicados (excluyendo mi propio ID)
+            const [duplicados]: any = await pool.query(
+                `SELECT id_medico, dni_medico, matricula_medica, email FROM medico 
+                 WHERE (dni_medico = ? OR matricula_medica = ? OR email = ?) 
+                 AND id_medico != ?`,
+                [dni_medico, matricula_medica, userEmail, id_medico_existente]
+            );
+
+            if (duplicados.length > 0) {
+                let msg = 'Datos duplicados: ';
+                if (duplicados.some((d:any) => d.dni_medico == dni_medico)) msg += 'El DNI ya existe. ';
+                if (duplicados.some((d:any) => d.matricula_medica == matricula_medica)) msg += 'La Matrícula ya existe. ';
+                if (duplicados.some((d:any) => d.email == userEmail)) msg += 'El Email ya está asociado a otro médico. ';
+                
+                return res.status(409).json({ success: false, message: msg.trim() });
+            }
+
+            // Ejecutamos UPDATE
+            await pool.query(
+                `UPDATE medico SET 
+                    nombre_medico = ?, 
+                    apellido_medico = ?, 
+                    dni_medico = ?, 
+                    matricula_medica = ?, 
+                    especialidad = ?, 
+                    telefono = ?, 
+                    direccion = ?, 
+                    activo = 1,
+                    fecha_modificacion = NOW()
+                 WHERE id_medico = ?`,
+                [nombre_medico, apellido_medico, dni_medico, matricula_medica, especialidad, telefono, direccion, id_medico_existente]
+            );
+            
+            id_medico_final = id_medico_existente;
+
+        } else {
+            // === CASO B: INSERTAR (Nuevo Perfil) ===
+            console.warn("⚠️ Insertando nuevo perfil médico...");
+
+            // Validación Global (DNI, Matrícula O EMAIL)
+            const [duplicados]: any = await pool.query(
+                `SELECT id_medico, dni_medico, matricula_medica, email FROM medico 
+                 WHERE dni_medico = ? OR matricula_medica = ? OR email = ?`,
+                [dni_medico, matricula_medica, userEmail]
+            );
+            
+            if (duplicados.length > 0) {
+                let msg = 'No se puede crear el perfil: ';
+                if (duplicados.some((d:any) => d.dni_medico == dni_medico)) msg += 'El DNI ya está registrado. ';
+                if (duplicados.some((d:any) => d.matricula_medica == matricula_medica)) msg += 'La Matrícula ya está registrada. ';
+                if (duplicados.some((d:any) => d.email == userEmail)) msg += `El email ${userEmail} ya está usado por otro médico.`;
+
+                console.warn(`⛔ Conflicto detectado: ${msg}`);
+                return res.status(409).json({ success: false, message: msg.trim() });
+            }
+
+            // Insertamos
+            // NOTA: Si la tabla NO tiene AUTO_INCREMENT, esto fallará con Duplicate Entry '0'.
+            const [insertResult]: any = await pool.query(
+                `INSERT INTO medico (
+                    id_usuario, nombre_medico, apellido_medico, dni_medico, matricula_medica, 
+                    especialidad, telefono, direccion, email, activo, fecha_creacion
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+                [id_usuario, nombre_medico, apellido_medico, dni_medico, matricula_medica, especialidad, telefono, direccion, userEmail]
+            );
+
+            id_medico_final = insertResult.insertId;
+        }
+
+        // Devolver datos actualizados
+        const [medicoFinal]: any = await pool.query(
+            `SELECT m.*, u.rol FROM medico m 
+             JOIN usuarios u ON m.id_usuario = u.id_usuario 
+             WHERE m.id_medico = ?`, 
+            [id_medico_final]
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: 'Perfil completado exitosamente.',
+            usuario: {
+                id: medicoFinal[0].id_medico,
+                id_usuario: medicoFinal[0].id_usuario,
+                nombre: medicoFinal[0].nombre_medico,
+                apellido: medicoFinal[0].apellido_medico,
+                email: medicoFinal[0].email,
+                rol: medicoFinal[0].rol
+            }
+        });
+
+    } catch (error: any) {
+        console.error("💥 Error en completarPerfilMedico:", error);
+        
+        // Detección específica de falta de AUTO_INCREMENT
+        if (error.code === 'ER_DUP_ENTRY') {
+             if (error.sqlMessage && error.sqlMessage.includes("PRIMARY")) {
+                  return res.status(500).json({ 
+                      success: false, 
+                      message: 'Error Crítico de Base de Datos: La tabla "medico" no tiene configuración AUTO_INCREMENT. El ID 0 está duplicado.' 
+                  });
+             }
+             return res.status(409).json({ success: false, message: 'Datos duplicados (Email, DNI o Matrícula ya existen).' });
+        }
+        return res.status(500).json({ success: false, message: error.message });
     }
+};
 
-    return res.status(500).json({ success: false, message: `Error interno: ${error.message}` });
-  }
+export default {
+    getOrdenDetalle,
+    crearSolicitudMedica,
+    modificarSolicitudMedica,
+    loginMedico,
+    getDashboardMedico,
+    completarPerfilMedico
 };
