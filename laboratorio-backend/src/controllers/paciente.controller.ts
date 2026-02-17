@@ -165,10 +165,14 @@ export const buscarPacientesSugeridos = async (req: Request, res: Response) => {
 export const buscarObrasSociales = async (req: Request, res: Response) => {
   const textoBusqueda = req.params.texto || '';
   try {
-    const [rows]: any = await pool.query(
-        "SELECT id_obra_social, nombre FROM obra_social WHERE nombre LIKE ? AND activo = 1 LIMIT 10", 
-        [`%${textoBusqueda}%`]
-    );
+    // Si no hay texto, trae todas (útil para el select del filtro)
+    const sql = textoBusqueda 
+        ? "SELECT id_obra_social, nombre FROM obra_social WHERE nombre LIKE ? AND activo = 1 LIMIT 10"
+        : "SELECT id_obra_social, nombre FROM obra_social WHERE activo = 1 ORDER BY nombre ASC";
+    
+    const params = textoBusqueda ? [`%${textoBusqueda}%`] : [];
+
+    const [rows]: any = await pool.query(sql, params);
     return res.json({ success: true, obras_sociales: rows });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Error buscando obras sociales" });
@@ -190,7 +194,16 @@ export const buscarPacienteExacto = async (req: Request, res: Response) => {
         const p = rows[0];
         return res.json({ 
             success: true, 
-            paciente: { 
+            patient: { // Nota: 'patient' para compatibilidad con algunos frontends, revisar si usas 'paciente'
+                nro_ficha: p.nro_ficha, 
+                nombre: p.Nombre_paciente || p.nombre_paciente, 
+                apellido: p.Apellido_paciente || p.apellido_paciente, 
+                dni: p.DNI || p.dni, 
+                edad: p.edad, 
+                id_obra_social: p.id_obra_social,
+                mutual: p.nombre_obra_social 
+            },
+            paciente: { // Versión en español por si acaso
                 nro_ficha: p.nro_ficha, 
                 nombre: p.Nombre_paciente || p.nombre_paciente, 
                 apellido: p.Apellido_paciente || p.apellido_paciente, 
@@ -234,11 +247,13 @@ export const getAllPacientes = async (req: Request, res: Response) => {
     const whereConditions: string[] = [];
     const params: any[] = [];
 
+    // Filtro por Mutual (ahora busca por NOMBRE de mutual, que es lo que manda el select)
     if (mutual && mutual !== 'todos') {
-        whereConditions.push('p.id_obra_social = ?');
+        whereConditions.push('os.nombre = ?'); // Cambiado de p.id_obra_social a os.nombre
         params.push(mutual);
     }
 
+    // Filtro por Sexo
     if (sexo && sexo !== 'todos') {
         whereConditions.push('p.sexo = ?');
         params.push(sexo);
@@ -265,7 +280,7 @@ export const getAllPacientes = async (req: Request, res: Response) => {
             orderByClause: orderBySQL
         });
 
-        // 5. Formateo ROBUSTO (Aquí estaba el problema)
+        // 5. Formateo ROBUSTO
         const pacientesFormateados = result.data.map((p: any) => ({
             nro_ficha: p.nro_ficha,
             // Leemos mayúsculas O minúsculas para asegurar que el dato llegue

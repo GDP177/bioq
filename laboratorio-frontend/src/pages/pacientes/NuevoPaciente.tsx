@@ -1,4 +1,4 @@
-// src/pages/pacientes/NuevoPaciente.tsx - CON REDIRECCIÓN CORRECTA
+// src/pages/pacientes/NuevoPaciente.tsx - ACTUALIZADO CON VALIDACIONES COMPLETAS
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +30,7 @@ interface NuevoPacienteData {
   observaciones?: string;
 }
 
+// Interfaz actualizada para manejar errores en TODOS los campos
 interface ErroresValidacion {
   dni?: string;
   nombre?: string;
@@ -37,8 +38,14 @@ interface ErroresValidacion {
   fecha_nacimiento?: string;
   sexo?: string;
   telefono?: string;
+  direccion?: string;
   email?: string;
+  mutual?: string;
   mutual_personalizada?: string;
+  nro_afiliado?: string;
+  grupo_sanguineo?: string;
+  contacto_emergencia?: string;
+  telefono_emergencia?: string;
 }
 
 interface ToastState {
@@ -239,12 +246,11 @@ export default function NuevoPaciente(): JSX.Element {
     setSugerenciasObraSocial([]);
 
     // Limpiar errores
-    if (errores.mutual_personalizada) {
-      setErrores(prev => ({
-        ...prev,
-        mutual_personalizada: undefined
-      }));
-    }
+    setErrores(prev => ({
+      ...prev,
+      mutual: undefined,
+      mutual_personalizada: undefined
+    }));
   };
 
   const handleObraSocialPersonalizadaChange = (value: string) => {
@@ -285,76 +291,143 @@ export default function NuevoPaciente(): JSX.Element {
     return edad;
   };
 
+  // 🛡️ Lógica de Validación Estricta para TODOS los campos
   const validarFormulario = (): boolean => {
+    console.log('🔍 Iniciando validación completa...');
     const nuevosErrores: ErroresValidacion = {};
+    let esValido = true;
 
-    // Validar DNI
+    // 1. DNI (Obligatorio, Numérico, 7-8 dígitos)
     if (!formData.dni || formData.dni <= 0) {
-      nuevosErrores.dni = "El DNI es obligatorio";
-    } else if (formData.dni.toString().length < 7 || formData.dni.toString().length > 8) {
-      nuevosErrores.dni = "El DNI debe tener entre 7 y 8 dígitos";
-    }
-
-    // Validar nombre
-    if (!formData.nombre.trim()) {
-      nuevosErrores.nombre = "El nombre es obligatorio";
-    } else if (formData.nombre.trim().length < 2) {
-      nuevosErrores.nombre = "El nombre debe tener al menos 2 caracteres";
-    }
-
-    // Validar apellido
-    if (!formData.apellido.trim()) {
-      nuevosErrores.apellido = "El apellido es obligatorio";
-    } else if (formData.apellido.trim().length < 2) {
-      nuevosErrores.apellido = "El apellido debe tener al menos 2 caracteres";
-    }
-
-    // Validar fecha de nacimiento
-    if (!formData.fecha_nacimiento) {
-      nuevosErrores.fecha_nacimiento = "La fecha de nacimiento es obligatoria";
+      nuevosErrores.dni = "El DNI es obligatorio.";
+      esValido = false;
     } else {
-      const edad = calcularEdad(formData.fecha_nacimiento);
-      if (edad < 0 || edad > 120) {
-        nuevosErrores.fecha_nacimiento = "Fecha de nacimiento inválida";
+      const dniStr = formData.dni.toString();
+      if (dniStr.length < 7 || dniStr.length > 8) {
+        nuevosErrores.dni = "El DNI debe tener entre 7 y 8 dígitos.";
+        esValido = false;
       }
     }
 
-    // Validar sexo
-    if (!formData.sexo) {
-      nuevosErrores.sexo = "El sexo es obligatorio";
+    // 2. Nombre (Obligatorio, Texto, DB max 100)
+    if (!formData.nombre || !formData.nombre.trim()) {
+      nuevosErrores.nombre = "El nombre es obligatorio.";
+      esValido = false;
+    } else if (formData.nombre.length > 100) {
+      nuevosErrores.nombre = "El nombre excede los 100 caracteres.";
+      esValido = false;
     }
 
-    // Validar obra social personalizada
-    if (formData.mutual === "Otra" && !formData.mutual_personalizada?.trim()) {
-      nuevosErrores.mutual_personalizada = "Debe especificar el nombre de la obra social";
-    } else if (formData.mutual_personalizada && formData.mutual_personalizada.trim().length < 2) {
-      nuevosErrores.mutual_personalizada = "El nombre de la obra social debe tener al menos 2 caracteres";
+    // 3. Apellido (Obligatorio, Texto, DB max 100)
+    if (!formData.apellido || !formData.apellido.trim()) {
+      nuevosErrores.apellido = "El apellido es obligatorio.";
+      esValido = false;
+    } else if (formData.apellido.length > 100) {
+      nuevosErrores.apellido = "El apellido excede los 100 caracteres.";
+      esValido = false;
     }
 
-    // Validar teléfono (opcional pero con formato)
-    if (formData.telefono && formData.telefono.trim()) {
-      const telefonoLimpio = formData.telefono.replace(/\D/g, '');
-      if (telefonoLimpio.length < 8) {
-        nuevosErrores.telefono = "El teléfono debe tener al menos 8 dígitos";
+    // 4. Fecha de Nacimiento (Obligatorio, No futura)
+    if (!formData.fecha_nacimiento) {
+      nuevosErrores.fecha_nacimiento = "La fecha de nacimiento es obligatoria.";
+      esValido = false;
+    } else {
+      const fecha = new Date(formData.fecha_nacimiento);
+      const hoy = new Date();
+      if (fecha > hoy) {
+        nuevosErrores.fecha_nacimiento = "La fecha no puede ser futura.";
+        esValido = false;
       }
     }
 
-    // Validar email (opcional pero con formato)
-    if (formData.email && formData.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        nuevosErrores.email = "El formato del email no es válido";
-      }
+    // 5. Sexo (Obligatorio - ENUM DB: M, F, O)
+    if (!formData.sexo || formData.sexo === "") {
+      nuevosErrores.sexo = "Debe seleccionar el sexo biológico.";
+      esValido = false;
+    }
+
+    // 6. Teléfono (Obligatorio según pedido, DB varchar 20)
+    if (!formData.telefono || !formData.telefono.trim()) {
+      nuevosErrores.telefono = "El teléfono es obligatorio.";
+      esValido = false;
+    } else {
+        // Limpiar para validar longitud real
+        const telLimpio = formData.telefono.replace(/\D/g, ''); 
+        if(telLimpio.length < 6) {
+             nuevosErrores.telefono = "Número inválido (muy corto).";
+             esValido = false;
+        } else if (formData.telefono.length > 20) {
+            nuevosErrores.telefono = "El teléfono es demasiado largo (max 20).";
+            esValido = false;
+        }
+    }
+
+    // 7. Email (Obligatorio según pedido, Formato, DB varchar 100)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email || !formData.email.trim()) {
+      nuevosErrores.email = "El email es obligatorio.";
+      esValido = false;
+    } else if (!emailRegex.test(formData.email)) {
+      nuevosErrores.email = "Formato de email inválido.";
+      esValido = false;
+    } else if (formData.email.length > 100) {
+      nuevosErrores.email = "El email excede los 100 caracteres.";
+      esValido = false;
+    }
+
+    // 8. Dirección (Obligatorio según pedido, DB varchar 200)
+    if (!formData.direccion || !formData.direccion.trim()) {
+      nuevosErrores.direccion = "La dirección es obligatoria.";
+      esValido = false;
+    } else if (formData.direccion.length > 200) {
+      nuevosErrores.direccion = "La dirección excede los 200 caracteres.";
+      esValido = false;
+    }
+
+    // 9. Obra Social (Obligatorio)
+    if (!formData.mutual || formData.mutual === "") {
+        // Se valida visualmente en el select, pero agregamos lógica aquí si falla
+        nuevosErrores.mutual = "Debe seleccionar una obra social.";
+        esValido = false;
+    }
+    // Validación específica para "Otra"
+    if (formData.mutual === "Otra" && (!formData.mutual_personalizada || !formData.mutual_personalizada.trim())) {
+         nuevosErrores.mutual_personalizada = "Especifique el nombre de la obra social.";
+         esValido = false;
+    }
+
+    // 10. Número de Afiliado (Obligatorio)
+    if (!formData.nro_afiliado || !formData.nro_afiliado.trim()) {
+      nuevosErrores.nro_afiliado = "El nro. de afiliado es obligatorio.";
+      esValido = false;
+    }
+
+    // 11. Grupo Sanguíneo (Obligatorio - ENUM DB)
+    if (!formData.grupo_sanguineo || formData.grupo_sanguineo === "") {
+      nuevosErrores.grupo_sanguineo = "Seleccione el grupo sanguíneo.";
+      esValido = false;
+    }
+
+    // 12. Contacto Emergencia (Obligatorio)
+    if (!formData.contacto_emergencia || !formData.contacto_emergencia.trim()) {
+      nuevosErrores.contacto_emergencia = "El nombre del contacto es obligatorio.";
+      esValido = false;
+    }
+
+    // 13. Teléfono Emergencia (Obligatorio)
+    if (!formData.telefono_emergencia || !formData.telefono_emergencia.trim()) {
+      nuevosErrores.telefono_emergencia = "El teléfono de emergencia es obligatorio.";
+      esValido = false;
     }
 
     setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
+    return esValido;
   };
 
-const registrarPaciente = async () => {
+  const registrarPaciente = async () => {
     // 1. Validar el formulario antes de intentar el envío
     if (!validarFormulario()) {
-      showToast("Por favor, corrija los errores en el formulario", 'error');
+      showToast("Por favor, complete todos los campos obligatorios.", 'error');
       return;
     }
 
@@ -363,38 +436,29 @@ const registrarPaciente = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       
-      // 🛠️ PREPARACIÓN DE DATOS SEGÚN EL CONTROLADOR DEL BACKEND
-      // Convertimos tipos de datos para que pasen las validaciones de la base de datos
       const datosEnvio = {
-        // El controlador requiere que el DNI sea numérico (typeof dni === 'number')
         dni: Number(formData.dni),
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
         fecha_nacimiento: formData.fecha_nacimiento,
         sexo: formData.sexo,
-        // Limpiamos el teléfono para enviar solo números o null si está vacío
-        telefono: formData.telefono ? formData.telefono.replace(/\D/g, '') : null,
-        direccion: formData.direccion?.trim() || null,
-        email: formData.email?.trim() || null,
-        // Mapeo lógico de Obra Social: si elige "Otra", enviamos el valor del campo personalizado
+        // Enviar datos validados
+        telefono: formData.telefono?.trim(),
+        direccion: formData.direccion?.trim(),
+        email: formData.email?.trim(),
         mutual: formData.mutual === "Otra" ? formData.mutual_personalizada?.trim() : formData.mutual,
-        // Convertimos nro_afiliado a string/null según tu controlador
-        nro_afiliado: formData.nro_afiliado?.trim() || null,
-        grupo_sanguineo: formData.grupo_sanguineo || 'ND',
-        contacto_emergencia: formData.contacto_emergencia?.trim() || null,
-        telefono_emergencia: formData.telefono_emergencia?.trim() || null,
+        nro_afiliado: formData.nro_afiliado?.trim(),
+        grupo_sanguineo: formData.grupo_sanguineo,
+        contacto_emergencia: formData.contacto_emergencia?.trim(),
+        telefono_emergencia: formData.telefono_emergencia?.trim(),
         observaciones: formData.observaciones?.trim() || null,
       };
 
-      // 🚀 PETICIÓN POST AL BACKEND
-    // ✅ Corregido para coincidir con tu ruta de backend (paciente.routes.ts)
       const response = await axios.post(`${apiUrl}/paciente/registrar`, datosEnvio);
 
       if (response.data.success) {
         showToast(`Paciente registrado exitosamente. Nro. de ficha: ${response.data.nro_ficha}`, 'success');
         
-        // 🔄 REDIRECCIÓN TRAS ÉXITO
-        // Redirigimos al médico de vuelta a la creación de solicitud para que el paciente aparezca en la búsqueda
         setTimeout(() => {
           navigate('/medico/nueva-solicitud');
         }, 2000);
@@ -406,11 +470,9 @@ const registrarPaciente = async () => {
     } catch (error: any) {
       console.error("Error al registrar paciente:", error);
       
-      // Manejo dinámico de mensajes de error desde el servidor
       const mensajeError = error.response?.data?.message || "Error al registrar el paciente. Intente nuevamente.";
       showToast(mensajeError, 'error');
 
-      // Si el error es un DNI duplicado (Status 409), marcamos el campo de error
       if (error.response?.status === 409) {
         setErrores(prev => ({ ...prev, dni: "Este DNI ya pertenece a otro paciente" }));
       }
@@ -418,6 +480,7 @@ const registrarPaciente = async () => {
       setLoading(false);
     }
   };
+
   const limpiarFormulario = () => {
     setFormData({
       dni: 0,
@@ -447,9 +510,6 @@ const registrarPaciente = async () => {
     navigate('/medico/pacientes');
   };
 
-  // ⚠️ RESTO DEL COMPONENTE IGUAL QUE EL ANTERIOR...
-  // [El resto del JSX permanece exactamente igual, solo cambié la función registrarPaciente]
-
   return (
     <div className="min-h-screen bg-blue-50">
       {/* Header */}
@@ -459,7 +519,7 @@ const registrarPaciente = async () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Nuevo Paciente</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Registre un nuevo paciente en el sistema
+                Registre un nuevo paciente en el sistema (Todos los campos son obligatorios)
               </p>
             </div>
             <div className="flex space-x-3">
@@ -552,7 +612,8 @@ const registrarPaciente = async () => {
                 <option value="">Seleccionar...</option>
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
-                <option value="X">Otro</option>
+                {/* Corrección DB: O de Otro, no X */}
+                <option value="O">Otro</option> 
               </select>
             </FormField>
 
@@ -586,13 +647,14 @@ const registrarPaciente = async () => {
             </FormField>
 
             <div className="md:col-span-2">
-              <FormField htmlFor="direccion" label="Dirección">
+              <FormField htmlFor="direccion" label="Dirección" errorMessage={errores.direccion}>
                 <Input
                   id="direccion"
                   type="text"
                   placeholder="Av. Corrientes 1234, CABA"
                   value={formData.direccion || ''}
                   onChange={(e) => handleInputChange('direccion', e.target.value)}
+                  isInvalid={!!errores.direccion}
                 />
               </FormField>
             </div>
@@ -604,19 +666,23 @@ const registrarPaciente = async () => {
         <CustomCard title="Información Médica" className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <FormField htmlFor="mutual" label="Obra Social">
-              <select
+            <div className="space-y-1">
+                <label htmlFor="mutual" className="block text-sm font-medium text-gray-700">Obra Social</label>
+                <select
                 id="mutual"
                 value={formData.mutual || ''}
                 onChange={(e) => handleObraSocialChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errores.mutual ? 'border-red-500' : 'border-gray-300'
+                }`}
+                >
                 <option value="">Seleccionar...</option>
                 {obrasSociales.map(obra => (
-                  <option key={obra} value={obra}>{obra}</option>
+                    <option key={obra} value={obra}>{obra}</option>
                 ))}
-              </select>
-            </FormField>
+                </select>
+                {errores.mutual && <p className="text-sm text-red-500 mt-1">{errores.mutual}</p>}
+            </div>
 
             {/* Campo personalizado para "Otra" obra social */}
             {mostrarCampoPersonalizado && (
@@ -643,29 +709,34 @@ const registrarPaciente = async () => {
               </div>
             )}
 
-            <FormField htmlFor="nro_afiliado" label="Número de Afiliado">
+            <FormField htmlFor="nro_afiliado" label="Número de Afiliado" errorMessage={errores.nro_afiliado}>
               <Input
                 id="nro_afiliado"
                 type="text"
                 placeholder="123456789"
                 value={formData.nro_afiliado || ''}
                 onChange={(e) => handleInputChange('nro_afiliado', e.target.value)}
+                isInvalid={!!errores.nro_afiliado}
               />
             </FormField>
 
-            <FormField htmlFor="grupo_sanguineo" label="Grupo Sanguíneo">
-              <select
+            <div className="space-y-1">
+                <label htmlFor="grupo_sanguineo" className="block text-sm font-medium text-gray-700">Grupo Sanguíneo</label>
+                <select
                 id="grupo_sanguineo"
                 value={formData.grupo_sanguineo || ''}
                 onChange={(e) => handleInputChange('grupo_sanguineo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errores.grupo_sanguineo ? 'border-red-500' : 'border-gray-300'
+                }`}
+                >
                 <option value="">Seleccionar...</option>
                 {gruposSanguineos.map(grupo => (
-                  <option key={grupo} value={grupo}>{grupo}</option>
+                    <option key={grupo} value={grupo}>{grupo}</option>
                 ))}
-              </select>
-            </FormField>
+                </select>
+                {errores.grupo_sanguineo && <p className="text-sm text-red-500 mt-1">{errores.grupo_sanguineo}</p>}
+            </div>
 
           </div>
         </CustomCard>
@@ -674,23 +745,25 @@ const registrarPaciente = async () => {
         <CustomCard title="Contacto de Emergencia" className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <FormField htmlFor="contacto_emergencia" label="Nombre del Contacto">
+            <FormField htmlFor="contacto_emergencia" label="Nombre del Contacto" errorMessage={errores.contacto_emergencia}>
               <Input
                 id="contacto_emergencia"
                 type="text"
                 placeholder="María Pérez"
                 value={formData.contacto_emergencia || ''}
                 onChange={(e) => handleInputChange('contacto_emergencia', e.target.value)}
+                isInvalid={!!errores.contacto_emergencia}
               />
             </FormField>
 
-            <FormField htmlFor="telefono_emergencia" label="Teléfono de Emergencia">
+            <FormField htmlFor="telefono_emergencia" label="Teléfono de Emergencia" errorMessage={errores.telefono_emergencia}>
               <Input
                 id="telefono_emergencia"
                 type="tel"
                 placeholder="(011) 9876-5432"
                 value={formData.telefono_emergencia || ''}
                 onChange={(e) => handleInputChange('telefono_emergencia', e.target.value)}
+                isInvalid={!!errores.telefono_emergencia}
               />
             </FormField>
 
@@ -703,7 +776,7 @@ const registrarPaciente = async () => {
             <textarea
               id="observaciones"
               rows={4}
-              placeholder="Información adicional sobre el paciente, alergias, condiciones especiales, etc."
+              placeholder="Información adicional sobre el paciente, alergias, condiciones especiales, etc. (Opcional)"
               value={formData.observaciones || ''}
               onChange={(e) => handleInputChange('observaciones', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

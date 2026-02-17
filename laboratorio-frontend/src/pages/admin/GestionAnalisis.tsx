@@ -107,7 +107,7 @@ export default function GestionAnalisis() {
       <div className="max-w-[1920px] mx-auto">
         <header className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Catálogo Maestro de Análisis</h1>
-          <Button>+ Nueva Práctica</Button>
+          {/* Botón eliminado a pedido */}
         </header>
 
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">

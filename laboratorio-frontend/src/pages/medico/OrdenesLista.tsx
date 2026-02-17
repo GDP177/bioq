@@ -7,18 +7,37 @@ import axios from "axios";
 // ==========================================
 // INTERFACES 
 // ==========================================
-// Usamos 'any' en las propiedades anidadas/opcionales para crear un 
-// escudo contra los distintos formatos que puede enviar el backend
 interface Orden {
   id?: number;
   id_orden?: number;
   nro_orden?: string;
+  
+  // Compatibilidad de fechas (Frontend vs Backend)
   fecha_ingreso?: string;
+  fecha_ingreso_orden?: string; // 👈 Agregado para que lea correctamente la DB
+  
   estado?: string;
   urgente?: boolean | number;
   observaciones?: string;
   notas?: string;
-  [key: string]: any; // Permite acceder a cualquier otra propiedad dinámica de la BD
+  
+  // Datos del paciente
+  Nombre_paciente?: string; // Backend a veces manda mayúsculas
+  nombre_paciente?: string;
+  Apellido_paciente?: string;
+  apellido_paciente?: string;
+  DNI?: number;
+  dni?: number;
+  mutual?: string;
+  edad?: number;
+
+  // Progreso
+  total_analisis?: number;
+  analisis_listos?: number;
+  cantidad_analisis?: number;     // Variación posible
+  analisis_finalizados?: number;  // Variación posible
+
+  [key: string]: any; 
 }
 
 interface OrdenesResponse {
@@ -50,7 +69,7 @@ export default function OrdenesLista() {
     }
 
     const parsedUsuario = JSON.parse(usuario);
-    console.log('🔍 Cargando lista de órdenes enriquecida para médico ID:', parsedUsuario.id);
+    console.log('🔍 Cargando lista de órdenes para médico ID:', parsedUsuario.id);
     cargarOrdenes(parsedUsuario.id);
   }, [navigate, searchParams]);
 
@@ -60,6 +79,7 @@ export default function OrdenesLista() {
       setError("");
       
       const queryParams = new URLSearchParams();
+      // Si es 'todos', no enviamos el parámetro 'estado' al backend
       if (filtroEstado !== 'todos') queryParams.set('estado', filtroEstado);
       if (filtroUrgente) queryParams.set('urgente', 'true');
       if (busqueda) queryParams.set('buscar', busqueda);
@@ -69,9 +89,10 @@ export default function OrdenesLista() {
       );
 
       if (response.data.success) {
+        // Soporte para distintas estructuras de respuesta
         const dataRecibida = response.data.ordenes || response.data.data || [];
         setOrdenes(dataRecibida);
-        console.log('✅ Órdenes cargadas con detalles:', dataRecibida.length);
+        console.log('✅ Órdenes cargadas:', dataRecibida.length);
       } else {
         setError("Error al cargar las órdenes desde el servidor.");
       }
@@ -99,43 +120,30 @@ export default function OrdenesLista() {
   };
 
   // ==========================================
-  // FUNCIONES EXTRACTORAS BLINDADAS (Basadas en el DER)
+  // HELPERS DE VISUALIZACIÓN
   // ==========================================
   const getId = (o: Orden) => o.id || o.id_orden || 0;
   
-  // Soporte para mayúsculas/minúsculas exactas de la Base de Datos
-  const getNombre = (o: Orden) => o.paciente?.nombre || o.paciente?.Nombre_paciente || o.Nombre_paciente || o.nombre_paciente || o.nombre || "";
-  const getApellido = (o: Orden) => o.paciente?.apellido || o.paciente?.Apellido_paciente || o.Apellido_paciente || o.apellido_paciente || o.apellido || "Sin Nombre";
-  const getDni = (o: Orden) => o.paciente?.dni || o.paciente?.DNI || o.DNI || o.dni || o.dni_paciente || "-";
-  const getMutual = (o: Orden) => o.paciente?.mutual || o.mutual || o.obra_social || "Particular";
+  // 🛡️ Helpers robustos para leer datos aunque cambien mayúsculas/minúsculas
+  const getNombre = (o: Orden) => o.paciente?.nombre || o.Nombre_paciente || o.nombre_paciente || "";
+  const getApellido = (o: Orden) => o.paciente?.apellido || o.Apellido_paciente || o.apellido_paciente || "Sin Nombre";
+  const getDni = (o: Orden) => o.paciente?.dni || o.DNI || o.dni || "-";
+  const getMutual = (o: Orden) => o.paciente?.mutual || o.mutual || "Particular";
   const getEdad = (o: Orden) => o.paciente?.edad || o.edad || "";
   const getUrgente = (o: Orden) => o.urgente === true || o.urgente === 1;
   const getObservaciones = (o: Orden) => o.observaciones || o.notas || "";
 
-  // Cálculo Dinámico de Progreso
-  const getValoresProgreso = (o: Orden) => {
-    let total = 0;
-    let listos = 0;
+  // 🛡️ CORRECCIÓN DE FECHA (Imagen 1): Lee ambos campos posibles
+  const getFechaOrden = (o: Orden) => o.fecha_ingreso || o.fecha_ingreso_orden;
 
-    // Escenario 1: El backend manda la lista de análisis dentro de la orden
-    if (Array.isArray(o.analisis)) {
-      total = o.analisis.length;
-      listos = o.analisis.filter((a: any) => 
-        a.estado?.toLowerCase() === 'finalizado' || 
-        a.estado?.toLowerCase() === 'completado'
-      ).length;
-    } 
-    // Escenario 2: El backend manda contadores sueltos o anidados
-    else {
-      total = Number(o.progreso?.total_analisis || o.total_analisis || o.cantidad_analisis || 0);
-      listos = Number(o.progreso?.analisis_listos || o.analisis_finalizados || o.analisis_listos || 0);
-    }
+  // Cálculo de Progreso
+  const getValoresProgreso = (o: Orden) => {
+    // Busca en todas las variantes posibles que puede mandar el backend
+    const total = Number(o.total_analisis || o.cantidad_analisis || 0);
+    const listos = Number(o.analisis_listos || o.analisis_finalizados || 0);
     
-    // Escenario 3: El backend ya mandó el porcentaje directamente
     let porcentaje = 0;
-    if (o.progreso?.porcentaje !== undefined) {
-      porcentaje = o.progreso.porcentaje;
-    } else if (total > 0) {
+    if (total > 0) {
       porcentaje = Math.round((listos / total) * 100);
     }
 
@@ -143,17 +151,23 @@ export default function OrdenesLista() {
       total,
       listos,
       porcentaje,
-      texto: total > 0 ? `${listos}/${total} análisis` : 'Sin análisis cargados'
+      texto: total > 0 ? `${listos}/${total} análisis` : 'Sin análisis'
     };
   };
 
   const formatFechaHora = (fecha?: string) => {
     if (!fecha) return { dia: "N/A", hora: "--:--" };
-    const date = new Date(fecha);
-    return {
-      dia: date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      hora: date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-    };
+    try {
+      const date = new Date(fecha);
+      if (isNaN(date.getTime())) return { dia: "Error", hora: "--:--" }; // Validación de fecha inválida
+      
+      return {
+        dia: date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        hora: date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+      };
+    } catch (e) {
+      return { dia: "N/A", hora: "--:--" };
+    }
   };
 
   const getEstadoBadge = (estado?: string, urgente: boolean | number = false) => {
@@ -162,13 +176,11 @@ export default function OrdenesLista() {
     const urgenteClass = isUrgente ? "ring-2 ring-red-500 ring-offset-1" : "";
     const status = estado?.toLowerCase() || 'pendiente';
 
-    switch (status) {
-      case 'pendiente': return `${baseClasses} bg-yellow-100 text-yellow-800 ${urgenteClass}`;
-      case 'en_proceso':
-      case 'procesando': return `${baseClasses} bg-blue-100 text-blue-800 ${urgenteClass}`;
-      case 'completado':
-      case 'finalizada': return `${baseClasses} bg-green-100 text-green-800 ${urgenteClass}`;
-      default: return `${baseClasses} bg-gray-100 text-gray-800 ${urgenteClass}`;
+    if (status === 'finalizado' || status === 'completado') {
+        return `${baseClasses} bg-green-100 text-green-800 ${urgenteClass}`;
+    } else {
+        // Cualquier otro estado (pendiente, en_proceso, null) se muestra amarillo
+        return `${baseClasses} bg-yellow-100 text-yellow-800 ${urgenteClass}`;
     }
   };
 
@@ -195,7 +207,6 @@ export default function OrdenesLista() {
                 <p className="text-xs text-gray-500">Gestión detallada de análisis solicitados</p>
               </div>
             </div>
-            {/* ✅ CORREGIDO: Ruta actualizada a /medico/nueva-solicitud */}
             <button onClick={() => navigate('/medico/nueva-solicitud')} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-bold shadow-md transition-all flex items-center gap-2">
               <span>+</span> Nueva Orden
             </button>
@@ -213,8 +224,7 @@ export default function OrdenesLista() {
               <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 hover:bg-white transition-colors">
                 <option value="todos">Todos los estados</option>
                 <option value="pendiente">Pendientes</option>
-                <option value="en_proceso">En Proceso</option>
-                <option value="completado">Completadas</option>
+                <option value="finalizado">Finalizadas</option>
               </select>
             </div>
             <div>
@@ -260,9 +270,10 @@ export default function OrdenesLista() {
                     const idOrden = getId(orden);
                     const isUrgente = getUrgente(orden);
                     const progreso = getValoresProgreso(orden);
-                    const fecha = formatFechaHora(orden.fecha_ingreso);
+                    // ✅ CORRECCIÓN FECHA: Usa el helper que chequea ambos campos
+                    const fecha = formatFechaHora(getFechaOrden(orden));
                     const obs = getObservaciones(orden);
-
+                    
                     return (
                       <tr key={`orden-${idOrden}-${index}`} className="hover:bg-blue-50/50 transition-colors group">
                         
@@ -291,7 +302,7 @@ export default function OrdenesLista() {
                           </div>
                         </td>
 
-                        {/* Columna: Estado */}
+                        {/* Columna: Estado (CALCULADO) */}
                         <td className="px-6 py-5">
                           <span className={getEstadoBadge(orden.estado, orden.urgente)}>
                             {isUrgente && '🚨'} {orden.estado?.toUpperCase() || 'PENDIENTE'}

@@ -1,4 +1,4 @@
-// laboratorio-backend/src/routes/authRoutes.ts - RUTAS LIMPIAS (THIN LAYER)
+// src/routes/authRoutes.ts
 
 import express from "express";
 import { 
@@ -8,30 +8,37 @@ import {
   validarDatosRegistro
 } from '../controllers/auth.controller';
 
+// Importamos el controlador de usuarios que contiene updateUserProfile
+import usuarioController from '../controllers/usuario.controller';
+
 const router = express.Router();
 
 console.log('🔧 Configurando rutas de autenticación...');
 
 // ============================================
-// RUTAS DE AUTENTICACIÓN - SOLO DEFINICIÓN
+// RUTAS DE AUTENTICACIÓN
 // ============================================
 
-// Registro de usuario (con validación opcional)
+// Registro de usuario
 router.post("/register", validarDatosRegistro, registrarUsuario);
 
-// Login unificado (con validación opcional) 
+// Login unificado
 router.post("/login", validarDatosLogin, loginUnificado);
 
 // ============================================
-// MIDDLEWARE DE LOGGING (OPCIONAL)
+// RUTAS DE GESTIÓN DE PERFIL (NUEVO)
+// ============================================
+// Esta ruta permite a cualquier usuario logueado actualizar sus propios datos
+router.put("/perfil/actualizar", usuarioController.updateUserProfile);
+
+// ============================================
+// MIDDLEWARE DE LOGGING
 // ============================================
 router.use((req, res, next) => {
   console.log(`🔐 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
 
-console.log('✅ Rutas de autenticación configuradas:');
-console.log('   📝 POST /api/register - Registro unificado');
-console.log('   🔐 POST /api/login - Login unificado');
+console.log('✅ Rutas de autenticación configuradas.');
 
 export default router;

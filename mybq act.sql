@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-01-2026 a las 15:21:53
+-- Tiempo de generación: 15-02-2026 a las 15:43:51
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -158,7 +158,7 @@ INSERT INTO `analisis` (`codigo_modulo`, `descripcion_modulo`, `codigo_practica`
 (1, 'N.B.U. - P.M.O.', 660158, '17 CETOESTER., PRUEBA/Rta. DE LOS, A LA ESTIMULACION CON ACTH', '01/01/2012', NULL, NULL, 'PMO', '', '(*)', 5.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660159, '17 CETOESTER., PRUEBA/Rta. DE LOS, A LA INHIBIC. CON DEXAMETASONA', '01/01/2012', NULL, NULL, 'PMO', '', '(*)', 5.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660160, '17 CETOESTER., PRUEBA/Rta. DE LOS, A LA INHIB. C/DEXAMET. Y ESTIMUL.c/GONAD.CORIONICAS', '01/01/2012', NULL, NULL, 'PMO', '', '', 5.0, NULL, 'Ver protocolo'),
-(1, 'N.B.U. - P.M.O.', 660161, '17 CETOESTER. Y 17 HIDROXICORT., Pba/Rta.de los, A LA ESTIMUL.c/ ACTH', '01/01/2012', NULL, NULL, 'PMO', '', '(*)', 10.0, NULL, 'Ver protocolo'),
+(1, 'N.B.U. - P.M.O.', 660161, '17 CETOESTER. Y 17 HIDROXICORT., Pba/Rta.de los, A LA ESTIMUL.c/ ACTH', '01/01/2012', NULL, NULL, 'PMO', '', '(*)mg/L', 10.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660164, 'CITOLOGIA EXFOLIATIVA - VAGINAL HORMONAL (por cada muestra)', '01/01/2012', NULL, NULL, 'PMO', '', 'N', 5.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660167, 'CITRICO, ÁCIDO - líquido seminal', '01/01/2012', NULL, NULL, 'PMO', '', '', 6.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660168, 'CLORO (Cl) - sérico', '01/01/2012', NULL, NULL, 'PMO', 'U', '', 2.0, NULL, 'Ver protocolo'),
@@ -451,9 +451,9 @@ INSERT INTO `analisis` (`codigo_modulo`, `descripcion_modulo`, `codigo_practica`
 (1, 'N.B.U. - P.M.O.', 660887, 'TROMBOPLASTINA, TIEMPO DE (KPTT / TTPC / KT)', '01/01/2012', NULL, NULL, 'PMO', 'U', '', 2.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660901, 'UREA, CLEARENCE DE', '01/01/2012', NULL, NULL, 'PMO', '', '', 3.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660902, 'UREA, sérica', '01/01/2012', NULL, NULL, 'PMO', 'U', '', 1.5, NULL, 'Ver protocolo'),
-(1, 'N.B.U. - P.M.O.', 660903, 'URETRAL, EXUDADO (Directo y Cultivo)', '01/01/2012', NULL, NULL, 'PMO', '', 'N', 11.0, NULL, 'Ver protocolo'),
-(1, 'N.B.U. - P.M.O.', 660904, 'URICO, ÁCIDO - sérico', '01/01/2012', NULL, NULL, 'PMO', '', '', 1.5, NULL, 'Ver protocolo');
+(1, 'N.B.U. - P.M.O.', 660903, 'URETRAL, EXUDADO (Directo y Cultivo)', '01/01/2012', NULL, NULL, 'PMO', '', 'N', 11.0, NULL, 'Ver protocolo');
 INSERT INTO `analisis` (`codigo_modulo`, `descripcion_modulo`, `codigo_practica`, `descripcion_practica`, `inicio_vigencia`, `HONORARIOS`, `GASTOS`, `TIPO`, `URGENCIA`, `REFERENCIA`, `UNIDAD_BIOQUIMICA`, `FRECUENCIA`, `valor_referencia_rango`) VALUES
+(1, 'N.B.U. - P.M.O.', 660904, 'URICO, ÁCIDO - sérico', '01/01/2012', NULL, NULL, 'PMO', '', '', 1.5, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660905, 'URICO, ÁCIDO - urinario', '01/01/2012', NULL, NULL, 'PMO', '', '', 1.5, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660907, 'UROCITOGRAMA', '01/01/2012', NULL, NULL, 'PMO', '', 'N', 4.0, NULL, 'Ver protocolo'),
 (1, 'N.B.U. - P.M.O.', 660911, 'UROCULTIVO (MODULO)', '01/01/2012', NULL, NULL, 'PMO', '', 'N', 11.0, NULL, 'Ver protocolo'),
@@ -1486,6 +1486,7 @@ CREATE TABLE `bioquimico` (
 
 INSERT INTO `bioquimico` (`matricula_profesional`, `nombre_bq`, `apellido_bq`, `dni_bioquimico`, `telefono`, `email`, `direccion`, `activo`, `fecha_habilitacion`, `fecha_vencimiento_matricula`, `id_usuario`, `fecha_creacion`, `fecha_modificacion`) VALUES
 ('15678', 'Mariela', 'Vargas', 27895468, '+543894065094', 'bio@gmail.com', 'Miraflores 3410. La Paz-Bolivia', 1, '2022-02-09', NULL, 12, '2025-06-13 18:00:42', '2025-06-13 18:00:42'),
+('76535', 'Virginia', 'Vildosa', 45832012, '+55 354 843674', 'biobio@gmail.com', 'manzana 70 parcela 12 barrio ramseyer', 1, '2026-02-11', '2026-11-13', 30, '2026-02-13 20:41:05', '2026-02-13 20:41:05'),
 ('BQ001', 'Juan', 'Bioquímico', 30011222, '3624001122', 'jbioq@lab.com', 'Calle 123', 1, '2024-01-01', '2026-01-01', 6, '2025-06-02 22:48:09', '2025-06-02 22:48:09'),
 ('BQ002', 'María', 'Méndez', 30999888, '3624998877', 'mmendez@lab.com', 'Av. Rivadavia 456', 1, '2023-07-01', '2025-07-01', 7, '2025-06-02 22:48:09', '2025-06-02 22:48:09'),
 ('BQ003', 'Carla', 'Quinteros', 31222333, '3624332211', 'carla.q@lab.com', 'Belgrano 789', 1, '2022-05-15', '2024-05-15', 8, '2025-06-02 22:48:09', '2025-06-02 22:48:09');
@@ -1662,7 +1663,53 @@ INSERT INTO `medico` (`id_medico`, `nombre_medico`, `apellido_medico`, `dni_medi
 (5, 'Carla', 'Pérez', 30123456, 'MP123456', 'Clínica Médica', '3794123456', 'med1@gmail.com', 'Av. Siempre Viva 742', 1, 10, '2025-06-09 19:29:55', '2025-06-09 19:29:55'),
 (6, 'Olga', 'Martínez Arrúa ', 27885347, '23456', 'Gastroenterología', '+5427889564', 'med3@gmail.com', 'Barrio Quintana 458. La Pampa', 1, 17, '2025-06-13 13:22:28', '2025-06-13 13:22:28'),
 (7, 'Sandra', 'Lopez Ortega', 1628424, '22', 'Nefrología', '+548794065099', 'med4@gmail.com', 'Plaza Sésamo 28. Madrid, España', 1, 18, '2025-06-13 18:17:44', '2025-06-13 18:17:44'),
-(8, 'Gaston', 'Perez Parra', 44445574, '123', 'Gastroenterología', '+543644025099', 'gaston@gmail.com', 'Avenida lasHeras', 1, 20, '2025-06-16 17:13:26', '2025-06-16 17:13:26');
+(8, 'Gaston', 'Perez Parra', 44445574, '123', 'Gastroenterología', '+543644025099', 'gaston@gmail.com', 'Avenida lasHeras', 1, 20, '2025-06-16 17:13:26', '2025-06-16 17:13:26'),
+(50, 'Franco', 'Tourn', 20200200, '20202', 'Nefrología', '+55 354 873674', 'medtourn@gmail.com', 'ensanche\n', 1, 23, '2026-02-13 14:00:24', '2026-02-13 20:37:40'),
+(51, 'Nelson', 'Neruda', 19325666, '16942', 'Oftalmología', '+55 354 8736543', 'nnnn@gmail.com', 'Calle NA', 1, 29, '2026-02-13 20:38:41', '2026-02-13 20:38:41'),
+(52, 'Luciano', 'Lorenzo', 35252810, '11024', 'Gastroenterología', '5436444890361', 'luci@gmail.com', '12 entre 9 y 11', 1, 31, '2026-02-13 21:08:42', '2026-02-13 21:08:42'),
+(53, '', '', 0, '', NULL, NULL, 'Gustavo@gmail.com', NULL, 1, 32, '2026-02-14 14:42:44', '2026-02-14 14:42:44');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `nomenclador`
+--
+
+CREATE TABLE `nomenclador` (
+  `id_obra_social` int(11) NOT NULL,
+  `codigo_practica` int(11) NOT NULL,
+  `precio` decimal(10,2) DEFAULT NULL,
+  `fecha_actualizacion` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `obra_social`
+--
+
+CREATE TABLE `obra_social` (
+  `id_obra_social` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `cuit` varchar(20) DEFAULT NULL,
+  `activo` tinyint(4) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `obra_social`
+--
+
+INSERT INTO `obra_social` (`id_obra_social`, `nombre`, `cuit`, `activo`) VALUES
+(1, 'OSDE', NULL, 1),
+(2, 'Swiss Medical', NULL, 1),
+(3, 'PAMI', NULL, 1),
+(4, 'Galeno', NULL, 1),
+(5, 'Medicus', NULL, 1),
+(6, 'SaludTotal', NULL, 1),
+(7, 'Sanar Salud', NULL, 1),
+(8, 'VidaSalud', NULL, 1),
+(9, 'Salud Plus', NULL, 1),
+(10, 'Sancor Salud', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -1695,21 +1742,39 @@ CREATE TABLE `orden` (
 --
 
 INSERT INTO `orden` (`id_orden`, `nro_orden`, `urgente`, `id_medico_solicitante`, `matricula_bq_efectua`, `fecha_ingreso_orden`, `fecha_toma_muestra`, `fecha_procesamiento`, `fecha_finalizacion`, `nro_ficha_paciente`, `estado`, `observaciones`, `requiere_ayuno`, `instrucciones_paciente`, `costo_total`, `fecha_creacion`, `fecha_modificacion`) VALUES
-(1, 'ORD-2025-001', 0, 5, NULL, '2025-06-11 00:33:29', NULL, NULL, NULL, 4, 'pendiente', 'Control de rutina anual', 1, NULL, 2500.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(1, 'ORD-2025-001', 0, 5, NULL, '2025-06-11 00:33:29', NULL, '2026-02-09 18:44:51', NULL, 4, '', 'Control de rutina anual', 1, NULL, 2500.00, '2025-06-11 00:33:29', '2026-02-13 20:43:09'),
 (2, 'ORD-2025-002', 1, 5, 'BQ001', '2025-06-11 00:33:29', NULL, '2025-06-11 00:33:29', '2026-01-13 20:23:04', 5, '', 'Paciente con síntomas de diabetes', 1, NULL, 3200.00, '2025-06-11 00:33:29', '2026-01-13 20:23:04'),
 (3, 'ORD-2025-003', 0, 5, 'BQ002', '2025-06-11 00:33:29', NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29', 6, '', 'Seguimiento post-tratamiento', 0, NULL, 1800.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(4, 'ORD-2025-004', 0, 5, 'BQ001', '2025-06-10 00:33:29', NULL, '2025-06-10 00:33:29', NULL, 7, 'en_proceso', 'Control de colesterol', 1, NULL, 2100.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(4, 'ORD-2025-004', 0, 5, 'BQ001', '2025-06-10 00:33:29', NULL, '2025-06-10 00:33:29', '2026-01-14 15:34:33', 7, '', 'Control de colesterol', 1, NULL, 2100.00, '2025-06-11 00:33:29', '2026-01-14 15:34:33'),
 (5, 'ORD-2025-005', 1, 5, NULL, '2025-06-10 00:33:29', NULL, '2026-01-12 20:31:28', '2026-01-12 21:24:58', 8, '', 'Examen pre-operatorio urgente', 1, NULL, 4500.00, '2025-06-11 00:33:29', '2026-01-12 21:24:58'),
 (6, 'ORD-2025-006', 0, 5, 'BQ003', '2025-06-10 00:33:29', NULL, '2025-06-10 00:33:29', '2025-06-10 00:33:29', 9, '', 'Chequeo anual', 1, NULL, 2800.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (7, 'ORD-2025-007', 0, 5, 'BQ002', '2025-06-09 00:33:29', NULL, '2025-06-09 00:33:29', '2025-06-09 00:33:29', 10, '', 'Control de tiroides', 0, NULL, 1900.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(8, 'ORD-2025-008', 1, 5, 'BQ001', '2025-06-08 00:33:29', NULL, '2025-06-08 00:33:29', NULL, 11, 'en_proceso', 'Seguimiento de tratamiento', 1, NULL, 3100.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(9, 'ORD-2025-009', 0, 5, NULL, '2025-06-08 00:33:29', NULL, NULL, NULL, 12, 'pendiente', 'Control ginecológico', 0, NULL, 2200.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(8, 'ORD-2025-008', 1, 5, 'BQ001', '2025-06-08 00:33:29', NULL, '2025-06-08 00:33:29', NULL, 11, '', 'Seguimiento de tratamiento', 1, NULL, 3100.00, '2025-06-11 00:33:29', '2026-02-13 00:27:54'),
+(9, 'ORD-2025-009', 0, 5, NULL, '2025-06-08 00:33:29', NULL, '2026-02-05 13:38:38', NULL, 12, 'en_proceso', 'Control ginecológico', 0, NULL, 2200.00, '2025-06-11 00:33:29', '2026-02-05 13:38:38'),
 (10, 'ORD-2025-010', 0, 5, 'BQ003', '2025-06-06 00:33:29', NULL, '2025-06-06 00:33:29', '2025-06-07 00:33:29', 13, '', 'Análisis post-accidente', 0, NULL, 2600.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (11, 'ORD-2025-011', 0, 5, 'BQ002', '2025-06-04 00:33:29', NULL, '2025-06-04 00:33:29', '2025-06-05 00:33:29', 14, '', 'Control de medicación', 1, NULL, 2300.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(12, 'ORD-2025-012', 1, 5, 'BQ001', '2025-06-03 00:33:29', NULL, '2025-06-03 00:33:29', NULL, 15, 'en_proceso', 'Urgencia cardiológica', 1, NULL, 4200.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(12, 'ORD-2025-012', 1, 5, 'BQ001', '2025-06-03 00:33:29', NULL, '2025-06-03 00:33:29', NULL, 15, '', 'Urgencia cardiológica', 1, NULL, 4200.00, '2025-06-11 00:33:29', '2026-02-13 00:27:45'),
 (13, 'ORD-2025-013', 0, 5, 'BQ003', '2025-06-01 00:33:29', NULL, '2025-06-01 00:33:29', '2025-06-02 00:33:29', 16, '', 'Seguimiento oncológico', 0, NULL, 3800.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (14, 'ORD-2025-014', 0, 5, 'BQ002', '2025-05-30 00:33:29', NULL, '2025-05-30 00:33:29', '2025-05-31 00:33:29', 17, '', 'Control renal', 1, NULL, 2700.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(15, 'ORD-2025-015', 0, 5, 'BQ001', '2025-05-28 00:33:29', NULL, '2025-05-28 00:33:29', '2025-05-29 00:33:29', 18, '', 'Análisis de rutina', 1, NULL, 2400.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29');
+(15, 'ORD-2025-015', 0, 5, 'BQ001', '2025-05-28 00:33:29', NULL, '2025-05-28 00:33:29', '2025-05-29 00:33:29', 18, '', 'Análisis de rutina', 1, NULL, 2400.00, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(16, 'ORD-1770298579958-16', 1, 5, NULL, '2026-02-05 13:36:19', NULL, '2026-02-05 13:37:15', NULL, 26, '', NULL, 1, NULL, 0.00, '2026-02-05 13:36:19', '2026-02-13 00:20:19'),
+(17, 'ORD-1770670602902-83', 0, 5, NULL, '2026-02-09 20:56:42', NULL, NULL, NULL, 27, 'en_proceso', 'Orden generada por Sistema', 0, NULL, 0.00, '2026-02-09 20:56:42', '2026-02-09 21:21:30'),
+(18, 'ORD-1770670624561-11', 0, 5, NULL, '2026-02-09 20:57:04', NULL, NULL, NULL, 24, 'en_proceso', 'Orden generada por Sistema', 0, NULL, 0.00, '2026-02-09 20:57:04', '2026-02-09 21:25:11'),
+(19, 'ORD-2026-2545', 1, 5, NULL, '2026-02-10 22:57:56', NULL, '2026-02-11 16:24:20', NULL, 26, '', '', 0, NULL, NULL, '2026-02-10 22:57:56', '2026-02-13 00:28:01'),
+(20, 'ORD-2026-2321', 0, 5, NULL, '2026-02-11 16:32:07', NULL, NULL, NULL, 26, 'pendiente', 'prueba prueba prueba', 1, NULL, NULL, '2026-02-11 16:32:07', '2026-02-11 16:32:07'),
+(21, 'ORD-2026-8271', 1, 5, NULL, '2026-02-12 15:52:46', NULL, '2026-02-12 16:24:47', NULL, 26, '', 'pruebaaass', 1, NULL, NULL, '2026-02-12 15:52:46', '2026-02-13 00:28:10'),
+(22, 'ORD-1770913227565-21', 0, 5, NULL, '2026-02-12 16:20:27', NULL, NULL, NULL, 26, 'pendiente', 'Orden generada por Sistema', 0, NULL, 0.00, '2026-02-12 16:20:27', '2026-02-12 16:20:27'),
+(23, 'ORD-2026-8732', 1, 5, NULL, '2026-02-12 16:47:46', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-12 16:47:46', '2026-02-14 12:02:29'),
+(24, 'ORD-2026-3650', 1, 5, NULL, '2026-02-12 19:18:26', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-12 19:18:26', '2026-02-14 12:01:29'),
+(25, 'ORD-1770990512907-82', 0, 21, NULL, '2026-02-13 13:48:32', NULL, NULL, NULL, 27, 'pendiente', 'Orden generada por Sistema', 0, NULL, 0.00, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(26, 'ORD-2026-5451', 1, 51, NULL, '2026-02-13 20:39:09', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:47'),
+(27, 'ORD-2026-8545', 1, 52, NULL, '2026-02-13 21:08:59', NULL, NULL, NULL, 27, '', '', 0, NULL, NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:46'),
+(28, 'ORD-2026-7630', 1, 5, NULL, '2026-02-14 12:03:48', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-14 12:03:48', '2026-02-14 12:04:45'),
+(29, 'ORD-2026-1392', 1, 5, NULL, '2026-02-14 12:48:19', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-14 12:48:19', '2026-02-14 12:49:11'),
+(30, 'ORD-2026-3358', 1, 5, NULL, '2026-02-14 13:32:31', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-14 13:32:31', '2026-02-14 13:34:48'),
+(31, 'ORD-2026-9541', 1, 5, NULL, '2026-02-14 14:05:20', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-14 14:05:20', '2026-02-14 14:07:34'),
+(32, 'ORD-1771080048929-86', 0, 21, NULL, '2026-02-14 14:40:48', NULL, NULL, NULL, 27, 'pendiente', 'Orden generada por Sistema', 0, NULL, 0.00, '2026-02-14 14:40:48', '2026-02-14 14:40:48'),
+(33, 'ORD-2026-2691', 1, 53, NULL, '2026-02-14 14:44:25', NULL, NULL, NULL, 26, '', '', 1, NULL, NULL, '2026-02-14 14:44:25', '2026-02-14 14:47:58');
 
 -- --------------------------------------------------------
 
@@ -1738,17 +1803,17 @@ CREATE TABLE `orden_analisis` (
 --
 
 INSERT INTO `orden_analisis` (`id_orden_analisis`, `id_orden`, `codigo_practica`, `fecha_realizacion`, `valor_hallado`, `unidad_hallada`, `valor_referencia_aplicado`, `interpretacion`, `observaciones`, `estado`, `tecnico_responsable`, `fecha_creacion`, `fecha_modificacion`) VALUES
-(1, 1, 150101, NULL, NULL, NULL, NULL, NULL, 'Hemograma completo solicitado', 'pendiente', NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(2, 1, 150102, NULL, NULL, NULL, NULL, NULL, 'Glucemia solicitada', 'pendiente', NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(3, 1, 150103, NULL, NULL, NULL, NULL, NULL, 'Perfil lipídico solicitado', 'pendiente', NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(1, 1, 150101, NULL, NULL, NULL, NULL, NULL, 'Hemograma completo solicitado', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-02-13 20:43:09'),
+(2, 1, 150102, NULL, NULL, NULL, NULL, NULL, 'Glucemia solicitada', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-02-13 20:43:09'),
+(3, 1, 150103, NULL, NULL, NULL, NULL, NULL, 'Perfil lipídico solicitado', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-02-13 20:43:09'),
 (4, 2, 150102, '2026-01-12 19:07:21', '126', 'mg/dl', NULL, 'alto', 'Glucemia elevada', 'finalizado', 'Bioq. Ana Martínez', '2025-06-11 00:33:29', '2026-01-12 19:07:21'),
 (5, 2, 150105, '2026-01-13 20:23:04', '0', NULL, 'No posee', 'normal', 'Hemoglobina glicosilada en proceso', 'finalizado', 'María González', '2025-06-11 00:33:29', '2026-01-13 20:23:04'),
 (6, 2, 150106, '2026-01-13 20:23:03', '0', NULL, 'No posee', 'normal', 'Microalbuminuria pendiente', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-01-13 20:23:03'),
 (7, 3, 150101, '2025-06-11 00:33:29', 'Normal', '', NULL, NULL, 'Hemograma dentro de parámetros normales', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (8, 3, 150108, '2025-06-11 00:33:29', 'Negativo', '', NULL, NULL, 'Sin alteraciones', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(9, 4, 150103, '2025-06-10 00:33:29', '220', 'mg/dl', NULL, NULL, 'Colesterol total elevado', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(10, 4, 150109, NULL, NULL, NULL, NULL, NULL, 'HDL en proceso', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(11, 4, 150110, NULL, NULL, NULL, NULL, NULL, 'LDL pendiente', 'pendiente', NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(9, 4, 150103, '2026-01-14 15:34:31', '220', 'mg/dl', 'No posee', 'normal', 'Colesterol total elevado', 'finalizado', 'María González', '2025-06-11 00:33:29', '2026-01-14 15:34:31'),
+(10, 4, 150109, '2026-01-14 15:34:32', '110', NULL, 'No posee', 'normal', 'HDL en proceso', 'finalizado', 'María González', '2025-06-11 00:33:29', '2026-01-14 15:34:32'),
+(11, 4, 150110, '2026-01-14 15:34:33', '55', NULL, 'No posee', 'normal', 'LDL pendiente', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-01-14 15:34:33'),
 (12, 5, 150101, '2026-01-12 21:24:53', '3', NULL, '4.5-5.9 mi', 'bajo', 'Hemograma pre-quirúrgico urgente', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-01-12 21:24:53'),
 (13, 5, 150111, '2026-01-12 21:24:57', '4', NULL, 'No posee', '', 'Coagulograma urgente', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-01-12 21:24:57'),
 (14, 5, 230101, '2026-01-12 21:24:58', '4', NULL, 'No posee', '', 'Tiempo de sangría urgente', 'finalizado', NULL, '2025-06-11 00:33:29', '2026-01-12 21:24:58'),
@@ -1757,8 +1822,8 @@ INSERT INTO `orden_analisis` (`id_orden_analisis`, `id_orden`, `codigo_practica`
 (17, 6, 150103, '2025-06-10 00:33:29', '180', 'mg/dl', NULL, NULL, 'Colesterol límite', '', 'Ana Martínez', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (18, 7, 957124, '2025-06-09 00:33:29', '2.5', 'mUI/L', NULL, NULL, 'TSH normal', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (19, 7, 957127, '2025-06-09 00:33:29', '1.2', 'ng/dl', NULL, NULL, 'T4 libre normal', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(20, 8, 150101, '2025-06-08 00:33:29', 'Anemia leve', '', NULL, NULL, 'Hemoglobina 11.5 g/dl', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(21, 8, 150102, NULL, NULL, NULL, NULL, NULL, 'Glucemia en proceso', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
+(20, 8, 150101, '2026-02-09 21:54:48', '6', '', NULL, 'normal', 'Hemoglobina 11.5 g/dl', 'finalizado', 'María González', '2025-06-11 00:33:29', '2026-02-09 21:54:48'),
+(21, 8, 150102, '2026-02-09 21:54:49', '120', NULL, NULL, 'normal', 'Glucemia en proceso', 'finalizado', 'María González', '2025-06-11 00:33:29', '2026-02-09 21:54:49'),
 (22, 10, 150101, '2025-06-07 00:33:29', 'Normal', '', NULL, NULL, 'Sin alteraciones post-trauma', '', 'Ana Martínez', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (23, 10, 150106, '2025-06-07 00:33:29', 'Negativo', '', NULL, NULL, 'Orina normal', '', 'Ana Martínez', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (24, 11, 150102, '2025-06-05 00:33:29', '88', 'mg/dl', NULL, NULL, 'Glucemia normal', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
@@ -1769,14 +1834,107 @@ INSERT INTO `orden_analisis` (`id_orden_analisis`, `id_orden`, `codigo_practica`
 (29, 14, 777341, '2025-05-31 00:33:29', '0.9', 'mg/dl', NULL, NULL, 'Creatinina normal', '', 'Jorge López', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (30, 15, 150101, '2025-05-29 00:33:29', 'Normal', '', NULL, NULL, 'Análisis de rutina normal', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
 (31, 15, 150102, '2025-05-29 00:33:29', '86', 'mg/dl', NULL, NULL, 'Glucemia normal', '', 'María González', '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(0, 0, 660051, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-01-12 16:48:34', '2026-01-12 16:48:34'),
-(0, 0, 660052, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-01-12 16:48:34', '2026-01-12 16:48:34'),
-(0, 0, 660054, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-01-12 16:48:34', '2026-01-12 16:48:34'),
-(0, 0, 660055, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-01-12 16:48:34', '2026-01-12 16:48:34'),
-(0, 16, 150103, NULL, '280', 'mg/dl', NULL, 'critico', 'Colesterol total muy elevado', 'finalizado', 'Jorge López', '2026-01-12 18:20:18', '2026-01-12 18:20:18'),
-(0, 16, 150109, NULL, '35', 'mg/dl', NULL, 'bajo', 'HDL por debajo del límite deseable', 'finalizado', 'Jorge López', '2026-01-12 18:20:18', '2026-01-12 18:20:18'),
-(0, 17, 957124, NULL, NULL, NULL, NULL, NULL, 'Muestra hemolizada, requiere nueva toma', 'pendiente', NULL, '2026-01-12 18:20:35', '2026-01-12 18:20:35'),
-(0, 17, 957127, NULL, NULL, NULL, NULL, NULL, 'Procesando en equipo cobas', '', NULL, '2026-01-12 18:20:35', '2026-01-12 18:20:35');
+(0, 0, 660051, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-01-12 16:48:34', '2026-02-12 16:25:47'),
+(0, 0, 660052, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-01-12 16:48:34', '2026-02-12 16:25:47'),
+(0, 0, 660054, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-01-12 16:48:34', '2026-02-12 16:25:47'),
+(0, 0, 660055, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-01-12 16:48:34', '2026-02-12 16:25:47'),
+(0, 16, 150103, '2026-02-12 16:25:47', '1', 'mg/dl', '70-110 mg/', 'normal', 'Colesterol total muy elevado', 'finalizado', 'Jorge López', '2026-01-12 18:20:18', '2026-02-12 16:25:47'),
+(0, 16, 150109, '2026-02-12 16:25:47', '1', 'mg/dl', '70-110 mg/', 'normal', 'HDL por debajo del límite deseable', 'finalizado', 'Jorge López', '2026-01-12 18:20:18', '2026-02-12 16:25:47'),
+(0, 17, 957124, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', 'Muestra hemolizada, requiere nueva toma', 'finalizado', NULL, '2026-01-12 18:20:35', '2026-02-12 16:25:47'),
+(0, 17, 957127, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', 'Procesando en equipo cobas', 'finalizado', NULL, '2026-01-12 18:20:35', '2026-02-12 16:25:47'),
+(0, 16, 150101, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-02-05 13:36:19', '2026-02-12 16:25:47'),
+(0, 16, 150102, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-02-05 13:36:19', '2026-02-12 16:25:47'),
+(0, 16, 660004, '2026-02-12 16:25:47', '1', NULL, '70-110 mg/', 'normal', NULL, 'finalizado', NULL, '2026-02-05 13:36:19', '2026-02-12 16:25:47'),
+(0, 17, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:56:42', '2026-02-12 16:25:47'),
+(0, 17, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:56:42', '2026-02-12 16:25:47'),
+(0, 17, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:56:42', '2026-02-12 16:25:47'),
+(0, 17, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:56:42', '2026-02-12 16:25:47'),
+(0, 18, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 660006, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 660013, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 660007, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 18, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-09 20:57:04', '2026-02-12 16:25:47'),
+(0, 19, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 19, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 19, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 19, 660007, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 19, 660006, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 19, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-10 22:57:56', '2026-02-12 16:25:47'),
+(0, 20, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 20, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 20, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 20, 660006, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 20, 660007, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 20, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-11 16:32:07', '2026-02-12 16:25:47'),
+(0, 21, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 21, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 21, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 21, 660006, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 21, 660007, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 21, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 15:52:46', '2026-02-12 16:25:47'),
+(0, 22, 660006, '2026-02-13 00:36:41', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-13 00:36:41'),
+(0, 22, 660005, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 22, 660007, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 22, 660013, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 22, 660004, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 22, 150102, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 22, 150101, '2026-02-12 16:25:47', '1', NULL, NULL, 'normal', NULL, 'finalizado', NULL, '2026-02-12 16:20:27', '2026-02-12 16:25:47'),
+(0, 23, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-12 16:47:46', '2026-02-14 12:02:29'),
+(0, 24, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-12 19:18:26', '2026-02-14 12:01:29'),
+(0, 24, 660171, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-12 19:18:26', '2026-02-14 12:01:29'),
+(0, 24, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-12 19:18:26', '2026-02-14 12:01:29'),
+(0, 25, 150101, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 150102, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 660004, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 660006, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 660007, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 25, 660013, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-13 13:48:32', '2026-02-13 13:48:32'),
+(0, 26, 150101, '2026-02-13 20:43:36', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:36'),
+(0, 26, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:47'),
+(0, 26, 660006, '2026-02-13 20:43:41', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:41'),
+(0, 26, 660007, '2026-02-13 20:43:42', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:42'),
+(0, 26, 660004, '2026-02-13 20:43:43', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:43'),
+(0, 26, 660101, '2026-02-13 20:43:43', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:43'),
+(0, 26, 660063, '2026-02-13 20:43:44', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:44'),
+(0, 26, 660061, '2026-02-13 20:43:44', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:44'),
+(0, 26, 660060, '2026-02-13 20:43:45', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:45'),
+(0, 26, 660054, '2026-02-13 20:43:45', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 20:39:09', '2026-02-13 20:43:45'),
+(0, 27, 150101, '2026-02-13 21:09:37', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:37'),
+(0, 27, 150102, '2026-02-13 21:09:38', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:38'),
+(0, 27, 660004, '2026-02-13 21:09:39', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:39'),
+(0, 27, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:46'),
+(0, 27, 660006, '2026-02-13 21:09:42', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:42'),
+(0, 27, 660007, '2026-02-13 21:09:43', NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-13 21:08:59', '2026-02-13 21:09:43'),
+(0, 28, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 12:03:48', '2026-02-14 12:04:45'),
+(0, 29, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 12:48:19', '2026-02-14 12:49:11'),
+(0, 30, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 13:32:31', '2026-02-14 13:34:48'),
+(0, 31, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:05:20', '2026-02-14 14:07:34'),
+(0, 31, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:05:20', '2026-02-14 14:07:34'),
+(0, 31, 660354, '2026-02-14 14:07:28', '3', '1.5', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:28', '2026-02-14 14:07:28'),
+(0, 31, 660466, '2026-02-14 14:07:29', '1', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:29', '2026-02-14 14:07:29'),
+(0, 31, 660470, '2026-02-14 14:07:30', '3', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:30', '2026-02-14 14:07:30'),
+(0, 31, 660139, '2026-02-14 14:07:31', '2', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:31', '2026-02-14 14:07:31'),
+(0, 31, 660404, '2026-02-14 14:07:32', '1', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:32', '2026-02-14 14:07:32'),
+(0, 31, 660716, '2026-02-14 14:07:32', '2', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:07:32', '2026-02-14 14:07:32'),
+(0, 32, 150102, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-14 14:40:48', '2026-02-14 14:40:48'),
+(0, 32, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'pendiente', NULL, '2026-02-14 14:40:48', '2026-02-14 14:40:48'),
+(0, 33, 150101, '2026-02-14 14:47:17', '1', NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:44:25', '2026-02-14 14:47:17'),
+(0, 33, 660005, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:44:25', '2026-02-14 14:47:58'),
+(0, 33, 660014, '2026-02-14 14:47:09', '7', NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:44:25', '2026-02-14 14:47:09'),
+(0, 33, 660475, NULL, NULL, NULL, NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:44:25', '2026-02-14 14:47:58'),
+(0, 33, 660470, '2026-02-14 14:47:03', '3', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:03', '2026-02-14 14:47:03'),
+(0, 33, 660466, '2026-02-14 14:47:04', '3', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:04', '2026-02-14 14:47:04'),
+(0, 33, 660410, '2026-02-14 14:47:05', '2', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:05', '2026-02-14 14:47:05'),
+(0, 33, 660409, '2026-02-14 14:47:07', '3', '1.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:07', '2026-02-14 14:47:07'),
+(0, 33, 660354, '2026-02-14 14:47:08', '2', '1.5', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:08', '2026-02-14 14:47:08'),
+(0, 33, 660742, '2026-02-14 14:47:10', '6', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:10', '2026-02-14 14:47:10'),
+(0, 33, 660404, '2026-02-14 14:47:12', '4', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:12', '2026-02-14 14:47:12'),
+(0, 33, 660716, '2026-02-14 14:47:13', '5', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:13', '2026-02-14 14:47:13'),
+(0, 33, 660139, '2026-02-14 14:47:14', '3', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:14', '2026-02-14 14:47:14'),
+(0, 33, 660109, '2026-02-14 14:47:16', '2', '0.0', NULL, NULL, NULL, 'finalizado', NULL, '2026-02-14 14:47:16', '2026-02-14 14:47:16');
 
 -- --------------------------------------------------------
 
@@ -1794,6 +1952,7 @@ CREATE TABLE `paciente` (
   `sexo` enum('M','F','O') NOT NULL,
   `estado` varchar(45) DEFAULT 'activo',
   `mutual` varchar(100) NOT NULL,
+  `id_obra_social` int(11) DEFAULT NULL,
   `nro_afiliado` varchar(50) DEFAULT NULL,
   `grupo_sanguineo` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
   `dni` int(11) NOT NULL,
@@ -1813,35 +1972,36 @@ CREATE TABLE `paciente` (
 -- Volcado de datos para la tabla `paciente`
 --
 
-INSERT INTO `paciente` (`nro_ficha`, `nombre_paciente`, `apellido_paciente`, `fecha_alta`, `fecha_nacimiento`, `edad`, `sexo`, `estado`, `mutual`, `nro_afiliado`, `grupo_sanguineo`, `dni`, `cp`, `direccion`, `telefono`, `email`, `contacto_emergencia`, `telefono_emergencia`, `observaciones`, `id_usuario`, `fecha_creacion`, `fecha_modificacion`) VALUES
-(1, 'Lucía', 'Martínez', '2024-05-01', '1990-04-12', 35, 'F', 'Activo', 'OSDE', '123456789', 'A+', 30123123, 3400, 'Calle Falsa 123', '3624112233', 'lucia.martinez@email.com', 'María López', '3624556677', 'Alergia a penicilina', 10, '2025-06-02 22:37:17', '2025-06-09 19:31:11'),
-(2, 'Matías', 'Gómez', '2024-05-10', '1985-08-25', 39, 'M', 'Activo', 'Swiss Medical', '987654321', 'O-', 30111222, 3500, 'Av. Italia 456', '3624223344', 'matias.gomez@email.com', 'Juan Pérez', '3624998877', '', 10, '2025-06-02 22:37:17', '2025-06-09 19:31:17'),
-(3, 'Ana', 'Pérez', '2024-06-01', '2002-11-02', 22, 'F', 'Activo', 'PAMI', '456789123', 'B+', 34123123, 3700, 'Belgrano 789', '3624332211', 'ana.perez@email.com', 'Carlos Pérez', '3624888899', 'Usa lentes de contacto', 1, '2025-06-02 22:37:17', '2025-06-02 22:37:17'),
-(4, 'Ana', 'García', NULL, '1995-03-15', 30, 'F', 'activo', 'OSDE', '123456789', 'O+', 35123456, 3500, 'San Martín 123', '3794111111', 'ana.garcia@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(5, 'Carlos', 'López', NULL, '1988-07-22', 36, 'M', 'activo', 'Swiss Medical', '234567890', 'A+', 36234567, 3500, 'Belgrano 456', '3794222222', 'carlos.lopez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(6, 'María', 'Rodríguez', NULL, '1992-11-08', 32, 'F', 'activo', 'Galeno', '345678901', 'B+', 37345678, 3500, 'Mitre 789', '3794333333', 'maria.rodriguez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(7, 'Juan', 'Martínez', NULL, '1985-05-30', 40, 'M', 'activo', 'Medicus', '456789012', 'AB+', 38456789, 3500, 'Rivadavia 321', '3794444444', 'juan.martinez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(8, 'Laura', 'Fernández', NULL, '1990-09-12', 34, 'F', 'activo', 'PAMI', '567890123', 'O-', 39567890, 3500, 'Córdoba 654', '3794555555', 'laura.fernandez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(9, 'Roberto', 'Silva', NULL, '1975-01-18', 50, 'M', 'activo', 'OSDE', '678901234', 'A-', 20123456, 3500, 'Sarmiento 987', '3794666666', 'roberto.silva@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(10, 'Carmen', 'Torres', NULL, '1968-04-25', 57, 'F', 'activo', 'Swiss Medical', '789012345', 'B-', 21234567, 3500, 'Moreno 147', '3794777777', 'carmen.torres@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(11, 'Miguel', 'Vega', NULL, '1972-08-14', 52, 'M', 'activo', 'Galeno', '890123456', 'AB-', 22345678, 3500, 'Alsina 258', '3794888888', 'miguel.vega@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(12, 'Patricia', 'Morales', NULL, '1978-12-03', 46, 'F', 'activo', 'Medicus', '901234567', 'O+', 23456789, 3500, 'Urquiza 369', '3794999999', 'patricia.morales@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(13, 'Diego', 'Herrera', NULL, '1983-06-20', 41, 'M', 'activo', 'PAMI', '012345678', 'A+', 24567890, 3500, 'Pellegrini 741', '3794101010', 'diego.herrera@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(14, 'Elena', 'Castro', NULL, '1955-02-28', 70, 'F', 'activo', 'PAMI', '123456780', 'B+', 15123456, 3500, 'Lavalle 852', '3794111211', 'elena.castro@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(15, 'Héctor', 'Ruiz', NULL, '1960-10-15', 64, 'M', 'activo', 'OSDE', '234567801', 'O-', 16234567, 3500, 'Tucumán 963', '3794121212', 'hector.ruiz@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(16, 'Graciela', 'Jiménez', NULL, '1952-07-08', 72, 'F', 'activo', 'Swiss Medical', '345678012', 'A-', 17345678, 3500, 'Santa Fe 174', '3794131313', 'graciela.jimenez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(17, 'Oscar', 'Mendoza', NULL, '1965-11-22', 59, 'M', 'activo', 'Galeno', '456789123', 'AB+', 18456789, 3500, 'Entre Ríos 285', '3794141414', 'oscar.mendoza@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(18, 'Silvia', 'Romero', NULL, '1958-03-17', 67, 'F', 'activo', 'Medicus', '567890234', 'B-', 19567890, 3500, 'Corrientes 396', '3794151515', 'silvia.romero@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2025-06-11 00:33:29'),
-(19, 'Laura', 'Gómez', '2025-06-11', '1985-08-15', 39, 'F', 'activo', 'SaludTotal', '987654321', 'A+', 38965412, NULL, 'Calle Florida 567, CABA', '1143218765', NULL, NULL, NULL, NULL, NULL, '2025-06-11 19:36:48', '2025-06-11 19:36:48'),
-(20, 'Martín', 'Rodríguez', '2025-06-11', '1992-11-22', 32, 'M', 'activo', 'Sanar Salud', '456123789', 'O-', 28456123, NULL, 'Av. Santa Fe 4321, CABA', '1124681357', NULL, NULL, NULL, NULL, NULL, '2025-06-11 20:37:08', '2025-06-11 20:37:08'),
-(21, 'Sofía', 'Martínez', '2025-06-11', '1978-03-03', 47, 'F', 'activo', 'VidaSalud', '321654987', 'B-', 47581239, NULL, 'Calle San Martín 890, CABA', '1155443322', NULL, NULL, NULL, NULL, NULL, '2025-06-11 20:50:15', '2025-06-11 20:50:15'),
-(22, 'Federico', 'López', '2025-06-11', '1980-12-09', 44, 'M', 'activo', 'Sanar Salud', '654987321', 'AB+', 56237814, NULL, 'Av. Rivadavia 2345, CABA', '1177665544', NULL, NULL, NULL, NULL, NULL, '2025-06-11 21:07:49', '2025-06-11 21:07:49'),
-(23, 'Alejandro', 'Sánchez', '2025-06-11', '1975-05-12', 50, 'M', 'activo', 'Salud Plus', '852963741', 'B+', 71458926, NULL, 'Av. Belgrano 2100, CABA', '1177889900', NULL, NULL, NULL, NULL, NULL, '2025-06-12 01:39:38', '2025-06-12 01:39:38'),
-(24, 'Gaston', 'Perez', '2026-01-02', '1999-07-17', 26, 'M', 'activo', 'Osde', NULL, '', 13303303, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-03 00:09:55', '2026-01-03 00:09:55'),
-(25, 'merundio', 'bitrinas', '2026-01-02', '1936-01-01', 90, 'M', 'activo', 'pami', NULL, '', 11101010, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-03 00:11:00', '2026-01-03 00:11:00'),
-(26, 'Gaston', 'Gaston Perez', '2026-01-08', '1999-02-11', 26, 'M', 'activo', 'OSDE', '11111111', 'O-', 42066223, NULL, 'manzana 70 parcela 12 barrio ramseyer', '55354873674', NULL, NULL, NULL, NULL, NULL, '2026-01-08 21:32:46', '2026-01-08 21:32:46'),
-(27, 'Ramon', 'Perez', '2026-01-12', '1970-04-17', 55, 'M', 'activo', 'Swiss Medical', '11111333', 'O-', 80808808, NULL, 'manzana 70 parcela 12 barrio ramseyer', '55354873674', NULL, NULL, NULL, NULL, NULL, '2026-01-12 17:09:34', '2026-01-12 17:09:34'),
-(0, 'cristobal', 'gonzalez', '2026-01-13', '2000-01-01', 26, 'M', 'activo', 'Sancor Salud', '23233232332323', 'B+', 11011001, NULL, 'manzana 70 parcela 12 barrio ramseyer', '3232232323111', 'gastonperez1724@gmail.com', NULL, NULL, NULL, NULL, '2026-01-13 21:16:01', '2026-01-13 21:16:01');
+INSERT INTO `paciente` (`nro_ficha`, `nombre_paciente`, `apellido_paciente`, `fecha_alta`, `fecha_nacimiento`, `edad`, `sexo`, `estado`, `mutual`, `id_obra_social`, `nro_afiliado`, `grupo_sanguineo`, `dni`, `cp`, `direccion`, `telefono`, `email`, `contacto_emergencia`, `telefono_emergencia`, `observaciones`, `id_usuario`, `fecha_creacion`, `fecha_modificacion`) VALUES
+(1, 'Lucía', 'Martínez', '2024-05-01', '1990-04-12', 35, 'F', 'Activo', 'OSDE', 1, '123456789', 'A+', 30123123, 3400, 'Calle Falsa 123', '3624112233', 'lucia.martinez@email.com', 'María López', '3624556677', 'Alergia a penicilina', 10, '2025-06-02 22:37:17', '2026-02-04 19:59:58'),
+(2, 'Matías', 'Gómez', '2024-05-10', '1985-08-25', 39, 'M', 'Activo', 'Swiss Medical', 2, '987654321', 'O-', 30111222, 3500, 'Av. Italia 456', '3624223344', 'matias.gomez@email.com', 'Juan Pérez', '3624998877', '', 10, '2025-06-02 22:37:17', '2026-02-04 19:59:58'),
+(3, 'Ana', 'Pérez', '2024-06-01', '2002-11-02', 22, 'F', 'Activo', 'PAMI', 3, '456789123', 'B+', 34123123, 3700, 'Belgrano 789', '3624332211', 'ana.perez@email.com', 'Carlos Pérez', '3624888899', 'Usa lentes de contacto', 1, '2025-06-02 22:37:17', '2026-02-04 19:59:58'),
+(4, 'Ana', 'García', NULL, '1995-03-15', 30, 'F', 'activo', 'OSDE', 1, '123456789', 'O+', 35123456, 3500, 'San Martín 123', '3794111111', 'ana.garcia@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(5, 'Carlos', 'López', NULL, '1988-07-22', 36, 'M', 'activo', 'Swiss Medical', 2, '234567890', 'A+', 36234567, 3500, 'Belgrano 456', '3794222222', 'carlos.lopez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(6, 'María', 'Rodríguez', NULL, '1992-11-08', 32, 'F', 'activo', 'Galeno', 4, '345678901', 'B+', 37345678, 3500, 'Mitre 789', '3794333333', 'maria.rodriguez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(7, 'Juan', 'Martínez', NULL, '1985-05-30', 40, 'M', 'activo', 'Medicus', 5, '456789012', 'AB+', 38456789, 3500, 'Rivadavia 321', '3794444444', 'juan.martinez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(8, 'Laura', 'Fernández', NULL, '1990-09-12', 34, 'F', 'activo', 'PAMI', 3, '567890123', 'O-', 39567890, 3500, 'Córdoba 654', '3794555555', 'laura.fernandez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(9, 'Roberto', 'Silva', NULL, '1975-01-18', 50, 'M', 'activo', 'OSDE', 1, '678901234', 'A-', 20123456, 3500, 'Sarmiento 987', '3794666666', 'roberto.silva@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(10, 'Carmen', 'Torres', NULL, '1968-04-25', 57, 'F', 'activo', 'Swiss Medical', 2, '789012345', 'B-', 21234567, 3500, 'Moreno 147', '3794777777', 'carmen.torres@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(11, 'Miguel', 'Vega', NULL, '1972-08-14', 52, 'M', 'activo', 'Galeno', 4, '890123456', 'AB-', 22345678, 3500, 'Alsina 258', '3794888888', 'miguel.vega@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(12, 'Patricia', 'Morales', NULL, '1978-12-03', 46, 'F', 'activo', 'Medicus', 5, '901234567', 'O+', 23456789, 3500, 'Urquiza 369', '3794999999', 'patricia.morales@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(13, 'Diego', 'Herrera', NULL, '1983-06-20', 41, 'M', 'activo', 'PAMI', 3, '012345678', 'A+', 24567890, 3500, 'Pellegrini 741', '3794101010', 'diego.herrera@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(14, 'Elena', 'Castro', NULL, '1955-02-28', 70, 'F', 'activo', 'PAMI', 3, '123456780', 'B+', 15123456, 3500, 'Lavalle 852', '3794111211', 'elena.castro@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(15, 'Héctor', 'Ruiz', NULL, '1960-10-15', 64, 'M', 'activo', 'OSDE', 1, '234567801', 'O-', 16234567, 3500, 'Tucumán 963', '3794121212', 'hector.ruiz@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(16, 'Graciela', 'Jiménez', NULL, '1952-07-08', 72, 'F', 'activo', 'Swiss Medical', 2, '345678012', 'A-', 17345678, 3500, 'Santa Fe 174', '3794131313', 'graciela.jimenez@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(17, 'Oscar', 'Mendoza', NULL, '1965-11-22', 59, 'M', 'activo', 'Galeno', 4, '456789123', 'AB+', 18456789, 3500, 'Entre Ríos 285', '3794141414', 'oscar.mendoza@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(18, 'Silvia', 'Romero', NULL, '1958-03-17', 67, 'F', 'activo', 'Medicus', 5, '567890234', 'B-', 19567890, 3500, 'Corrientes 396', '3794151515', 'silvia.romero@email.com', NULL, NULL, NULL, NULL, '2025-06-11 00:33:29', '2026-02-04 19:59:58'),
+(19, 'Laura', 'Gómez', '2025-06-11', '1985-08-15', 39, 'F', 'activo', 'SaludTotal', 6, '987654321', 'A+', 38965412, NULL, 'Calle Florida 567, CABA', '1143218765', NULL, NULL, NULL, NULL, NULL, '2025-06-11 19:36:48', '2026-02-04 19:59:58'),
+(20, 'Martín', 'Rodríguez', '2025-06-11', '1992-11-22', 32, 'M', 'activo', 'Sanar Salud', 7, '456123789', 'O-', 28456123, NULL, 'Av. Santa Fe 4321, CABA', '1124681357', NULL, NULL, NULL, NULL, NULL, '2025-06-11 20:37:08', '2026-02-04 19:59:58'),
+(21, 'Sofía', 'Martínez', '2025-06-11', '1978-03-03', 47, 'F', 'activo', 'VidaSalud', 8, '321654987', 'B-', 47581239, NULL, 'Calle San Martín 890, CABA', '1155443322', NULL, NULL, NULL, NULL, NULL, '2025-06-11 20:50:15', '2026-02-04 19:59:58'),
+(22, 'Federico', 'López', '2025-06-11', '1980-12-09', 44, 'M', 'activo', 'Sanar Salud', 7, '654987321', 'AB+', 56237814, NULL, 'Av. Rivadavia 2345, CABA', '1177665544', NULL, NULL, NULL, NULL, NULL, '2025-06-11 21:07:49', '2026-02-04 19:59:58'),
+(23, 'Alejandro', 'Sánchez', '2025-06-11', '1975-05-12', 50, 'M', 'activo', 'Salud Plus', 9, '852963741', 'B+', 71458926, NULL, 'Av. Belgrano 2100, CABA', '1177889900', NULL, NULL, NULL, NULL, NULL, '2025-06-12 01:39:38', '2026-02-04 19:59:58'),
+(24, 'Gaston', 'Perez', '2026-01-02', '1999-07-17', 26, 'M', 'activo', 'Osde', 1, NULL, '', 13303303, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-03 00:09:55', '2026-02-04 19:59:58'),
+(25, 'merundio', 'bitrinas', '2026-01-02', '1936-01-01', 90, 'M', 'activo', 'pami', 3, NULL, '', 11101010, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-03 00:11:00', '2026-02-04 19:59:58'),
+(26, 'Gaston', 'Gaston Perez', '2026-01-08', '1999-02-11', 26, 'M', 'activo', 'OSDE', 1, '11111111', 'O-', 42066223, NULL, 'manzana 70 parcela 12 barrio ramseyer', '55354873674', NULL, NULL, NULL, NULL, NULL, '2026-01-08 21:32:46', '2026-02-04 19:59:58'),
+(27, 'Ramon', 'Perez', '2026-01-12', '1970-04-17', 55, 'M', 'activo', 'Swiss Medical', NULL, '11111333', 'O-', 80808808, NULL, 'manzana 70 parcela 12 barrio ramseyer', '55354873674', NULL, NULL, NULL, NULL, NULL, '2026-01-12 17:09:34', '2026-02-13 20:57:12'),
+(0, 'cristobal', 'gonzalez', '2026-01-13', '2000-01-01', 26, 'M', 'activo', 'Sancor Salud', 10, '23233232332323', 'B+', 11011001, NULL, 'manzana 70 parcela 12 barrio ramseyer', '3232232323111', 'gastonperez1724@gmail.com', NULL, NULL, NULL, NULL, '2026-01-13 21:16:01', '2026-02-04 19:59:58'),
+(0, 'Ramon', 'Rodriguez', '2026-02-13', '2024-06-19', 1, 'M', 'activo', '', NULL, '55555555555', 'O+', 98765434, NULL, '-', '555555555', 'Ramon@gmail.com', NULL, NULL, NULL, NULL, '2026-02-13 20:51:56', '2026-02-13 20:51:56');
 
 --
 -- Disparadores `paciente`
@@ -1924,10 +2084,10 @@ INSERT INTO `usuarios` (`id_usuario`, `username`, `email`, `password_hash`, `rol
 (5, 'marianaruiz', 'mariana.ruiz@lab.com', '$2b$10$ZunYF6XExFoIY4dKEbcZk.1ZghskNj6/2QmFbH90sTxErZCxHZekO', 'medico', 0, '2025-06-02 19:33:36', NULL, 0, NULL),
 (6, 'jbioq', 'jbioq@lab.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uW6QK/U2Le', 'bioquimico', 1, '2025-06-02 19:47:36', NULL, 0, NULL),
 (7, 'mmendez', 'mmendez@lab.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uW6QK/U2Le', 'bioquimico', 1, '2025-06-02 19:47:36', NULL, 0, NULL),
-(8, 'carlaq', 'carla.q@lab.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uW6QK/U2Le', 'bioquimico', 1, '2025-06-02 19:47:36', NULL, 0, NULL),
+(8, 'carlaq', 'carla.q@lab.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uW6QK/U2Le', 'bioquimico', 0, '2025-06-02 19:47:36', NULL, 0, NULL),
 (9, 'maria', 'medico@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uJ6hW6L6Qe', 'medico', 1, '2025-06-04 16:47:10', NULL, 0, NULL),
-(10, 'med1', 'med1@gmail.com', '$2b$10$9m6GMWD3kkticnUPNIzH6uC3PBApyG9l3Zdr2Lh1/z6J8pr/cveVW', 'medico', 1, '2025-06-04 19:31:06', '2026-01-13 18:00:51', 0, NULL),
-(12, 'bio', 'bio@gmail.com', '$2b$10$b3X8GldfaRbsujI/St6dse9f.OOqIGivFvlens0eW/bvqGg1RehvC', 'bioquimico', 1, '2025-06-04 21:49:01', '2026-01-12 16:10:47', 0, NULL),
+(10, 'med1', 'med1@gmail.com', '$2b$10$9m6GMWD3kkticnUPNIzH6uC3PBApyG9l3Zdr2Lh1/z6J8pr/cveVW', 'medico', 1, '2025-06-04 19:31:06', '2026-02-14 11:55:31', 0, NULL),
+(12, 'bio', 'bio@gmail.com', '$2b$10$b3X8GldfaRbsujI/St6dse9f.OOqIGivFvlens0eW/bvqGg1RehvC', 'bioquimico', 1, '2025-06-04 21:49:01', '2026-02-14 11:45:17', 0, NULL),
 (13, 'bio_maria', 'bio1@gmail.com', '$2b$10$9m6GMWD3kkticnUPNIzH6uC3PBApyG9l3Zdr2Lh1/z6', 'bioquimico', 1, '2025-06-10 21:33:28', NULL, 0, NULL),
 (14, 'bio_jorge', 'bio2@gmail.com', '$2b$10$9m6GMWD3kkticnUPNIzH6uC3PBApyG9l3Zdr2Lh1/z6', 'bioquimico', 1, '2025-06-10 21:33:28', NULL, 0, NULL),
 (15, 'bio_ana', 'bio3@gmail.com', '$2b$10$9m6GMWD3kkticnUPNIzH6uC3PBApyG9l3Zdr2Lh1/z6', 'bioquimico', 1, '2025-06-10 21:33:28', NULL, 0, NULL),
@@ -1936,7 +2096,18 @@ INSERT INTO `usuarios` (`id_usuario`, `username`, `email`, `password_hash`, `rol
 (18, 'med4', 'med4@gmail.com', '$2b$10$8/dSPakRa.pVCUNOwbqdOeW2k1hLWhCAz3dULdwai2T.5a2HDbkSS', 'medico', 1, '2025-06-13 15:16:19', '2025-06-13 15:16:37', 0, NULL),
 (19, 'bio4', 'bio4@gmail.com', '$2b$10$kDoaxEizfGht/UkwssxSV.yLHhDlO098Qll070ip38XeetTYFXxHW', 'admin', 1, '2025-06-13 16:05:55', '2025-06-13 16:06:10', 0, NULL),
 (20, 'gaston1', 'gaston@gmail.com', '$2b$10$8lie7ucgDyhiks2/iTvX4espCpGuXfq9E3CM2TI1pSRy38lanUPQS', 'medico', 1, '2025-06-16 14:05:18', '2025-06-16 14:12:34', 0, NULL),
-(21, 'adm', 'adm@gmail.com', '$2b$10$N7Hv9eKN2fEPwJHtkIr54ODErBZ7irqfkBEEGUNgzUbc.HGagybLS', 'admin', 1, '2026-01-02 19:23:47', '2026-01-13 23:52:26', 0, NULL);
+(21, 'adm', 'adm@gmail.com', '$2b$10$N7Hv9eKN2fEPwJHtkIr54ODErBZ7irqfkBEEGUNgzUbc.HGagybLS', 'admin', 1, '2026-01-02 19:23:47', '2026-02-14 11:37:19', 0, NULL),
+(22, 'gaston', 'admin5@gmail.com', '$2b$10$/sWNOBxUsxXtTY82PUf5x.baq0gDrmqAUVkCjubqS9vvCQRT0ch9K', 'admin', 1, '2026-01-14 12:46:44', '2026-02-05 10:39:19', 0, NULL),
+(23, 'medtourn', 'medtourn@gmail.com', '$2b$10$bQskXYNbdRFHz9VUAk1Pn.TdyLGBVhgQ2Dvy1/WHtCzrigNaFSb/W', 'medico', 1, '2026-02-13 10:58:42', '2026-02-13 17:44:31', 0, NULL),
+(24, 'Patricio', 'patri@gmail.com', '$2b$10$qAKV4Xr82fCQFwJRAWs6R.VkYtjinYv1rzXotoyp3DvxcH.zyyi5u', 'medico', 1, '2026-02-13 11:02:32', '2026-02-13 11:02:54', 0, NULL),
+(25, 'GustavoR', 'gusr@gmail.com', '$2b$10$p18TPn9CSWPXdRsJwuwXReB3ES.DZbAkOAYo6NOpOujZDlAyWYtu6', 'medico', 1, '2026-02-13 11:11:50', '2026-02-13 11:12:11', 0, NULL),
+(26, 'Susan21', 'susan21@gmail.com', '$2b$10$n3syrsUMUYt1ZUD2xVMfju.RfcyHgHFSqDcDfGuBUDfk7VD71.j1K', 'medico', 1, '2026-02-13 11:18:06', NULL, 0, NULL),
+(27, 'graciela21', 'graciela21@gmail.com', '$2b$10$lzgTzQIgy8Oh6jnDXTfQC.pmipSSq6P5FGI4UDgjbGZ8gn2VeVyKO', 'medico', 1, '2026-02-13 11:19:19', '2026-02-13 11:19:39', 0, NULL),
+(28, 'med41', 'med41@gmail.com', '$2b$10$tBk82G3qJh5/If1R/6jXWeEwHkKliHTfqLijZjodr/89u8vi1Q/7C', 'medico', 1, '2026-02-13 11:59:23', '2026-02-13 11:59:35', 0, NULL),
+(29, 'nnnn', 'nnnn@gmail.com', '$2b$10$pummcq0QkF1qaZzdXnhNCu84khNsrIlhE72LjvKooABqe6x85/Pqm', 'medico', 1, '2026-02-13 15:53:53', '2026-02-13 15:54:09', 0, NULL),
+(30, 'biobio', 'biobio@gmail.com', '$2b$10$Rgjn9pSqc1aMQZJlvd1RoeAfWGN0ZyO2gLgAQcZX1IvMQJzkqB/B.', 'bioquimico', 1, '2026-02-13 17:39:44', '2026-02-13 18:09:18', 0, NULL),
+(31, 'Luci', 'luci@gmail.com', '$2b$10$dsgFuvdMGTNAgyi30GJCzO/PfZ7imrrg7f2hdrhWbVyolDiFrhpiq', 'medico', 1, '2026-02-13 18:07:29', '2026-02-13 18:07:43', 0, NULL),
+(32, 'gustavo', 'Gustavo@gmail.com', '$2b$10$rLS.q8d/V9n03Pi9mKxWKu9FXUaLnNaFAWqE7Dwm39JPM0Ln1GXqm', 'medico', 1, '2026-02-14 11:42:44', '2026-02-14 11:52:56', 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -2048,6 +2219,20 @@ ALTER TABLE `medico`
   ADD KEY `id_usuario_idx` (`id_usuario`);
 
 --
+-- Indices de la tabla `nomenclador`
+--
+ALTER TABLE `nomenclador`
+  ADD PRIMARY KEY (`id_obra_social`,`codigo_practica`),
+  ADD KEY `codigo_practica` (`codigo_practica`);
+
+--
+-- Indices de la tabla `obra_social`
+--
+ALTER TABLE `obra_social`
+  ADD PRIMARY KEY (`id_obra_social`),
+  ADD UNIQUE KEY `nombre` (`nombre`);
+
+--
 -- Indices de la tabla `orden`
 --
 ALTER TABLE `orden`
@@ -2073,16 +2258,39 @@ ALTER TABLE `usuarios`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `medico`
+--
+ALTER TABLE `medico`
+  MODIFY `id_medico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+
+--
+-- AUTO_INCREMENT de la tabla `obra_social`
+--
+ALTER TABLE `obra_social`
+  MODIFY `id_obra_social` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
 -- AUTO_INCREMENT de la tabla `orden`
 --
 ALTER TABLE `orden`
-  MODIFY `id_orden` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id_orden` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `nomenclador`
+--
+ALTER TABLE `nomenclador`
+  ADD CONSTRAINT `nomenclador_ibfk_1` FOREIGN KEY (`id_obra_social`) REFERENCES `obra_social` (`id_obra_social`),
+  ADD CONSTRAINT `nomenclador_ibfk_2` FOREIGN KEY (`codigo_practica`) REFERENCES `analisis` (`codigo_practica`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

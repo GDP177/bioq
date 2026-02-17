@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   HomeIcon, UsersIcon, ClipboardDocumentListIcon,
-  BeakerIcon, ChartBarIcon, Cog6ToothIcon,
+  BeakerIcon, Cog6ToothIcon, // Icono de engranaje para configuración
   ArrowRightOnRectangleIcon, UserCircleIcon, 
   DocumentPlusIcon, InboxStackIcon
 } from '@heroicons/react/24/outline';
@@ -11,8 +11,10 @@ export function Sidebar() {
   const location = useLocation();
   
   const usuarioJson = localStorage.getItem("usuario");
-  // Validación robusta del objeto usuario para evitar errores de renderizado
   const usuario = usuarioJson ? JSON.parse(usuarioJson) : { username: "Invitado", rol: "invitado" };
+
+  // Definimos el ítem común
+  const configItem = { label: "Configuración", path: "/configuracion", icon: <Cog6ToothIcon className="w-5 h-5" /> };
 
   const menuConfig = {
     admin: [
@@ -20,20 +22,21 @@ export function Sidebar() {
       { label: "Pacientes", path: "/admin/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
       { label: "Usuarios", path: "/admin/usuarios", icon: <UserCircleIcon className="w-5 h-5" /> },
       { label: "Catálogo Análisis", path: "/admin/analisis", icon: <BeakerIcon className="w-5 h-5" /> },
-      { label: "Configuración", path: "/admin/config", icon: <Cog6ToothIcon className="w-5 h-5" /> },
+      configItem // ✅ Agregado
     ],
     medico: [
       { label: "Panel Inicio", path: "/medico/dashboard", icon: <HomeIcon className="w-5 h-5" /> },
       { label: "Nueva Solicitud", path: "/medico/nueva-solicitud", icon: <DocumentPlusIcon className="w-5 h-5" /> },
       { label: "Gestión Pacientes", path: "/medico/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
       { label: "Órdenes Enviadas", path: "/medico/ordenes", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
+      configItem // ✅ Agregado
     ],
     bioquimico: [
       { label: "Panel Central", path: "/bioquimico/dashboard", icon: <BeakerIcon className="w-5 h-5" /> },
-      // 🔥 CORRECCIÓN AQUÍ: Cambiamos "/bioquimico/ordenes" por "/bioquimico/ordenes-entrantes"
       { label: "Órdenes Entrantes", path: "/bioquimico/ordenes-entrantes", icon: <InboxStackIcon className="w-5 h-5" /> },
       { label: "Consulta Técnicas", path: "/admin/analisis", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
-      { label: "Reportes", path: "/medico/reportes", icon: <ChartBarIcon className="w-5 h-5" /> },
+      // ❌ "Reportes" ELIMINADO
+      configItem // ✅ Agregado
     ]
   };
 
@@ -53,7 +56,6 @@ export function Sidebar() {
             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">
               {usuario?.rol || "SIN ROL"}
             </p>
-            {/* Agregamos '?' para evitar el error si username no existe */}
             <p className="text-sm font-bold truncate uppercase">
               {usuario?.username || "Usuario"}
             </p>

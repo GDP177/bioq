@@ -1,8 +1,12 @@
+// src/controllers/usuario.controller.ts
+
 import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 import bcrypt from 'bcrypt';
 
-// Obtener usuarios
+// ============================================
+// OBTENER USUARIOS
+// ============================================
 export const getUsuarios = async (req: Request, res: Response) => {
     try {
         const [rows]: any = await pool.query("SELECT id_usuario, username, email, rol, activo FROM usuarios ORDER BY id_usuario DESC");
@@ -12,7 +16,9 @@ export const getUsuarios = async (req: Request, res: Response) => {
     }
 };
 
-// Restablecer contraseña
+// ============================================
+// RESETEAR CONTRASEÑA (ADMIN)
+// ============================================
 export const resetPassword = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
@@ -24,43 +30,44 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-// ==========================================
-// CREAR USUARIO (CON TRANSACCIÓN PARA MÉDICO)
-// ==========================================
+// ============================================
+// CREAR USUARIO (CON TRANSACCIÓN)
+// ============================================
 export const createUsuario = async (req: Request, res: Response) => {
     const { username, email, rol, password } = req.body;
     
-    // Usamos una conexión dedicada para manejar la transacción de forma segura
     const connection = await pool.getConnection();
 
     try {
-        await connection.beginTransaction(); // Inicia la transacción
+        await connection.beginTransaction();
 
         console.log(`📝 Creando usuario: ${username} (${rol})`);
 
-        // 1. Insertar el Usuario
+        // 1. Insertar el Usuario en tabla login
         const hash = await bcrypt.hash(password || '123456', 10);
-        const queryUser = `
-            INSERT INTO usuarios (username, email, password_hash, rol, activo, fecha_creacion) 
-            VALUES (?, ?, ?, ?, 1, NOW())
-        `;
-        const [resultUser]: any = await connection.query(queryUser, [username, email, hash, rol]);
+        const [resultUser]: any = await connection.query(
+            `INSERT INTO usuarios (username, email, password_hash, rol, activo, fecha_creacion) 
+             VALUES (?, ?, ?, ?, 1, NOW())`,
+            [username, email, hash, rol]
+        );
         const newUserId = resultUser.insertId;
 
-        // 2. Si es Médico, crear INMEDIATAMENTE la entrada en tabla medico
-        // Esto evita problemas de IDs desincronizados luego.
+        // 2. Crear perfil asociado según el rol
         if (rol === 'medico') {
-            console.log(`🔗 Vinculando perfil médico vacío para usuario ID: ${newUserId}`);
-            const queryMedico = `
-                INSERT INTO medico (id_usuario, email, activo, fecha_creacion) 
-                VALUES (?, ?, 1, NOW())
-            `;
-            await connection.query(queryMedico, [newUserId, email]);
+            await connection.query(
+                `INSERT INTO medico (id_usuario, email, activo, fecha_creacion) VALUES (?, ?, 1, NOW())`, 
+                [newUserId, email]
+            );
+        } else if (rol === 'bioquimico') {
+            // Nota: Usamos las columnas correctas según tu tabla (email existe en bioquimico)
+            await connection.query(
+                `INSERT INTO bioquimico (id_usuario, email, activo, fecha_creacion) VALUES (?, ?, 1, NOW())`, 
+                [newUserId, email]
+            );
         }
 
-        await connection.commit(); // Confirmar cambios en DB
+        await connection.commit();
         
-        console.log("✅ Usuario creado exitosamente.");
         res.json({ 
             success: true, 
             message: "Usuario creado correctamente",
@@ -68,8 +75,8 @@ export const createUsuario = async (req: Request, res: Response) => {
         });
 
     } catch (error: any) {
-        await connection.rollback(); // Si falla, deshacer todo
-        console.error("❌ Error al crear usuario (Rollback):", error.message);
+        await connection.rollback();
+        console.error("❌ Error al crear usuario:", error.message);
         
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ success: false, message: "El usuario o el email ya están registrados." });
@@ -77,11 +84,13 @@ export const createUsuario = async (req: Request, res: Response) => {
 
         res.status(500).json({ success: false, message: error.message });
     } finally {
-        connection.release(); // Liberar conexión
+        connection.release();
     }
 };
 
-// Actualizar usuario
+// ============================================
+// ACTUALIZAR USUARIO (ADMIN)
+// ============================================
 export const updateUsuario = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { username, email, rol, activo } = req.body;
@@ -100,4 +109,130 @@ export const updateUsuario = async (req: Request, res: Response) => {
         console.error("Error SQL:", error.message);
         res.status(500).json({ success: false, message: "Error de base de datos: " + error.message });
     }
+};
+
+// ============================================
+// ✅ ACTUALIZAR PERFIL (AUTO-GESTIÓN: DATOS, EMAIL Y PASS)
+// ============================================
+export const updateUserProfile = async (req: Request, res: Response) => {
+    const { 
+        id_usuario, rol, nombre, apellido, dni, matricula, 
+        telefono, direccion, email, 
+        currentPassword, newPassword 
+    } = req.body;
+
+    console.log(`📝 UpdateProfile - Usuario: ${id_usuario}, Rol: ${rol}`);
+
+    // --- 1. VALIDACIONES DE DATOS ---
+    if (!email || !email.includes('@')) {
+        return res.status(400).json({ success: false, message: "El email es obligatorio y debe ser válido." });
+    }
+    if (!nombre || nombre.trim() === "" || !apellido || apellido.trim() === "") {
+        return res.status(400).json({ success: false, message: "El Nombre y Apellido son obligatorios." });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // --- 2. GESTIÓN DE CONTRASEÑA (Solo si se enviaron datos) ---
+        if (currentPassword && newPassword) {
+            // Validar longitud
+            if (newPassword.length < 6) {
+                await connection.rollback();
+                return res.status(400).json({ success: false, message: "La nueva contraseña debe tener al menos 6 caracteres." });
+            }
+
+            // Obtener hash actual de la BD
+            const [userRows]: any = await connection.query('SELECT password_hash FROM usuarios WHERE id_usuario = ?', [id_usuario]);
+            
+            if (userRows.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: "Usuario no encontrado." });
+            }
+
+            // Verificar que la contraseña actual sea correcta
+            const validPassword = await bcrypt.compare(currentPassword, userRows[0].password_hash);
+            if (!validPassword) {
+                await connection.rollback();
+                return res.status(401).json({ success: false, message: "La contraseña actual es incorrecta." });
+            }
+
+            // Encriptar y actualizar la nueva contraseña
+            const newHash = await bcrypt.hash(newPassword, 10);
+            await connection.query('UPDATE usuarios SET password_hash = ? WHERE id_usuario = ?', [newHash, id_usuario]);
+            console.log("🔐 Contraseña actualizada exitosamente.");
+        }
+
+        // --- 3. ACTUALIZAR EMAIL EN TABLA USUARIOS (LOGIN) ---
+        // Esto cambia el email con el que el usuario se loguea
+        await connection.query('UPDATE usuarios SET email = ? WHERE id_usuario = ?', [email, id_usuario]);
+
+        // --- 4. ACTUALIZAR TABLAS ESPECÍFICAS DE ROLES (NOMBRES CORREGIDOS) ---
+        if (rol === 'medico') {
+            await connection.query(
+                `UPDATE medico SET 
+                    nombre_medico = ?, 
+                    apellido_medico = ?, 
+                    dni_medico = ?, 
+                    matricula_medica = ?, 
+                    telefono = ?, 
+                    direccion = ?, 
+                    email = ? 
+                 WHERE id_usuario = ?`,
+                [nombre, apellido, dni, matricula, telefono, direccion, email, id_usuario]
+            );
+        } 
+        else if (rol === 'bioquimico') {
+            // ✅ CORRECCIÓN FINAL: Usamos 'nombre_bq', 'apellido_bq', 'dni_bioquimico', 'matricula_profesional'
+            // Basado en tus capturas de pantalla de phpMyAdmin
+            await connection.query(
+                `UPDATE bioquimico SET 
+                    nombre_bq = ?, 
+                    apellido_bq = ?, 
+                    dni_bioquimico = ?, 
+                    matricula_profesional = ?, 
+                    telefono = ?, 
+                    direccion = ?, 
+                    email = ? 
+                 WHERE id_usuario = ?`,
+                [nombre, apellido, dni, matricula, telefono, direccion, email, id_usuario]
+            );
+        }
+
+        await connection.commit();
+        
+        // Responder con éxito y devolver datos actualizados
+        res.json({ 
+            success: true, 
+            message: 'Perfil actualizado correctamente.',
+            usuario: { nombre, apellido, email, telefono, direccion, dni, matricula }
+        });
+
+    } catch (error: any) {
+        await connection.rollback();
+        console.error("💥 Error UpdateProfile:", error);
+        
+        // Manejo de error de duplicados (Email ya existe en otro usuario)
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, message: "El email ingresado ya está en uso por otro usuario." });
+        }
+
+        // Manejo de error de columnas
+        if (error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(500).json({ success: false, message: `Error de BD: Columna desconocida (${error.sqlMessage}).` });
+        }
+
+        res.status(500).json({ success: false, message: "Error interno al actualizar perfil." });
+    } finally {
+        connection.release();
+    }
+};
+
+export default {
+    getUsuarios,
+    resetPassword,
+    createUsuario,
+    updateUsuario,
+    updateUserProfile
 };

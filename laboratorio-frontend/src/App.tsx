@@ -1,4 +1,4 @@
-// src/App.tsx - ACTUALIZADO CON SIDEBAR DINÁMICO Y RUTAS ANIDADAS
+// src/App.tsx - ACTUALIZADO CON RUTA DE CONFIGURACIÓN CORRECTA
 
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import Login from './pages/login/Login'
@@ -23,16 +23,20 @@ import { MainLayout } from './components/layout/MainLayout'
 // Páginas de pacientes
 import NuevoPaciente from './pages/pacientes/NuevoPaciente'
 import PacienteRegistroExitoso from './pages/pacientes/PacienteRegistroExitoso'
+import DetallePaciente from './pages/pacientes/DetallePaciente'
 import EditarPaciente from './pages/pacientes/EditarPaciente'
 import HistorialPaciente from './pages/pacientes/HistorialPaciente'
 import NuevaOrdenAdmin from './pages/admin/NuevaOrden';
 
-// ✅ CORRECCIÓN CLAVE: El import de OrdenesEntrantes debe apuntar a la carpeta del bioquímico
+// Páginas del bioquímico
 import OrdenesEntrantes from './pages/bioquimico/OrdenesEntrantes'; 
 import CargaResultados from "./pages/bioquimico/CargaResultados";
 
 // Páginas usuarios
 import GestionUsuarios from './pages/admin/GestionUsuarios'; 
+
+// ✅ IMPORTACIÓN CORREGIDA: Apuntando a components/commons
+import Configuracion from './components/commons/Configuracion';
 
 import './App.css'
 
@@ -57,6 +61,9 @@ function App() {
             <Route path="/completar-perfil-medico" element={<CompletarPerfilMedico />} />
             <Route path="/completar-perfil-bioquimico" element={<CompletarPerfilBioquimico />} />
 
+            {/* ✅ RUTA DE CONFIGURACIÓN (ACCESIBLE POR TODOS) */}
+            <Route path="/configuracion" element={<Configuracion />} />
+
             {/* --- RUTAS DEL ADMINISTRADOR --- */}
             <Route path="/AdminDashboard" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -73,12 +80,15 @@ function App() {
             <Route path="/medico/ordenes" element={<OrdenesLista />} />
             <Route path="/medico/orden/:id_orden" element={<OrdenDetalle />} />
             <Route path="/medico/nueva-solicitud" element={<NuevaSolicitud />} />
+            
+            {/* GESTIÓN DE PACIENTES */}
             <Route path="/medico/pacientes" element={<GestionPacientes />} />
             <Route path="/medico/paciente/nuevo" element={<NuevoPaciente />} />
+            <Route path="/medico/paciente/:id" element={<DetallePaciente />} />
             <Route path="/medico/paciente/:nro_ficha/editar" element={<EditarPaciente />} />
             <Route path="/medico/paciente/:nro_ficha/historial" element={<HistorialPaciente />} />
-            <Route path="/medico/analisis" element={<GestionAnalisis />} />
             
+            <Route path="/medico/analisis" element={<GestionAnalisis />} />
             <Route path="/medico/resultados" element={<div className="p-8">Módulo Resultados</div>} />
             <Route path="/medico/reportes" element={<div className="p-8">Módulo Reportes</div>} />
 
@@ -89,7 +99,6 @@ function App() {
             <Route path="/bioquimico/:matricula/ordenes/:tipo" element={<OrdenesFiltradas />} />
             <Route path="/orden/:id" element={<BioquimicoOrdenDetalle />} />
             
-            {/* ✅ Asegúrate de que las rutas del bioquímico sean estas: */}
             <Route path="/bioquimico/ordenes-entrantes" element={<OrdenesEntrantes />} />
             <Route path="/bioquimico/orden/:id_orden/cargar" element={<CargaResultados />} />
             

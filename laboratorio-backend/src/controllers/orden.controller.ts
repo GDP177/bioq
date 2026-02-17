@@ -106,7 +106,7 @@ export const crearNuevaOrden = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// 3. GETTERS Y UTILIDADES (MÉDICO)
+// 3. GETTERS Y UTILIDADES (MÉDICO) - ✅ MODIFICADO
 // ============================================
 export const getOrdenesMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
@@ -117,10 +117,20 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
   const buscar = getStringParam(req.query.buscar);
 
   try {
+    // 🛠️ MODIFICACIÓN: Cálculo dinámico de estado
+    // Si todos los análisis están 'finalizado', el estado es 'finalizado'. Sino 'pendiente'.
     let query = `
         SELECT 
-            o.*,
+            o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.urgente, o.observaciones, o.costo_total,
             p.nombre_paciente, p.apellido_paciente, p.dni, p.edad, p.mutual,
+            
+            CASE 
+                WHEN COUNT(oa.id_orden_analisis) > 0 AND 
+                     SUM(CASE WHEN oa.estado != 'finalizado' THEN 1 ELSE 0 END) = 0 
+                THEN 'finalizado'
+                ELSE 'pendiente'
+            END as estado,
+
             COUNT(oa.id_orden_analisis) AS total_analisis,
             SUM(CASE WHEN oa.estado = 'finalizado' THEN 1 ELSE 0 END) AS analisis_finalizados
         FROM orden o
@@ -130,7 +140,7 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
     `;
     const params: any[] = [id_medico];
 
-    if (estado && estado !== 'todos') { query += ` AND o.estado = ?`; params.push(estado); }
+    // Filtros WHERE (Datos estáticos)
     if (urgente) { query += ` AND o.urgente = 1`; }
     if (buscar) {
         query += ` AND (p.nombre_paciente LIKE ? OR p.apellido_paciente LIKE ? OR p.dni LIKE ? OR o.nro_orden LIKE ?)`;
@@ -138,12 +148,22 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
         params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
 
-    query += ` GROUP BY o.id_orden ORDER BY o.fecha_ingreso_orden DESC LIMIT ? OFFSET ?`;
+    query += ` GROUP BY o.id_orden`;
+
+    // Filtros HAVING (Datos calculados como 'estado')
+    if (estado && estado !== 'todos') {
+        // Filtramos sobre el alias calculado 'estado'
+        query += ` HAVING estado = ?`;
+        params.push(estado);
+    }
+
+    query += ` ORDER BY o.fecha_ingreso_orden DESC LIMIT ? OFFSET ?`;
     params.push(limite, offset);
 
     const [rows]: [any[], any] = await pool.query(query, params);
     res.json({ success: true, ordenes: rows });
   } catch (e: any) { 
+    console.error(e);
     res.status(500).json({ success: false, message: 'Error interno del servidor' }); 
   }
 };

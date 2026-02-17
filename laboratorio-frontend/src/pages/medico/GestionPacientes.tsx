@@ -5,31 +5,20 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { MainLayout } from "../../components/layout/MainLayout"; 
 
-// ==========================================
-// INTERFACES
-// ==========================================
+// Interfaces
 interface Paciente {
   nro_ficha: number;
   dni: number;
   edad: number;
   sexo: string;
   mutual: string;
-  // Soporte para variantes de nombres (DB vs Frontend)
   nombre?: string;
   Nombre?: string;
   Nombre_paciente?: string;
   apellido?: string;
   Apellido?: string;
   Apellido_paciente?: string;
-  // Extras
-  fecha_nacimiento?: string;
-  telefono?: string;
-  email?: string;
-  direccion?: string;
   nro_afiliado?: string;
-  grupo_sanguineo?: string;
-  total_ordenes?: number;
-  ultima_orden?: string;
 }
 
 interface PacientesResponse {
@@ -46,7 +35,11 @@ export default function GestionPacientes() {
   // Estados
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  
+  // ✅ LISTA POR DEFECTO PARA EVITAR COMBO VACÍO
+  const [mutuales, setMutuales] = useState<string[]>([
+      "OSDE", "SWISS MEDICAL", "SANCOR SALUD", "IOMA", "PAMI", "PARTICULAR", "GALENO", "IOSCOR", "INSSSEP"
+  ]); 
   
   // Filtros
   const [busqueda, setBusqueda] = useState("");
@@ -57,28 +50,26 @@ export default function GestionPacientes() {
   // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [mutuales, setMutuales] = useState<string[]>([]);
 
-  // ==========================================
-  // HELPER PARA NOMBRES (Evita "S/D")
-  // ==========================================
-  const getDatosSeguros = (p: any) => {
-    if (!p) return { nombre: "Desconocido", apellido: "", completo: "Desconocido", iniciales: "??" };
-    const nombre = p.nombre || p.Nombre || p.Nombre_paciente || p.nombre_paciente || "Sin Nombre";
-    const apellido = p.apellido || p.Apellido || p.Apellido_paciente || p.apellido_paciente || "";
-    const inicialN = nombre && nombre.length > 0 ? nombre[0] : "?";
-    const inicialA = apellido && apellido.length > 0 ? apellido[0] : "";
-    return {
-        nombre,
-        apellido,
-        completo: `${apellido}, ${nombre}`.trim(),
-        iniciales: `${inicialN}${inicialA}`.toUpperCase()
+  // 1. Intentar cargar lista REAL de Obras Sociales desde el Backend
+  useEffect(() => {
+    const cargarMutualesBackend = async () => {
+        try {
+            const response = await axios.get('http://localhost:5000/api/obras-sociales/todas'); 
+            if(response.data.success && response.data.obras_sociales.length > 0) {
+                // Si la API responde bien, usamos esos datos
+                const listaNombres = response.data.obras_sociales.map((m: any) => m.nombre);
+                setMutuales(listaNombres);
+            }
+        } catch (e) {
+            console.warn("⚠️ No se pudieron cargar las mutuales del servidor. Usando lista local.");
+            // No hacemos nada, ya tenemos la lista por defecto cargada en el useState
+        }
     };
-  };
+    cargarMutualesBackend();
+  }, []);
 
-  // ==========================================
-  // CARGA DE DATOS (ENDPOINT ADMIN)
-  // ==========================================
+  // 2. Cargar Pacientes (Cada vez que cambian los filtros)
   useEffect(() => {
     cargarPacientes();
   }, [busqueda, filtroMutual, filtroSexo, ordenamiento, paginaActual]);
@@ -87,14 +78,15 @@ export default function GestionPacientes() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      
       if (busqueda) params.set('buscar', busqueda);
-      if (filtroMutual !== 'todos') params.set('mutual', filtroMutual); // Envía ID o nombre según tu select
+      if (filtroMutual !== 'todos') params.set('mutual', filtroMutual);
       if (filtroSexo !== 'todos') params.set('sexo', filtroSexo);
+      
       params.set('orden', ordenamiento);
       params.set('pagina', paginaActual.toString());
       params.set('limite', '20');
 
-      // ✅ Usamos el endpoint general que arreglamos en el controlador
       const response = await axios.get<PacientesResponse>(
         `http://localhost:5000/api/pacientes?${params.toString()}`
       );
@@ -102,31 +94,29 @@ export default function GestionPacientes() {
       if (response.data.success) {
         setPacientes(response.data.pacientes);
         setTotalPaginas(response.data.total_paginas);
-        
-        // Extraer mutuales únicas para el filtro (opcional)
-        const mutualesUnicas = Array.from(new Set(response.data.pacientes.map(p => p.mutual))).filter(Boolean);
-        if (mutuales.length === 0 && mutualesUnicas.length > 0) {
-            setMutuales(mutualesUnicas as string[]);
-        }
       }
     } catch (error) {
       console.error("Error cargando pacientes:", error);
-      setError("No se pudieron cargar los pacientes.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // ⚡ ACCIÓN CLAVE: IR A NUEVA ORDEN
-  // ==========================================
+  // Helper para nombres seguros
+  const getDatosSeguros = (p: any) => {
+    if (!p) return { completo: "Desconocido", iniciales: "??" };
+    const nombre = p.nombre || p.Nombre || p.Nombre_paciente || "Sin Nombre";
+    const apellido = p.apellido || p.Apellido || p.Apellido_paciente || "";
+    const iniciales = `${(nombre[0]||'').toUpperCase()}${(apellido[0]||'').toUpperCase()}`;
+    return {
+        completo: `${apellido}, ${nombre}`.trim(),
+        iniciales: iniciales || "??"
+    };
+  };
+
   const irANuevaOrden = (p: Paciente) => {
-    // 1. Guardamos el paciente seleccionado en memoria temporal
     sessionStorage.setItem('paciente_preseleccionado', JSON.stringify(p));
-    
-    // 2. Navegamos a la pantalla de creación
-    // Asegúrate que esta ruta coincida con la de tu router para 'NuevaOrden.tsx'
-    navigate('/medico/nueva-solicitud'); // ✅ CORREGIDO: Apuntar a la ruta de médico existente
+    navigate('/medico/nueva-solicitud');
   };
 
   const limpiarFiltros = () => {
@@ -143,7 +133,6 @@ export default function GestionPacientes() {
                 <h1 className="text-2xl font-bold text-gray-800">👥 Gestión de Pacientes</h1>
                 <p className="text-sm text-gray-500">Base de datos general de pacientes</p>
             </div>
-            {/* ✅ CORREGIDO: Ruta actualizada a la que SÍ existe en App.tsx */}
             <button onClick={() => navigate('/medico/paciente/nuevo')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all">
                 + Registrar Paciente
             </button>
@@ -157,17 +146,28 @@ export default function GestionPacientes() {
                     type="text" 
                     placeholder="Nombre, Apellido, DNI..." 
                     value={busqueda} 
-                    onChange={e => setBusqueda(e.target.value)} 
+                    onChange={e => { setBusqueda(e.target.value); setPaginaActual(1); }} 
                     className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
+            
+            {/* SELECT DE OBRA SOCIAL CORREGIDO */}
             <div className="md:col-span-3">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Obra Social</label>
-                <select value={filtroMutual} onChange={e => setFiltroMutual(e.target.value)} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                <select 
+                    value={filtroMutual} 
+                    onChange={e => { setFiltroMutual(e.target.value); setPaginaActual(1); }} 
+                    className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                >
                     <option value="todos">Todas</option>
-                    {mutuales.map(m => <option key={m} value={m}>{m}</option>)}
+                    {mutuales.map((m, idx) => (
+                        <option key={idx} value={m}>
+                            {m}
+                        </option>
+                    ))}
                 </select>
             </div>
+
             <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sexo</label>
                 <select value={filtroSexo} onChange={e => setFiltroSexo(e.target.value)} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
@@ -204,12 +204,10 @@ export default function GestionPacientes() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {pacientes.map((paciente) => {
+                  {pacientes.length > 0 ? pacientes.map((paciente) => {
                     const datos = getDatosSeguros(paciente);
                     return (
                       <tr key={paciente.nro_ficha} className="hover:bg-blue-50 transition-colors group">
-                        
-                        {/* COLUMNA PACIENTE */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                              <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm mr-3 border border-indigo-200">
@@ -221,22 +219,16 @@ export default function GestionPacientes() {
                              </div>
                           </div>
                         </td>
-
-                        {/* COLUMNA DETALLES */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 font-medium">{paciente.edad} años</div>
                           <div className="text-xs text-gray-500">{paciente.sexo === 'M' ? 'Masculino' : 'Femenino'}</div>
                         </td>
-
-                        {/* COLUMNA COBERTURA */}
                         <td className="px-6 py-4 whitespace-nowrap">
                            <span className="px-2 py-1 text-xs font-bold rounded bg-green-50 text-green-700 border border-green-200">
                              {paciente.mutual || "Particular"}
                            </span>
                            {paciente.nro_afiliado && <div className="text-[10px] text-gray-400 mt-1">Af: {paciente.nro_afiliado}</div>}
                         </td>
-
-                        {/* COLUMNA ACCIONES */}
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex justify-center items-center gap-2">
                               <button 
@@ -245,8 +237,6 @@ export default function GestionPacientes() {
                               >
                                 Ver Ficha
                               </button>
-                              
-                              {/* 🔥 BOTÓN QUE CONECTA TODO */}
                               <button 
                                 onClick={() => irANuevaOrden(paciente)}
                                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-1"
@@ -257,7 +247,13 @@ export default function GestionPacientes() {
                         </td>
                       </tr>
                     );
-                  })}
+                  }) : (
+                    <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                            No se encontraron pacientes con esos filtros.
+                        </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
