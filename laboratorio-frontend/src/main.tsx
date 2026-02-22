@@ -104,7 +104,7 @@ ReactDOM.createRoot(rootElement).render(
           <App />
         </MedicoProvider>
       </ErrorBoundary>
-      <ReactQueryDevtools initialIsOpen={false} />
+      
     </QueryClientProvider>
   </React.StrictMode>
 )

@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   HomeIcon, UsersIcon, ClipboardDocumentListIcon,
-  BeakerIcon, Cog6ToothIcon, // Icono de engranaje para configuración
+  BeakerIcon, Cog6ToothIcon, 
   ArrowRightOnRectangleIcon, UserCircleIcon, 
   DocumentPlusIcon, InboxStackIcon
 } from '@heroicons/react/24/outline';
@@ -11,7 +11,12 @@ export function Sidebar() {
   const location = useLocation();
   
   const usuarioJson = localStorage.getItem("usuario");
-  const usuario = usuarioJson ? JSON.parse(usuarioJson) : { username: "Invitado", rol: "invitado" };
+  
+  // 🔥 AQUÍ ESTÁ LA CORRECCIÓN CLAVE 🔥
+  // Verificamos que no sea null, y que TAMPOCO sea el texto "undefined"
+  const usuario = (usuarioJson && usuarioJson !== "undefined") 
+    ? JSON.parse(usuarioJson) 
+    : { username: "Invitado", rol: "invitado" };
 
   // Definimos el ítem común
   const configItem = { label: "Configuración", path: "/configuracion", icon: <Cog6ToothIcon className="w-5 h-5" /> };
@@ -22,21 +27,20 @@ export function Sidebar() {
       { label: "Pacientes", path: "/admin/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
       { label: "Usuarios", path: "/admin/usuarios", icon: <UserCircleIcon className="w-5 h-5" /> },
       { label: "Catálogo Análisis", path: "/admin/analisis", icon: <BeakerIcon className="w-5 h-5" /> },
-      configItem // ✅ Agregado
+      configItem
     ],
     medico: [
       { label: "Panel Inicio", path: "/medico/dashboard", icon: <HomeIcon className="w-5 h-5" /> },
       { label: "Nueva Solicitud", path: "/medico/nueva-solicitud", icon: <DocumentPlusIcon className="w-5 h-5" /> },
       { label: "Gestión Pacientes", path: "/medico/pacientes", icon: <UsersIcon className="w-5 h-5" /> },
       { label: "Órdenes Enviadas", path: "/medico/ordenes", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
-      configItem // ✅ Agregado
+      configItem
     ],
     bioquimico: [
       { label: "Panel Central", path: "/bioquimico/dashboard", icon: <BeakerIcon className="w-5 h-5" /> },
       { label: "Órdenes Entrantes", path: "/bioquimico/ordenes-entrantes", icon: <InboxStackIcon className="w-5 h-5" /> },
       { label: "Consulta Técnicas", path: "/admin/analisis", icon: <ClipboardDocumentListIcon className="w-5 h-5" /> },
-      // ❌ "Reportes" ELIMINADO
-      configItem // ✅ Agregado
+      configItem
     ]
   };
 

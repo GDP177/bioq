@@ -5,10 +5,10 @@ import {
   completarPerfilBioquimico, 
   getDashboardBioquimico, 
   getOrdenesBioquimico,
+  getOrdenesEntrantes, // ✅ AGREGADO: Importamos la función
   procesarOrden,
   cargarResultado,
   getDetalleOrden,
-  
 } from '../controllers/bioquimico.controller';
 
 const router = Router();
@@ -28,6 +28,9 @@ router.get('/dashboard/:matricula_profesional', getDashboardBioquimico);
 // ============================================
 // RUTAS DE ÓRDENES
 // ============================================
+// ✅ AGREGADO: Esta ruta soluciona el error 404
+router.get('/ordenes-entrantes', getOrdenesEntrantes); 
+
 router.get('/ordenes', getOrdenesBioquimico);
 router.get('/orden/:id_orden', getDetalleOrden);
 router.patch('/orden/:id_orden/procesar', procesarOrden);
@@ -50,6 +53,7 @@ console.log('✅ Rutas de bioquímico cargadas correctamente');
 console.log('📋 Rutas disponibles:');
 console.log('   - POST /bioquimico/completar-perfil');
 console.log('   - GET /bioquimico/dashboard/:matricula_profesional');
+console.log('   - GET /bioquimico/ordenes-entrantes'); // ✅ AGREGADO AL LOG
 console.log('   - GET /bioquimico/ordenes');
 console.log('   - GET /bioquimico/orden/:id_orden');
 console.log('   - PATCH /bioquimico/orden/:id_orden/procesar');

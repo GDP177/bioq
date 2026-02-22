@@ -341,7 +341,7 @@ export const loginMedico = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// DASHBOARD MÉDICO - 🚀 LÓGICA CORREGIDA PARA ESTADOS REALES
+// DASHBOARD MÉDICO - 🚀 LÓGICA CORREGIDA PARA ESTADOS REALES Y GRÁFICO POR DÍAS
 // ============================================
 export const getDashboardMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
@@ -399,16 +399,16 @@ export const getDashboardMedico = async (req: Request, res: Response) => {
     
     const statsExtras = statsReales[0] || { pendientes: 0, finalizadas: 0, pacientes_activos: 0 };
 
-    // 4. DATOS PARA EL GRÁFICO (Historial últimos 6 meses)
+    // 4. DATOS PARA EL GRÁFICO (Historial por DÍAS - Últimos 14 días)
     const [graficoRows]: any = await pool.query(
       `SELECT
-          DATE_FORMAT(fecha_ingreso_orden, '%Y-%m') as periodo,
+          DATE_FORMAT(fecha_ingreso_orden, '%d/%m') as periodo,
           COUNT(*) as cantidad
        FROM orden
        WHERE id_medico_solicitante = ?
-       AND fecha_ingreso_orden >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(fecha_ingreso_orden, '%Y-%m')
-       ORDER BY periodo ASC`,
+       AND fecha_ingreso_orden >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+       GROUP BY DATE_FORMAT(fecha_ingreso_orden, '%d/%m'), DATE(fecha_ingreso_orden)
+       ORDER BY DATE(fecha_ingreso_orden) ASC`,
       [id_medico]
     );
 

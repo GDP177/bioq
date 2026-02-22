@@ -37,7 +37,7 @@ const CompletarPerfilBioquimico: React.FC = () => {
   // Obtener usuario del localStorage al cargar el componente
   useEffect(() => {
     const usuarioData = localStorage.getItem('usuario');
-    if (usuarioData) {
+    if (usuarioData && usuarioData !== "undefined") {
       try {
         const parsedUser = JSON.parse(usuarioData);
         if (parsedUser.rol === 'bioquimico') {
@@ -146,14 +146,20 @@ const CompletarPerfilBioquimico: React.FC = () => {
         setMessage('Perfil completado exitosamente');
         setIsSuccess(true);
         
-        // Guardar datos del usuario actualizado en localStorage
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        // 🔥 CORRECCIÓN CLAVE 🔥
+        // En lugar de sobrescribir el usuario con algo que no existe (data.usuario),
+        // simplemente le agregamos la nueva matrícula al usuario que ya teníamos guardado.
+        const usuarioActualizado = {
+            ...usuario,
+            matricula: formData.matricula_profesional, // Le agregamos la matrícula
+            perfil_completado: true // Opcional, buena práctica
+        };
+        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
         
         console.log('✅ Perfil completado, redirigiendo al dashboard bioquímico...');
         
         // Redirigir al dashboard bioquímico después de 2 segundos
         setTimeout(() => {
-          // Navegar al dashboard bioquímico con la matrícula
           navigate('/bioquimico/dashboard');
         }, 2000);
         

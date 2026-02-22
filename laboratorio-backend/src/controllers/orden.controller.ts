@@ -106,7 +106,7 @@ export const crearNuevaOrden = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// 3. GETTERS Y UTILIDADES (MÉDICO) - ✅ MODIFICADO
+// 3. GETTERS Y UTILIDADES (MÉDICO)
 // ============================================
 export const getOrdenesMedico = async (req: Request, res: Response) => {
   const id_medico = parseInt(req.params.id_medico);
@@ -117,8 +117,6 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
   const buscar = getStringParam(req.query.buscar);
 
   try {
-    // 🛠️ MODIFICACIÓN: Cálculo dinámico de estado
-    // Si todos los análisis están 'finalizado', el estado es 'finalizado'. Sino 'pendiente'.
     let query = `
         SELECT 
             o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.urgente, o.observaciones, o.costo_total,
@@ -140,7 +138,6 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
     `;
     const params: any[] = [id_medico];
 
-    // Filtros WHERE (Datos estáticos)
     if (urgente) { query += ` AND o.urgente = 1`; }
     if (buscar) {
         query += ` AND (p.nombre_paciente LIKE ? OR p.apellido_paciente LIKE ? OR p.dni LIKE ? OR o.nro_orden LIKE ?)`;
@@ -150,9 +147,7 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
 
     query += ` GROUP BY o.id_orden`;
 
-    // Filtros HAVING (Datos calculados como 'estado')
     if (estado && estado !== 'todos') {
-        // Filtramos sobre el alias calculado 'estado'
         query += ` HAVING estado = ?`;
         params.push(estado);
     }
@@ -169,7 +164,7 @@ export const getOrdenesMedico = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// 4. DETALLE DE ORDEN (BIOQUÍMICO)
+// 4. DETALLE DE ORDEN (BIOQUÍMICO) - 🔥 LEFT JOIN PARA ORDENES DE ADMIN
 // ============================================
 export const getOrdenDetalle = async (req: Request, res: Response) => {
     const { id_orden } = req.params;
@@ -177,11 +172,13 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
         const [ordenRows]: [any[], any] = await pool.query(`
             SELECT o.*, 
                    p.nombre_paciente, p.apellido_paciente, p.DNI, p.edad, p.sexo, p.mutual, p.nro_afiliado, p.nro_ficha,
-                   m.nombre_medico, m.apellido_medico, m.id_medico,
+                   COALESCE(m.nombre_medico, 'Admin') as nombre_medico, 
+                   COALESCE(m.apellido_medico, 'Sistema') as apellido_medico, 
+                   m.id_medico,
                    b.Matricula_profesional as matricula_bq, b.Apellido_bq
             FROM orden o
             JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-            JOIN medico m ON o.id_medico_solicitante = m.id_medico
+            LEFT JOIN medico m ON o.id_medico_solicitante = m.id_medico
             LEFT JOIN bioquimico b ON o.matricula_bq_efectua = b.Matricula_profesional
             WHERE o.id_orden = ?
         `, [id_orden]);
@@ -191,7 +188,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
         const ordenData = ordenRows[0];
 
         const [analisisPadres]: [any[], any] = await pool.query(`
-            SELECT oa.*, a.descripcion_practica, a.TIPO, a.HONORARIOS
+            SELECT oa.*, a.descripcion_practica, a.TIPO, a.HONORARIOS, a.valor_referencia_rango, a.REFERENCIA
             FROM orden_analisis oa
             JOIN analisis a ON oa.codigo_practica = a.codigo_practica
             WHERE oa.id_orden = ?
@@ -201,7 +198,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
             const [hijos]: [any[], any] = await pool.query(`
                 SELECT 
                     i.codigo_hijo as codigo_practica,
-                    a.descripcion_practica, a.UNIDAD_BIOQUIMICA as unidad, a.REFERENCIA as valor_referencia,
+                    a.descripcion_practica, a.UNIDAD_BIOQUIMICA as unidad, a.REFERENCIA, a.valor_referencia_rango,
                     oa.valor_hallado, oa.unidad_hallada, oa.estado, oa.interpretacion, oa.observaciones,
                     oa.tecnico_responsable as tecnico, oa.fecha_realizacion, a.HONORARIOS
                 FROM incluye i
@@ -219,7 +216,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
                 fecha_realizacion: padre.fecha_realizacion,
                 valor_hallado: padre.valor_hallado,
                 unidad: padre.unidad_hallada,
-                valor_referencia: padre.valor_referencia_aplicado,
+                valor_referencia: padre.valor_referencia_rango || padre.REFERENCIA || "-",
                 interpretacion: padre.interpretacion,
                 tecnico: padre.tecnico_responsable,
                 observaciones: padre.observaciones,
@@ -233,7 +230,7 @@ export const getOrdenDetalle = async (req: Request, res: Response) => {
                     estado: h.estado || (padre.estado === 'finalizado' ? 'finalizado' : 'pendiente'),
                     valor_hallado: h.valor_hallado,
                     unidad: h.unidad_hallada || h.unidad,
-                    valor_referencia: h.valor_referencia,
+                    valor_referencia: h.valor_referencia_rango || h.REFERENCIA || "-",
                     interpretacion: h.interpretacion,
                     tecnico: h.tecnico,
                     observaciones: h.observaciones,
@@ -278,7 +275,7 @@ export const finalizarOrden = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// 6. LISTADO BIOQUÍMICO (CON AUTO-CORRECTOR 🔥)
+// 6. LISTADO BIOQUÍMICO - 🔥 LEFT JOIN PARA ORDENES DE ADMIN
 // ============================================
 export const getOrdenesPendientes = async (req: Request, res: Response) => {
     try {
@@ -286,13 +283,11 @@ export const getOrdenesPendientes = async (req: Request, res: Response) => {
             SELECT 
                 o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.urgente,
                 p.nombre_paciente, p.apellido_paciente, p.dni, p.edad, p.mutual,
-                m.nombre_medico, m.apellido_medico,
+                COALESCE(m.nombre_medico, 'Admin') as nombre_medico, 
+                COALESCE(m.apellido_medico, 'Sistema') as apellido_medico,
                 COUNT(oa.id_orden_analisis) as total_analisis,
                 SUM(CASE WHEN oa.estado = 'finalizado' THEN 1 ELSE 0 END) as analisis_listos,
                 
-                -- 🔥 AUTO-CORRECCIÓN MÁGICA: 
-                -- Si la orden tiene 100% de progreso, le decimos al frontend que es 'finalizada'
-                -- sin importar lo que diga realmente la tabla 'orden' histórica.
                 CASE 
                     WHEN COUNT(oa.id_orden_analisis) > 0 
                          AND COUNT(oa.id_orden_analisis) = SUM(CASE WHEN oa.estado = 'finalizado' THEN 1 ELSE 0 END) 
@@ -302,7 +297,7 @@ export const getOrdenesPendientes = async (req: Request, res: Response) => {
                 
             FROM orden o
             JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-            JOIN medico m ON o.id_medico_solicitante = m.id_medico
+            LEFT JOIN medico m ON o.id_medico_solicitante = m.id_medico
             LEFT JOIN orden_analisis oa ON o.id_orden = oa.id_orden
             
             GROUP BY o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.estado, o.urgente, 
@@ -330,14 +325,12 @@ export const guardarResultadoAnalisis = async (req: Request, res: Response) => {
     try {
         console.log(`💾 Guardando resultado | Orden: ${id_orden} | Práctica: ${codigo_practica}`);
 
-        // 1. Verificar si el análisis (o sub-análisis) ya existe en la tabla orden_analisis
         const [existe]: [any[], any] = await pool.query(
             "SELECT id_orden_analisis FROM orden_analisis WHERE id_orden = ? AND codigo_practica = ?",
             [id_orden, codigo_practica]
         );
 
         if (existe.length > 0) {
-            // A. Si existe, ACTUALIZAMOS (Lógica original)
             await pool.query(`
                 UPDATE orden_analisis 
                 SET valor_hallado = ?, 
@@ -351,7 +344,6 @@ export const guardarResultadoAnalisis = async (req: Request, res: Response) => {
             console.log('✅ Registro actualizado correctamente.');
 
         } else {
-            // B. Si NO existe (es un sub-análisis nuevo), INSERTAMOS
             console.log('✨ Creando registro para sub-análisis...');
             await pool.query(`
                 INSERT INTO orden_analisis 
@@ -367,6 +359,7 @@ export const guardarResultadoAnalisis = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Error interno al guardar' });
     }
 };
+
 export default { 
     getCatalogo, 
     crearNuevaOrden, 

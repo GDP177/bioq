@@ -79,7 +79,7 @@ export default function MedicoDashboard() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 lg:col-span-2">
                 <div className="flex items-center gap-2 mb-6">
                     <ChartBarIcon className="w-6 h-6 text-indigo-500"/>
-                    <h3 className="font-bold text-slate-800 text-lg">Actividad Semestral</h3>
+                    <h3 className="font-bold text-slate-800 text-lg">Actividad de los Últimos 7 Días</h3>
                 </div>
                 {/* Componente de Gráfico SVG Nativo */}
                 <SimpleAreaChart data={data.grafico || []} />

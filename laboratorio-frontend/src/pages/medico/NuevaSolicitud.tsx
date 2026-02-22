@@ -97,6 +97,10 @@ export default function NuevaSolicitud() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
+  // 🔥 ESTADOS PARA EL MODAL DE ÉXITO
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [ordenGeneradaId, setOrdenGeneradaId] = useState<number | null>(null);
+
   // Estado para búsqueda de paciente
   const [dniBusqueda, setDniBusqueda] = useState("");
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null);
@@ -106,9 +110,7 @@ export default function NuevaSolicitud() {
   
   // Estado para análisis
   const [analisisDisponibles, setAnalisisDisponibles] = useState<Analisis[]>([]);
-  // Guardamos objetos completos para la UI, pero enviaremos códigos al backend
   const [seleccionados, setSeleccionados] = useState<Analisis[]>([]);
-  
   const [filtroAnalisis, setFiltroAnalisis] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   
@@ -133,40 +135,26 @@ export default function NuevaSolicitud() {
     }
     try {
         const parsedUsuario = JSON.parse(usuarioStr);
-        console.log("Debug Usuario:", parsedUsuario); 
-
-        // 1. Buscar ID (para la URL)
         const idEncontrado = parsedUsuario.medico?.id || parsedUsuario.id || parsedUsuario.id_medico;
-        
-        // 2. Buscar Email (para la vinculación segura)
-        // Intentamos varias rutas posibles según cómo guardes el login
         const emailEncontrado = parsedUsuario.email || parsedUsuario.medico?.email || parsedUsuario.usuario?.email;
 
         if (idEncontrado) {
             setMedicoId(idEncontrado);
-            if (emailEncontrado) {
-                setUsuarioEmail(emailEncontrado);
-                console.log("Email recuperado para validación:", emailEncontrado);
-            }
+            if (emailEncontrado) setUsuarioEmail(emailEncontrado);
             cargarAnalisisDisponibles();
         } else {
-            console.error("No se encontró ID de médico en sesión");
             setError("Error de sesión: No se identificó al médico. Por favor inicie sesión nuevamente.");
         }
     } catch (e) {
-        console.error(e);
         navigate("/login");
     }
   }, [navigate]);
 
   const cargarAnalisisDisponibles = async () => {
     try {
-      // ✅ Usamos el endpoint correcto del catálogo
       const response = await axios.get('http://localhost:5000/api/ordenes/catalogo');
-      
       if (response.data.success) {
         const rawData = response.data.data || response.data.analisis || [];
-        
         const mapeados: Analisis[] = rawData.map((item: any) => ({
             id_analisis: item.id_analisis || item.codigo_practica, 
             codigo: item.codigo || item.codigo_practica,
@@ -174,11 +162,9 @@ export default function NuevaSolicitud() {
             categoria: item.categoria || item.TIPO || "General",
             precio_estimado: item.precio_estimado || item.HONORARIOS || 0
         }));
-        
         setAnalisisDisponibles(mapeados);
       }
     } catch (error) {
-      console.error("Error al cargar catálogo:", error);
       setError("Error al cargar el catálogo de análisis. Verifique la conexión.");
     }
   };
@@ -225,28 +211,20 @@ export default function NuevaSolicitud() {
     setError("");
   };
 
-  // ✅ NUEVO: EFECTO PARA DETECTAR PACIENTE PRE-SELECCIONADO
-  // Esto lee lo que guardamos en GestionPacientes.tsx antes de navegar
   useEffect(() => {
     const preseleccionado = sessionStorage.getItem('paciente_preseleccionado');
-    
     if (preseleccionado) {
         try {
             const paciente = JSON.parse(preseleccionado);
             if (paciente && paciente.dni) {
-                console.log("📥 Paciente preseleccionado cargado:", paciente);
-                
-                // Cargamos los datos y avanzamos al paso 2
                 seleccionarPaciente(paciente);
-                
-                // Limpiamos la memoria para que si recarga la página, empiece de cero (opcional)
                 sessionStorage.removeItem('paciente_preseleccionado');
             }
         } catch (e) {
             console.error("Error al leer paciente preseleccionado:", e);
         }
     }
-  }, []); // Se ejecuta solo una vez al montar el componente
+  }, []);
 
   const buscarPacientePorDNICompleto = async () => {
     if (!dniBusqueda.trim()) {
@@ -324,28 +302,35 @@ export default function NuevaSolicitud() {
         urgente,
         requiere_ayuno: requiereAyuno,
         observaciones: observaciones.trim(),
-        email_usuario: usuarioEmail // ✅ ENVIAMOS EL EMAIL
+        email_usuario: usuarioEmail
     };
 
     try {
-        console.log(`📤 Enviando solicitud. Médico ID URL: ${medicoId}, Email: ${usuarioEmail}`);
-        
         const response = await axios.post(
             `http://localhost:5000/api/medico/${medicoId}/nueva-solicitud`,
             solicitudData
         );
 
         if (response.data.success) {
-            alert("✅ Solicitud creada correctamente");
-            navigate(`/medico/orden/${response.data.orden_id}`);
+            // ✅ En lugar del alert(), activamos el modal
+            setOrdenGeneradaId(response.data.orden_id);
+            setShowSuccessModal(true);
         }
     } catch (err) {
-        console.error(err);
         const axiosError = err as AxiosError<{ message: string }>;
         setError(axiosError.response?.data?.message || "Error al crear la solicitud.");
     } finally {
         setLoading(false);
     }
+  };
+
+  const confirmarExito = () => {
+      setShowSuccessModal(false);
+      if (ordenGeneradaId) {
+          navigate(`/medico/orden/${ordenGeneradaId}`);
+      } else {
+          navigate(`/medico/ordenes`);
+      }
   };
 
   const navigateBack = () => navigate('/medico/dashboard');
@@ -355,7 +340,7 @@ export default function NuevaSolicitud() {
   // ============================================
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans relative">
       {/* Header */}
       <header className="bg-white shadow-sm border-b p-4 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -575,10 +560,10 @@ export default function NuevaSolicitud() {
 
                  {/* Opciones */}
                  <div className="space-y-6">
-                    <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-5">
-                        <h3 className="font-bold text-yellow-800 text-xs uppercase mb-4">Opciones Adicionales</h3>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-5">
+                        <h3 className="font-bold text-amber-800 text-xs uppercase mb-4">Opciones Adicionales</h3>
                         
-                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white border border-yellow-200 cursor-pointer hover:shadow-sm mb-3">
+                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white border border-amber-200 cursor-pointer hover:shadow-sm mb-3 transition-colors">
                             <input 
                                 type="checkbox" 
                                 checked={urgente} 
@@ -591,7 +576,7 @@ export default function NuevaSolicitud() {
                             </div>
                         </label>
 
-                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white border border-yellow-200 cursor-pointer hover:shadow-sm">
+                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white border border-amber-200 cursor-pointer hover:shadow-sm transition-colors">
                             <input 
                                 type="checkbox" 
                                 checked={requiereAyuno} 
@@ -611,7 +596,7 @@ export default function NuevaSolicitud() {
                             placeholder="Escriba aquí cualquier observación clínica relevante..." 
                             value={observaciones} 
                             onChange={(e) => setObservaciones(e.target.value)} 
-                            className="border border-gray-300 p-3 rounded-xl w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm min-h-[100px]" 
+                            className="border border-gray-300 p-3 rounded-xl w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm min-h-[100px] resize-none" 
                         />
                     </div>
                  </div>
@@ -634,6 +619,41 @@ export default function NuevaSolicitud() {
           </div>
         )}
       </main>
+
+      {/* ================================================================= */}
+      {/* 🔥 MODAL DE ÉXITO PERSONALIZADO (REEMPLAZA A WINDOW.ALERT) */}
+      {/* ================================================================= */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 text-center">
+            
+            <div className="bg-green-50 p-6 flex flex-col items-center justify-center border-b border-green-100">
+                {/* Icono de Check Animado */}
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3 className="text-2xl font-black text-slate-800">¡Éxito!</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-slate-600 font-medium mb-6">
+                La solicitud de laboratorio ha sido creada y enviada correctamente.
+              </p>
+              
+              <button 
+                onClick={confirmarExito}
+                className="w-full px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md focus:ring-4 focus:ring-blue-200 outline-none"
+              >
+                Aceptar y ver orden
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

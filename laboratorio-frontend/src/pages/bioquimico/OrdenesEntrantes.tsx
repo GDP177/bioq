@@ -23,7 +23,7 @@ const Badge = ({ children, variant = 'default' }: any) => {
 };
 
 // ==========================================
-// INTERFAZ (Alineada con la respuesta del Backend)
+// INTERFAZ
 // ==========================================
 interface OrdenEntrante {
   id_orden: number;
@@ -31,16 +31,13 @@ interface OrdenEntrante {
   fecha_ingreso_orden: string;
   estado: string;
   urgente: number;
-  // Campos del paciente
   nombre_paciente: string;
   apellido_paciente: string;
   dni: number;
   edad: number;
   mutual: string;
-  // Campos del médico
   nombre_medico: string;
   apellido_medico: string;
-  // Contadores
   total_analisis: number;
   analisis_listos: number;
 }
@@ -57,12 +54,14 @@ export default function OrdenesEntrantes() {
   // Estados de la Interfaz
   const [tabActiva, setTabActiva] = useState<'pendientes' | 'completadas'>('pendientes');
   const [busqueda, setBusqueda] = useState("");
+  const [soloUrgentes, setSoloUrgentes] = useState(false); 
+  const [ordenamiento, setOrdenamiento] = useState("recientes"); 
 
   useEffect(() => {
     cargarOrdenes();
   }, []);
 
-  // Motor de Filtrado
+  // Motor de Filtrado y Ordenamiento
   useEffect(() => {
     let resultado = [...ordenesOriginales];
 
@@ -73,7 +72,7 @@ export default function OrdenesEntrantes() {
       resultado = resultado.filter(o => o.estado === 'finalizado');
     }
 
-    // 2. Filtrar por Buscador
+    // 2. Filtrar por Buscador de Texto
     if (busqueda.trim() !== "") {
       const b = busqueda.toLowerCase();
       resultado = resultado.filter(o => 
@@ -84,8 +83,43 @@ export default function OrdenesEntrantes() {
       );
     }
 
+    // 3. Filtro: Solo Urgentes
+    if (soloUrgentes) {
+        resultado = resultado.filter(o => o.urgente === 1);
+    }
+
+    // 4. Lógica de Ordenamiento Corregida
+    resultado.sort((a, b) => {
+        // 🔥 MAGIA AQUÍ: La regla de urgencia SOLO se aplica si estamos en "Pendientes"
+        if (tabActiva === 'pendientes') {
+            if (a.urgente === 1 && b.urgente !== 1) return -1;
+            if (a.urgente !== 1 && b.urgente === 1) return 1;
+        }
+
+        // Si estamos en finalizadas, o si tienen el mismo nivel de urgencia en pendientes,
+        // aplicamos el criterio cronológico seleccionado por el usuario:
+        const fechaA = new Date(a.fecha_ingreso_orden).getTime();
+        const fechaB = new Date(b.fecha_ingreso_orden).getTime();
+        
+        const progresoA = a.total_analisis > 0 ? (a.analisis_listos / a.total_analisis) : 0;
+        const progresoB = b.total_analisis > 0 ? (b.analisis_listos / b.total_analisis) : 0;
+
+        switch (ordenamiento) {
+            case "recientes":
+                return fechaB - fechaA; // El último en entrar (mayor fecha) va primero
+            case "antiguos":
+                return fechaA - fechaB; // El primero en entrar (menor fecha) va primero
+            case "progreso_menor":
+                return progresoA - progresoB; // Los que están en 0% van primero
+            case "progreso_mayor":
+                return progresoB - progresoA; // Los que están casi listos van primero
+            default:
+                return 0;
+        }
+    });
+
     setOrdenesFiltradas(resultado);
-  }, [ordenesOriginales, tabActiva, busqueda]);
+  }, [ordenesOriginales, tabActiva, busqueda, soloUrgentes, ordenamiento]); 
 
   const cargarOrdenes = async () => {
     try {
@@ -101,7 +135,6 @@ export default function OrdenesEntrantes() {
       }
     } catch (err: any) {
       console.error('❌ Error de conexión:', err);
-      // Fallback para desarrollo si la ruta nueva falla, intentar la vieja
       if (err.response && err.response.status === 404) {
           try {
              const retry = await axios.get('http://localhost:5000/api/ordenes/pendientes');
@@ -150,7 +183,7 @@ export default function OrdenesEntrantes() {
           </div>
         )}
 
-        {/* CONTROLES */}
+        {/* CONTROLES Y PESTAÑAS */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
           
           <div className="flex border-b border-gray-200 bg-gray-50/50">
@@ -168,8 +201,9 @@ export default function OrdenesEntrantes() {
             </button>
           </div>
 
-          <div className="p-4 bg-white">
-            <div className="relative">
+          <div className="p-4 bg-white flex flex-col md:flex-row gap-4 items-center justify-between">
+            {/* Buscador */}
+            <div className="relative flex-1 w-full">
               <span className="absolute left-4 top-3 text-lg">🔍</span>
               <input 
                 type="text" 
@@ -179,10 +213,36 @@ export default function OrdenesEntrantes() {
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-12 pr-4 py-3 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
             </div>
+            
+            {/* Controles de Filtro y Ordenamiento */}
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setSoloUrgentes(!soloUrgentes)}
+                className={`px-4 py-3 rounded-lg text-sm font-bold tracking-wide border transition-all flex items-center gap-2 ${
+                    soloUrgentes 
+                    ? 'bg-red-50 text-red-600 border-red-200 shadow-sm' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                🚨 Solo Urgentes
+              </button>
+
+              <select
+                value={ordenamiento}
+                onChange={(e) => setOrdenamiento(e.target.value)}
+                className="px-4 py-3 rounded-lg text-sm font-bold tracking-wide border border-gray-200 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none shadow-sm min-w-[180px]"
+                style={{ backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: '40px' }}
+              >
+                <option value="recientes">🕛 Más Recientes</option>
+                <option value="antiguos">🕒 Más Antiguos</option>
+                <option value="progreso_menor">📉 Menor Progreso</option>
+                <option value="progreso_mayor">📈 Mayor Progreso</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* LISTA */}
+        {/* LISTA DE ÓRDENES */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           
           <div className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-gray-100 bg-gray-50/80">
@@ -198,7 +258,7 @@ export default function OrdenesEntrantes() {
               <div className="p-16 text-center">
                 <p className="text-4xl mb-2">{tabActiva === 'pendientes' ? '🎉' : '📂'}</p>
                 <p className="text-gray-500 font-bold">
-                  {busqueda ? "No se encontraron resultados." : 
+                  {busqueda || soloUrgentes ? "No se encontraron resultados para tu filtro." : 
                     (tabActiva === 'pendientes' ? "No hay órdenes pendientes." : "Aún no hay órdenes finalizadas.")}
                 </p>
               </div>

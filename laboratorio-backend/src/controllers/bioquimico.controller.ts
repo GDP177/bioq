@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import { pool } from '../routes/db';
 
 // ==========================================
-// 1. PERFIL BIOQUÍMICO - CORREGIDO Y BLINDADO
+// 1. PERFIL BIOQUÍMICO
 // ==========================================
 export const completarPerfilBioquimico = async (req: Request, res: Response) => {
   const { 
@@ -13,25 +13,17 @@ export const completarPerfilBioquimico = async (req: Request, res: Response) => 
   } = req.body;
 
   try {
-    console.log("🧪 Intentando completar perfil bioquímico para usuario ID:", id_usuario);
-
     if (!id_usuario || !nombre_bq || !apellido_bq || !dni_bioquimico || !matricula_profesional) {
       return res.status(400).json({ success: false, message: 'Faltan datos obligatorios' });
     }
 
-    // 1. Obtener Email del Usuario
     const [userRows]: any = await pool.query('SELECT email FROM usuarios WHERE id_usuario = ?', [id_usuario]);
     if (userRows.length === 0) return res.status(404).json({ success: false, message: 'Usuario base no encontrado' });
     const userEmail = userRows[0].email;
 
-    // 2. Buscamos si existe perfil previo
     const [existing]: any = await pool.query('SELECT matricula_profesional FROM bioquimico WHERE id_usuario = ?', [id_usuario]);
     
     if (existing.length > 0) {
-       // === CASO A: ACTUALIZAR ===
-       console.log(`✅ Actualizando bioquímico existente...`);
-
-       // Validación (DNI, Matrícula O EMAIL duplicado en OTROS usuarios)
        const [duplicados]: any = await pool.query(
            `SELECT matricula_profesional, dni_bioquimico, email FROM bioquimico 
             WHERE (dni_bioquimico = ? OR matricula_profesional = ? OR email = ?) 
@@ -59,10 +51,6 @@ export const completarPerfilBioquimico = async (req: Request, res: Response) => 
        return res.status(200).json({ success: true, message: 'Perfil actualizado exitosamente' });
 
     } else {
-       // === CASO B: INSERTAR ===
-       console.log("🆕 Creando nuevo bioquímico...");
-
-       // Validación Global
        const [duplicados]: any = await pool.query(
            `SELECT matricula_profesional, dni_bioquimico, email FROM bioquimico 
             WHERE dni_bioquimico = ? OR matricula_profesional = ? OR email = ?`,
@@ -70,11 +58,11 @@ export const completarPerfilBioquimico = async (req: Request, res: Response) => 
        );
 
        if (duplicados.length > 0) {
-            let msg = 'No se puede crear: ';
-            if (duplicados.some((d:any) => d.dni_bioquimico == dni_bioquimico)) msg += 'DNI ya registrado. ';
-            if (duplicados.some((d:any) => d.matricula_profesional == matricula_profesional)) msg += 'Matrícula ya registrada. ';
-            if (duplicados.some((d:any) => d.email == userEmail)) msg += 'Email ya en uso por otro profesional.';
-            return res.status(409).json({ success: false, message: msg.trim() });
+             let msg = 'No se puede crear: ';
+             if (duplicados.some((d:any) => d.dni_bioquimico == dni_bioquimico)) msg += 'DNI ya registrado. ';
+             if (duplicados.some((d:any) => d.matricula_profesional == matricula_profesional)) msg += 'Matrícula ya registrada. ';
+             if (duplicados.some((d:any) => d.email == userEmail)) msg += 'Email ya en uso por otro profesional.';
+             return res.status(409).json({ success: false, message: msg.trim() });
        }
 
        await pool.query(
@@ -89,14 +77,12 @@ export const completarPerfilBioquimico = async (req: Request, res: Response) => 
     }
 
   } catch (error: any) {
-    console.error("💥 Error completarPerfilBioquimico:", error);
-    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, message: 'Datos duplicados detectados en la base de datos.' });
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // ==========================================
-// 2. DASHBOARD
+// 2. DASHBOARD (SÚPER BLINDADO 🚀)
 // ==========================================
 export const getDashboardBioquimico = async (req: Request, res: Response) => {
   const matricula = req.params.matricula_profesional;
@@ -104,24 +90,53 @@ export const getDashboardBioquimico = async (req: Request, res: Response) => {
     const [bq]: any = await pool.query('SELECT * FROM bioquimico WHERE matricula_profesional = ?', [matricula]);
     if (bq.length === 0) return res.status(404).json({ success: false, message: 'Bioquímico no encontrado' });
 
+    // 🔥 MAGIA MATEMÁTICA: Ahora calculamos la realidad contando los análisis internos de cada orden
     const [stats]: any = await pool.query(`
       SELECT 
-        COUNT(*) as total_ordenes,
-        COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as ordenes_pendientes,
-        COUNT(CASE WHEN estado = 'en_proceso' THEN 1 END) as ordenes_proceso,
-        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as ordenes_completadas,
-        COUNT(CASE WHEN DATE(fecha_ingreso_orden) = CURDATE() THEN 1 END) as ordenes_hoy
-      FROM orden WHERE DATE(fecha_ingreso_orden) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        (
+            SELECT COUNT(*) FROM (
+                SELECT o.id_orden, 
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total,
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND estado = 'finalizado') as listos
+                FROM orden o
+            ) as t WHERE t.total > 0 AND t.listos = 0
+        ) as ordenes_pendientes,
+        (
+            SELECT COUNT(*) FROM (
+                SELECT o.id_orden, 
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total,
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND estado = 'finalizado') as listos
+                FROM orden o
+            ) as t WHERE t.total > 0 AND t.listos > 0 AND t.listos < t.total
+        ) as ordenes_proceso,
+        (
+            SELECT COUNT(*) FROM (
+                SELECT o.id_orden, o.fecha_ingreso_orden,
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total,
+                       (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND estado = 'finalizado') as listos
+                FROM orden o
+            ) as t 
+            WHERE t.total > 0 AND t.listos = t.total
+            AND (
+                DATE(t.fecha_ingreso_orden) = CURDATE() OR 
+                t.id_orden IN (SELECT id_orden FROM orden_analisis WHERE DATE(fecha_realizacion) = CURDATE())
+            )
+        ) as ordenes_completadas
     `);
 
+    // 🔥 FILTRO ESTRICTO DE URGENCIAS: Solo mostramos las que NO están al 100% listas
     const [ordenes]: any = await pool.query(`
-      SELECT o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.estado, o.urgente,
-             p.Nombre_paciente, p.Apellido_paciente, p.DNI,
-             (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total_analisis
-      FROM orden o
-      JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
-      WHERE o.estado IN ('pendiente', 'en_proceso')
-      ORDER BY o.urgente DESC, o.fecha_ingreso_orden ASC LIMIT 5
+      SELECT * FROM (
+          SELECT o.id_orden, o.nro_orden, o.fecha_ingreso_orden, o.estado, o.urgente,
+                 p.Nombre_paciente, p.Apellido_paciente, p.DNI,
+                 (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total_analisis,
+                 (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND estado = 'finalizado') as analisis_listos
+          FROM orden o
+          JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+      ) as subq
+      WHERE subq.total_analisis > subq.analisis_listos
+      ORDER BY subq.urgente DESC, subq.fecha_ingreso_orden ASC 
+      LIMIT 5
     `);
 
     const [staff]: any = await pool.query(`
@@ -160,46 +175,83 @@ export const getDashboardBioquimico = async (req: Request, res: Response) => {
 };
 
 // ==========================================
-// 3. ÓRDENES ENTRANTES (LISTA COMPLETA) - ✅ CORREGIDO
+// 3. ÓRDENES ENTRANTES (LISTA COMPLETA)
 // ==========================================
 export const getOrdenesEntrantes = async (req: Request, res: Response) => {
     try {
-        console.log("📥 Consultando órdenes entrantes para bioquímico...");
+        const { buscar } = req.query; 
         
-        // CORRECCIÓN CLAVE: 
-        // 1. Join con tabla medico para obtener nombre del doctor.
-        // 2. Subconsultas para contar total_analisis y analisis_listos (finalizados).
-        // 3. Alias 'nombre_paciente' y 'apellido_paciente' para coincidir con el frontend.
+        let whereBusqueda = ""; 
+        const params: any[] = [];
+
+        if (buscar) {
+            whereBusqueda = ` AND (
+                p.Nombre_paciente LIKE ? OR 
+                p.Apellido_paciente LIKE ? OR 
+                p.DNI LIKE ? OR 
+                o.nro_orden LIKE ?
+            )`;
+            const term = `%${buscar}%`;
+            params.push(term, term, term, term);
+        }
         
         const query = `
             SELECT 
                 o.id_orden, 
-                o.nro_orden, 
-                o.fecha_ingreso_orden, 
-                o.estado, 
-                o.urgente,
-                p.Nombre_paciente as nombre_paciente, 
-                p.Apellido_paciente as apellido_paciente, 
-                p.DNI as dni, 
-                p.edad,
-                p.mutual,
-                m.nombre_medico,
-                m.apellido_medico,
+                MAX(o.nro_orden) as nro_orden, 
+                MAX(o.fecha_ingreso_orden) as fecha_ingreso_orden, 
+                MAX(o.estado) as estado_original, 
+                MAX(o.urgente) as urgente,
+                MAX(p.Nombre_paciente) as nombre_paciente, 
+                MAX(p.Apellido_paciente) as apellido_paciente, 
+                MAX(p.DNI) as dni, 
+                MAX(p.edad) as edad,
+                MAX(p.mutual) as mutual,
+                MAX(m.nombre_medico) as nombre_medico,
+                MAX(m.apellido_medico) as apellido_medico,
                 (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden) as total_analisis,
-                (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND estado = 'finalizado') as analisis_listos
+                (SELECT COUNT(*) FROM orden_analisis WHERE id_orden = o.id_orden AND (estado = 'finalizado' OR estado = '1')) as analisis_listos
             FROM orden o
-            JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
+            LEFT JOIN paciente p ON o.nro_ficha_paciente = p.nro_ficha
             LEFT JOIN medico m ON o.id_medico_solicitante = m.id_medico
-            WHERE o.estado IN ('pendiente', 'en_proceso')
-            ORDER BY 
-                o.urgente DESC,        -- Prioridad 1: Urgentes
-                o.fecha_ingreso_orden ASC -- Prioridad 2: FIFO
+            WHERE 1=1 ${whereBusqueda}
+            GROUP BY o.id_orden
+            ORDER BY MAX(o.urgente) DESC, MAX(o.fecha_ingreso_orden) DESC
         `;
         
-        const [ordenes]: any = await pool.query(query);
-        console.log(`✅ ${ordenes.length} órdenes encontradas.`);
-        
-        return res.json({ success: true, ordenes });
+        const [rows]: any = await pool.query(query, params);
+
+        const ordenesProcesadas = rows.map((r: any) => {
+            const total = Number(r.total_analisis) || 0;
+            const listos = Number(r.analisis_listos) || 0;
+            
+            let estadoCalculado = 'pendiente';
+            
+            if (total > 0 && total === listos) {
+                estadoCalculado = 'finalizado';
+            } else if (listos > 0) {
+                estadoCalculado = 'en_proceso';
+            }
+
+            return {
+                id_orden: r.id_orden,
+                nro_orden: r.nro_orden,
+                fecha_ingreso_orden: r.fecha_ingreso_orden,
+                estado: estadoCalculado, 
+                urgente: r.urgente,
+                nombre_paciente: r.nombre_paciente,
+                apellido_paciente: r.apellido_paciente,
+                dni: r.dni,
+                edad: r.edad,
+                mutual: r.mutual,
+                nombre_medico: r.nombre_medico,
+                apellido_medico: r.apellido_medico,
+                total_analisis: total,
+                analisis_listos: listos
+            };
+        });
+
+        return res.json({ success: true, ordenes: ordenesProcesadas });
     } catch (error: any) {
         console.error("💥 Error en getOrdenesEntrantes:", error);
         return res.status(500).json({ success: false, error: error.message });
@@ -221,7 +273,7 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
     if (ordenRows.length === 0) return res.status(404).json({ success: false, message: 'Orden no encontrada' });
 
     const [analisisRows]: any = await pool.query(`
-      SELECT oa.*, a.descripcion_practica, a.unidad_bioquimica, a.REFERENCIA
+      SELECT oa.*, a.descripcion_practica, a.unidad_bioquimica, a.REFERENCIA, a.valor_referencia_rango
       FROM orden_analisis oa LEFT JOIN analisis a ON oa.codigo_practica = a.codigo_practica WHERE oa.id_orden = ?`, 
       [id_orden]
     );
@@ -249,10 +301,11 @@ export const getDetalleOrden = async (req: Request, res: Response) => {
           estado: a.estado || 'pendiente',
           resultado: a.valor_hallado || "",
           unidad: a.unidad_hallada || a.unidad_bioquimica || "",
-          referencia: a.valor_referencia_aplicado || a.REFERENCIA || "",
+          referencia: a.valor_referencia_rango || a.REFERENCIA || "-",
           observaciones: a.interpretacion || "Normal",
           notas_internas: a.observaciones || "",
-          tecnico: a.tecnico_responsable || "-"
+          tecnico: a.tecnico_responsable || "-",
+          honorarios: Number(a.HONORARIOS) || 0
         }))
       }
     });

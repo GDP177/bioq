@@ -59,7 +59,6 @@ export const createUsuario = async (req: Request, res: Response) => {
                 [newUserId, email]
             );
         } else if (rol === 'bioquimico') {
-            // Nota: Usamos las columnas correctas según tu tabla (email existe en bioquimico)
             await connection.query(
                 `INSERT INTO bioquimico (id_usuario, email, activo, fecha_creacion) VALUES (?, ?, 1, NOW())`, 
                 [newUserId, email]
@@ -165,10 +164,9 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         }
 
         // --- 3. ACTUALIZAR EMAIL EN TABLA USUARIOS (LOGIN) ---
-        // Esto cambia el email con el que el usuario se loguea
         await connection.query('UPDATE usuarios SET email = ? WHERE id_usuario = ?', [email, id_usuario]);
 
-        // --- 4. ACTUALIZAR TABLAS ESPECÍFICAS DE ROLES (NOMBRES CORREGIDOS) ---
+        // --- 4. ACTUALIZAR TABLAS ESPECÍFICAS DE ROLES ---
         if (rol === 'medico') {
             await connection.query(
                 `UPDATE medico SET 
@@ -184,8 +182,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
             );
         } 
         else if (rol === 'bioquimico') {
-            // ✅ CORRECCIÓN FINAL: Usamos 'nombre_bq', 'apellido_bq', 'dni_bioquimico', 'matricula_profesional'
-            // Basado en tus capturas de pantalla de phpMyAdmin
+            // ✅ CORRECCIÓN FINAL: Columnas exactas de la tabla 'bioquimico'
             await connection.query(
                 `UPDATE bioquimico SET 
                     nombre_bq = ?, 
